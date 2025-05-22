@@ -48,6 +48,11 @@ if (process.env.E2E_TESTS !== 'true') {
 	require('dotenv').config();
 }
 
+// Load config early to ensure `N8N_CONFIG_FILES` values are populated into `GlobalConfig`
+// _before_ typeorm entities in `@n8n/db` are loaded, as typeorm entity decorators rely on
+// `GlobalConfig.database.type` to decide on column types and timestamp syntax.
+require('../dist/config');
+
 if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	require('dns').setDefaultResultOrder('ipv4first');
 }

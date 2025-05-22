@@ -1,4 +1,4 @@
-import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
 import LogDetailsPanel from './LogDetailsPanel.vue';
 import { createRouter, createWebHistory } from 'vue-router';
@@ -9,16 +9,49 @@ import {
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
+	createTestWorkflowObject,
 } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { type FrontendSettings } from '@n8n/api-types';
+import { LOG_DETAILS_PANEL_STATE } from '../../types/logs';
+import type { LogEntry } from '@/components/RunDataAi/utils';
 
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+
+	const aiNode = createTestNode({ name: 'AI Agent' });
+	const workflowData = createTestWorkflow({
+		nodes: [createTestNode({ name: 'Chat Trigger' }), aiNode],
+		connections: { 'Chat Trigger': { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] } },
+	});
+	const chatNodeRunData = createTestTaskData({
+		executionStatus: 'success',
+		executionTime: 0,
+		data: { main: [[{ json: { response: 'hey' } }]] },
+	});
+	const aiNodeRunData = createTestTaskData({
+		executionStatus: 'success',
+		executionTime: 10,
+		data: { main: [[{ json: { response: 'Hello!' } }]] },
+		source: [{ previousNode: 'Chat Trigger' }],
+	});
+
+	function createLogEntry(data: Partial<LogEntry> = {}) {
+		return createTestLogEntry({
+			workflow: createTestWorkflowObject(workflowData),
+			execution: {
+				resultData: {
+					runData: {
+						'Chat Trigger': [chatNodeRunData],
+						'AI Agent': [aiNodeRunData],
+					},
+				},
+			},
+			...data,
+		});
+	}
 
 	function render(props: InstanceType<typeof LogDetailsPanel>['$props']) {
 		const rendered = renderComponent(LogDetailsPanel, {
@@ -55,49 +88,14 @@ describe('LogDetailsPanel', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isEnterpriseFeatureEnabled = {} as FrontendSettings['enterprise'];
 
-		const workflowData = createTestWorkflow({
-			nodes: [createTestNode({ name: 'Chat Trigger' }), createTestNode({ name: 'AI Agent' })],
-			connections: { 'Chat Trigger': { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] } },
-		});
-
-		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.setNodes(workflowData.nodes);
-		workflowsStore.setConnections(workflowData.connections);
-		workflowsStore.setWorkflowExecutionData({
-			id: 'test-exec-id',
-			finished: true,
-			mode: 'manual',
-			status: 'error',
-			workflowData,
-			data: {
-				resultData: {
-					runData: {
-						'Chat Trigger': [
-							createTestTaskData({
-								executionStatus: 'success',
-								executionTime: 0,
-								data: { main: [[{ json: { chatInput: 'hey' } }]] },
-							}),
-						],
-						'AI Agent': [
-							createTestTaskData({
-								executionStatus: 'success',
-								executionTime: 10,
-								data: { main: [[{ json: { response: 'Hello!' } }]] },
-							}),
-						],
-					},
-				},
-			},
-			createdAt: '2025-04-16T00:00:00.000Z',
-			startedAt: '2025-04-16T00:00:01.000Z',
-		});
+		localStorage.clear();
 	});
 
 	it('should show name, run status, input, and output of the node', async () => {
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
+			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 		});
 
 		const header = within(rendered.getByTestId('log-details-header'));
@@ -110,32 +108,29 @@ describe('LogDetailsPanel', () => {
 		expect(await outputPanel.findByText('Hello!')).toBeInTheDocument();
 	});
 
-	it('should toggle input and output panel when the button is clicked', async () => {
+	it('should show a message in the output panel and data in the input panel when node is running', async () => {
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
+			logEntry: createLogEntry({
+				node: aiNode,
+				runIndex: 0,
+				runData: { ...aiNodeRunData, executionStatus: 'running' },
+			}),
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 		});
 
-		const header = within(rendered.getByTestId('log-details-header'));
+		const inputPanel = within(rendered.getByTestId('log-details-input'));
+		const outputPanel = within(rendered.getByTestId('log-details-output'));
 
-		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
-		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
-
-		await fireEvent.click(header.getByText('Input'));
-
-		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
-		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
-
-		await fireEvent.click(header.getByText('Output'));
-
-		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
-		expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
+		expect(await inputPanel.findByText('hey')).toBeInTheDocument();
+		expect(await outputPanel.findByText('Executing node...')).toBeInTheDocument();
 	});
 
 	it('should close input panel by dragging the divider to the left end', async () => {
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
+			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -143,16 +138,14 @@ describe('LogDetailsPanel', () => {
 		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 0, clientY: 0 }));
 		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: 0 }));
 
-		await waitFor(() => {
-			expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
-			expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
-		});
+		expect(rendered.emitted()).toEqual({ toggleInputOpen: [[false]] });
 	});
 
 	it('should close output panel by dragging the divider to the right end', async () => {
 		const rendered = render({
 			isOpen: true,
-			logEntry: createTestLogEntry({ node: 'AI Agent', runIndex: 0 }),
+			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 		});
 
 		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
@@ -160,9 +153,6 @@ describe('LogDetailsPanel', () => {
 		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 1000, clientY: 0 }));
 		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 1000, clientY: 0 }));
 
-		await waitFor(() => {
-			expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
-			expect(rendered.queryByTestId('log-details-output')).not.toBeInTheDocument();
-		});
+		expect(rendered.emitted()).toEqual({ toggleOutputOpen: [[false]] });
 	});
 });

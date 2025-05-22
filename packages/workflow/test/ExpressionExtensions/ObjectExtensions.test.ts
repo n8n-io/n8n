@@ -1,3 +1,4 @@
+import { ApplicationError } from '@/errors';
 import { objectExtensions } from '@/Extensions/ObjectExtensions';
 
 import { evaluate } from './Helpers';
@@ -126,7 +127,9 @@ describe('Data Transformation Functions', () => {
 			test('should not allow prototype pollution', () => {
 				['{__proto__: {polluted: true}}', '{constructor: {prototype: {polluted: true}}}'].forEach(
 					(testExpression) => {
-						expect(evaluate(`={{ (${testExpression}).compact() }}`)).toEqual(null);
+						expect(() => evaluate(`={{ (${testExpression}).compact() }}`)).toThrow(
+							ApplicationError,
+						);
 						expect(({} as any).polluted).toBeUndefined();
 					},
 				);

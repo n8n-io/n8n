@@ -5,6 +5,7 @@ export type * from './scaling';
 export type * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
+export type * from './community-node-types';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';
@@ -18,7 +19,6 @@ export { passwordSchema } from './schemas/password.schema';
 export type {
 	ProjectType,
 	ProjectIcon,
-	ProjectRole,
 	ProjectRelation,
 } from './schemas/project.schema';
 
@@ -29,10 +29,12 @@ export {
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
 
-export type {
-	InsightsSummaryType,
-	InsightsSummaryUnit,
-	InsightsSummary,
-	InsightsByWorkflow,
-	InsightsByTime,
+export {
+	type InsightsSummaryType,
+	type InsightsSummaryUnit,
+	type InsightsSummary,
+	type InsightsByWorkflow,
+	type InsightsByTime,
+	type InsightsDateRange,
+	INSIGHTS_DATE_RANGE_KEYS,
 } from './schemas/insights.schema';

@@ -8,6 +8,9 @@ on:
     paths:
       - packages/cli/src/databases/**
       - packages/cli/src/modules/*/database/**
+      - packages/cli/test/integration/**
+      - packages/cli/test/shared/db/**
+      - packages/@n8n/db/**
       - .github/workflows/ci-postgres-mysql.yml
       - .github/docker-compose.yml
   pull_request_review:
@@ -122,7 +125,7 @@ jobs:
 
       - name: Test MariaDB
         working-directory: packages/cli
-        run: pnpm test:mariadb --testTimeout 30000
+        run: pnpm test:mariadb --testTimeout 60000
 
   mysql:
     name: MySQL (${{ matrix.service-name }})
@@ -166,7 +169,7 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 30000
+        run: pnpm test:mysql --testTimeout 60000
 
   postgres:
     name: Postgres

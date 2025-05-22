@@ -1,11 +1,9 @@
 import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
-import type { DatabaseConfig } from '@n8n/config/src/configs/database.config';
 import type { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 export type ModulePreInitContext = {
 	instance: InstanceSettings;
-	database: DatabaseConfig;
 };
 
 export type ModulePreInit = {

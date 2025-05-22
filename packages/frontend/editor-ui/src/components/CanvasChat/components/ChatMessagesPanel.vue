@@ -7,11 +7,12 @@ import MessageOptionAction from './MessageOptionAction.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
-import { computed, ref } from 'vue';
+import { watch, computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
-import PanelHeader from '@/components/CanvasChat/future/components/PanelHeader.vue';
+import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useSettingsStore } from '@/stores/settings.store';
 
 interface Props {
 	pastChatMessages: string[];
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 const clipboard = useClipboard();
 const locale = useI18n();
 const toast = useToast();
+const settingsStore = useSettingsStore();
 
 const previousMessageIndex = ref(0);
 
@@ -136,11 +138,28 @@ async function copySessionId() {
 		type: 'success',
 	});
 }
+
+watch(
+	() => props.isOpen,
+	(isOpen) => {
+		if (isOpen && !settingsStore.isNewLogsEnabled) {
+			setTimeout(() => {
+				chatEventBus.emit('focusInput');
+			}, 0);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
-	<div :class="$style.chat" data-test-id="workflow-lm-chat-dialog">
-		<PanelHeader
+	<div
+		:class="$style.chat"
+		data-test-id="workflow-lm-chat-dialog"
+		class="ignore-key-press-canvas"
+		tabindex="0"
+	>
+		<LogsPanelHeader
 			v-if="isNewLogsEnabled"
 			data-test-id="chat-header"
 			:title="locale.baseText('chat.window.title')"
@@ -179,7 +198,7 @@ async function copySessionId() {
 					/>
 				</N8nTooltip>
 			</template>
-		</PanelHeader>
+		</LogsPanelHeader>
 		<header v-else :class="$style.chatHeader">
 			<span :class="$style.chatTitle">{{ locale.baseText('chat.window.title') }}</span>
 			<div :class="$style.session">

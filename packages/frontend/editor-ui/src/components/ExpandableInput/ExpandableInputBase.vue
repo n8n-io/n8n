@@ -27,16 +27,13 @@ const hiddenValue = computed(() => {
 </template>
 
 <style lang="scss" scoped>
-$--horiz-padding: 15px;
-
 .el-input {
 	display: inline-grid;
 	font: inherit;
-	padding: 10px 0;
 
 	:deep(input) {
 		border: 1px solid transparent;
-		padding: 0 $--horiz-padding - 2px; // -2px for borders
+		padding: var(--spacing-3xs) calc(var(--spacing-3xs) - 2px); // -2px for borders
 		width: 100%;
 		grid-area: 1 / 2;
 		font: inherit;
@@ -48,7 +45,7 @@ $--horiz-padding: 15px;
 		content: attr(data-value) ' ';
 		visibility: hidden;
 		white-space: nowrap;
-		padding: 0 $--horiz-padding;
+		padding: var(--spacing-3xs);
 	}
 
 	&:not(.static-size)::after {

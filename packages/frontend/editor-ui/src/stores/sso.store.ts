@@ -1,8 +1,9 @@
 import type { SamlPreferences } from '@n8n/api-types';
 import { computed, reactive } from 'vue';
+import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as ssoApi from '@/api/sso';
 import type { SamlPreferencesExtractedData } from '@/Interface';
@@ -13,6 +14,7 @@ export const useSSOStore = defineStore('sso', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
+	const route = useRoute();
 
 	const state = reactive({
 		loading: false,
@@ -54,7 +56,11 @@ export const useSSOStore = defineStore('sso', () => {
 			isDefaultAuthenticationSaml.value,
 	);
 
-	const getSSORedirectUrl = async () => await ssoApi.initSSO(rootStore.restApiContext);
+	const getSSORedirectUrl = async () =>
+		await ssoApi.initSSO(
+			rootStore.restApiContext,
+			typeof route.query?.redirect === 'string' ? route.query.redirect : '',
+		);
 
 	const toggleLoginEnabled = async (enabled: boolean) =>
 		await ssoApi.toggleSamlConfig(rootStore.restApiContext, { loginEnabled: enabled });

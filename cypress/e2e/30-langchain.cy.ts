@@ -12,13 +12,12 @@ import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	CHAT_TRIGGER_NODE_DISPLAY_NAME,
 } from './../constants';
+import * as logs from '../composables/logs';
 import {
 	closeManualChatModal,
+	getManualChatInput,
 	getManualChatMessages,
 	getManualChatModal,
-	getManualChatModalLogs,
-	getManualChatModalLogsEntries,
-	getManualChatModalLogsTree,
 	sendManualChatMessage,
 } from '../composables/modals/chat-modal';
 import { setCredentialValues } from '../composables/modals/credential-modal';
@@ -253,6 +252,7 @@ describe('Langchain Integration', () => {
 				metadata: {
 					subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
 				},
+				source: [{ previousNode: AGENT_NODE_NAME, previousNodeRun: 0 }],
 				inputOverride: {
 					ai_languageModel: [
 						[
@@ -307,12 +307,14 @@ describe('Langchain Integration', () => {
 		messages.should('contain', inputMessage);
 		messages.should('contain', outputMessage);
 
-		getManualChatModalLogsTree().should('be.visible');
-		getManualChatModalLogsEntries().should('have.length', 1);
+		logs.getOverviewPanel().should('be.visible');
+		logs.getLogEntries().should('have.length', 2);
+		logs.getLogEntries().eq(0).should('have.text', 'AI Agent');
+		logs.getLogEntries().eq(1).should('have.text', 'OpenAI Chat Model');
 
 		closeManualChatModal();
-		getManualChatModalLogs().should('not.exist');
-		getManualChatModal().should('not.exist');
+		logs.getOverviewPanelBody().should('not.exist');
+		getManualChatInput().should('not.exist');
 	});
 
 	it('should auto-add chat trigger and basic LLM chain when adding LLM node', () => {
@@ -452,11 +454,11 @@ describe('Langchain Integration', () => {
 		cy.createFixtureWorkflow('Test_workflow_chat_partial_execution.json');
 		workflowPage.actions.zoomToFit();
 
-		getManualChatModal().should('not.exist');
+		getManualChatModal().find('main').should('not.exist');
 		openNode('Node 1');
 		ndv.actions.execute();
 
-		getManualChatModal().should('exist');
+		getManualChatModal().find('main').should('exist');
 		sendManualChatMessage('Test');
 
 		getManualChatMessages().should('contain', 'this_my_field_1');

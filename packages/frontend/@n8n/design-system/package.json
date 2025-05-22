@@ -1,6 +1,6 @@
 {
   "name": "@n8n/design-system",
-  "version": "1.78.0",
+  "version": "1.82.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
@@ -23,9 +23,9 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@n8n/storybook": "workspace:*",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/user-event": "^14.6.0",
-    "@testing-library/vue": "^8.1.0",
+    "@testing-library/jest-dom": "catalog:frontend",
+    "@testing-library/user-event": "catalog:frontend",
+    "@testing-library/vue": "catalog:frontend",
     "@types/markdown-it": "^13.0.9",
     "@types/markdown-it-emoji": "^2.0.2",
     "@types/markdown-it-link-attributes": "^3.0.5",

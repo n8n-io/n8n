@@ -12,6 +12,7 @@ const VALID_SELECT_FIELDS = [
 	'parentFolder',
 	'workflowCount',
 	'subFolderCount',
+	'path',
 ] as const;
 
 const VALID_SORT_OPTIONS = [

@@ -41,7 +41,11 @@ function formatFakeLlmResponse(object: Record<string, any>) {
 	return `\`\`\`json\n${JSON.stringify(object, null, 2)}\n\`\`\``;
 }
 
-const createExecuteFunctionsMock = (parameters: IDataObject, fakeLlm: BaseLanguageModel) => {
+const createExecuteFunctionsMock = (
+	parameters: IDataObject,
+	fakeLlm: BaseLanguageModel,
+	inputData = [{ json: {} }],
+) => {
 	const nodeParameters = parameters;
 
 	return {
@@ -49,13 +53,15 @@ const createExecuteFunctionsMock = (parameters: IDataObject, fakeLlm: BaseLangua
 			return get(nodeParameters, parameter);
 		},
 		getNode() {
-			return {};
+			return {
+				typeVersion: 1.1,
+			};
 		},
 		getInputConnectionData() {
 			return fakeLlm;
 		},
 		getInputData() {
-			return [{ json: {} }];
+			return inputData;
 		},
 		getWorkflow() {
 			return {
@@ -213,6 +219,134 @@ describe('InformationExtractor', () => {
 			);
 
 			expect(response).toEqual([[{ json: { output: { name: 'John', age: 30 } } }]]);
+		});
+	});
+
+	describe('Batch Processing', () => {
+		it('should process multiple items in batches', async () => {
+			const node = new InformationExtractor();
+			const inputData = [
+				{ json: { text: 'John is 30 years old' } },
+				{ json: { text: 'Alice is 25 years old' } },
+				{ json: { text: 'Bob is 40 years old' } },
+			];
+
+			const response = await node.execute.call(
+				createExecuteFunctionsMock(
+					{
+						text: 'John is 30 years old',
+						attributes: {
+							attributes: mockPersonAttributes,
+						},
+						options: {
+							batching: {
+								batchSize: 2,
+								delayBetweenBatches: 0,
+							},
+						},
+						schemaType: 'fromAttributes',
+					},
+					new FakeListChatModel({
+						responses: [
+							formatFakeLlmResponse({ name: 'John', age: 30 }),
+							formatFakeLlmResponse({ name: 'Alice', age: 25 }),
+							formatFakeLlmResponse({ name: 'Bob', age: 40 }),
+						],
+					}),
+					inputData,
+				),
+			);
+
+			expect(response).toEqual([
+				[
+					{ json: { output: { name: 'John', age: 30 } } },
+					{ json: { output: { name: 'Alice', age: 25 } } },
+					{ json: { output: { name: 'Bob', age: 40 } } },
+				],
+			]);
+		});
+
+		it('should handle errors in batch processing', async () => {
+			const node = new InformationExtractor();
+			const inputData = [
+				{ json: { text: 'John is 30 years old' } },
+				{ json: { text: 'Invalid text' } },
+				{ json: { text: 'Bob is 40 years old' } },
+			];
+
+			const mockExecuteFunctions = createExecuteFunctionsMock(
+				{
+					text: 'John is 30 years old',
+					attributes: {
+						attributes: mockPersonAttributesRequired,
+					},
+					options: {
+						batching: {
+							batchSize: 2,
+							delayBetweenBatches: 0,
+						},
+					},
+					schemaType: 'fromAttributes',
+				},
+				new FakeListChatModel({
+					responses: [
+						formatFakeLlmResponse({ name: 'John', age: 30 }),
+						formatFakeLlmResponse({ name: 'Invalid' }), // Missing required age
+						formatFakeLlmResponse({ name: 'Invalid' }), // Missing required age on retry
+						formatFakeLlmResponse({ name: 'Bob', age: 40 }),
+					],
+				}),
+				inputData,
+			);
+
+			mockExecuteFunctions.continueOnFail = () => true;
+
+			const response = await node.execute.call(mockExecuteFunctions);
+
+			//expect(response).toBe({});
+			expect(response[0]).toHaveLength(3);
+			expect(response[0][0]).toEqual({ json: { output: { name: 'John', age: 30 } } });
+			expect(response[0][1]).toEqual({
+				json: { error: expect.stringContaining('Failed to parse') },
+				pairedItem: { item: 1 },
+			});
+			expect(response[0][2]).toEqual({ json: { output: { name: 'Bob', age: 40 } } });
+		});
+
+		it('should throw error if batch processing fails and continueOnFail is false', async () => {
+			const node = new InformationExtractor();
+			const inputData = [
+				{ json: { text: 'John is 30 years old' } },
+				{ json: { text: 'Invalid text' } },
+				{ json: { text: 'Bob is 40 years old' } },
+			];
+
+			const mockExecuteFunctions = createExecuteFunctionsMock(
+				{
+					text: 'John is 30 years old',
+					attributes: {
+						attributes: mockPersonAttributesRequired,
+					},
+					options: {
+						batching: {
+							batchSize: 2,
+							delayBetweenBatches: 0,
+						},
+					},
+					schemaType: 'fromAttributes',
+				},
+				new FakeListChatModel({
+					responses: [
+						formatFakeLlmResponse({ name: 'John', age: 30 }),
+						formatFakeLlmResponse({ name: 'Invalid' }), // Missing required age
+						formatFakeLlmResponse({ name: 'Invalid' }), // Missing required age on retry
+						formatFakeLlmResponse({ name: 'Bob', age: 40 }),
+					],
+				}),
+				inputData,
+			);
+
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('Failed to parse');
 		});
 	});
 });

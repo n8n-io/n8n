@@ -804,12 +804,16 @@ export class Jira implements INodeType {
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {};
-					if (options.fields) {
-						body.fields = (options.fields as string).split(',');
+					if (!options.fields) {
+						// By default, the new endpoint returns only the ids, before it used to return `*navigable` fields
+						options.fields = '*navigable';
 					}
-					if (options.jql) {
-						body.jql = options.jql as string;
+					body.fields = (options.fields as string).split(',');
+					if (!options.jql) {
+						// Jira API returns an error if the JQL query is unbounded (i.e. does not include any filters)
+						options.jql = 'created >= "1970-01-01"';
 					}
+					body.jql = options.jql as string;
 					if (options.expand) {
 						if (typeof options.expand === 'string') {
 							body.expand = options.expand.split(',');
@@ -821,16 +825,18 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(
 							this,
 							'issues',
-							'/api/2/search',
+							'/api/2/search/jql',
 							'POST',
 							body,
+							{},
+							'token',
 						);
 					} else {
 						const limit = this.getNodeParameter('limit', i);
 						body.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
-							'/api/2/search',
+							'/api/2/search/jql',
 							'POST',
 							body,
 						);

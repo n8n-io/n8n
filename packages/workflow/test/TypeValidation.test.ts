@@ -3,6 +3,38 @@ import { DateTime, Settings } from 'luxon';
 import { getValueDescription, tryToParseDateTime, validateFieldType } from '@/TypeValidation';
 
 describe('Type Validation', () => {
+	describe('string-alphanumeric', () => {
+		test('should validate and parse alphanumeric strings, not starting with a number', () => {
+			const VALID_STRINGS = ['abc123', 'ABC123', 'abc_123', '_abc123', 'abcABC123_'];
+			VALID_STRINGS.forEach((value) =>
+				expect(validateFieldType('string', value, 'string-alphanumeric')).toEqual({
+					valid: true,
+					newValue: value,
+				}),
+			);
+		});
+
+		test('should not validate non-alphanumeric strings, or starting with a number', () => {
+			const INVALID_STRINGS = [
+				'abc-123',
+				'abc 123',
+				'abc@123',
+				'abc#123',
+				'abc.123',
+				'abc$123',
+				'abc&123',
+				'abc!123',
+				'abc(123)',
+				'bπc123',
+				'πι',
+				'123abc', // Cannot start with number
+				'456_abc', // Cannot start with number
+			];
+			INVALID_STRINGS.forEach((value) =>
+				expect(validateFieldType('string', value, 'string-alphanumeric').valid).toBe(false),
+			);
+		});
+	});
 	describe('Dates', () => {
 		test('should validate and cast ISO dates', () => {
 			const VALID_ISO_DATES = [

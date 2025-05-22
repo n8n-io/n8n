@@ -59,6 +59,8 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.created',
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
+	'n8n.audit.workflow.archived',
+	'n8n.audit.workflow.unarchived',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

@@ -1,4 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
+import type { Project, User, CreateExecutionPayload } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
 import type {
@@ -17,13 +19,9 @@ import type {
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
-import type { Project } from '@/databases/entities/project';
-import type { User } from '@/databases/entities/user';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
-import type { CreateExecutionPayload, IWorkflowErrorData } from '@/interfaces';
+import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -108,6 +106,7 @@ export class WorkflowExecutionService {
 			destinationNode,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			agentRequest,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
@@ -182,6 +181,7 @@ export class WorkflowExecutionService {
 			partialExecutionVersion,
 			dirtyNodeNames,
 			triggerToStartFrom,
+			agentRequest,
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];

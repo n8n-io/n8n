@@ -6,6 +6,7 @@
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
+import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './Constants';
 import { ApplicationError } from './errors/application.error';
 import { NodeConnectionTypes } from './Interfaces';
 import type {
@@ -34,13 +35,13 @@ import type {
 	INodeInputConfiguration,
 	GenericValue,
 	DisplayCondition,
-	NodeHint,
-	INodeExecutionData,
 	NodeConnectionType,
 } from './Interfaces';
 import { validateFilterParameter } from './NodeParameters/FilterParameter';
 import {
 	isFilterValue,
+	isINodePropertyOptionsList,
+	isResourceLocatorValue,
 	isResourceMapperValue,
 	isValidResourceLocatorParameterValue,
 } from './type-guards';
@@ -235,87 +236,6 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 	},
 ];
 
-const declarativeNodeOptionParameters: INodeProperties = {
-	displayName: 'Request Options',
-	name: 'requestOptions',
-	type: 'collection',
-	isNodeSetting: true,
-	placeholder: 'Add Option',
-	default: {},
-	options: [
-		{
-			displayName: 'Batching',
-			name: 'batching',
-			placeholder: 'Add Batching',
-			type: 'fixedCollection',
-			typeOptions: {
-				multipleValues: false,
-			},
-			default: {
-				batch: {},
-			},
-			options: [
-				{
-					displayName: 'Batching',
-					name: 'batch',
-					values: [
-						{
-							displayName: 'Items per Batch',
-							name: 'batchSize',
-							type: 'number',
-							typeOptions: {
-								minValue: -1,
-							},
-							default: 50,
-							description:
-								'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
-						},
-						{
-							displayName: 'Batch Interval (ms)',
-							name: 'batchInterval',
-							type: 'number',
-							typeOptions: {
-								minValue: 0,
-							},
-							default: 1000,
-							description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
-						},
-					],
-				},
-			],
-		},
-		{
-			displayName: 'Ignore SSL Issues (Insecure)',
-			name: 'allowUnauthorizedCerts',
-			type: 'boolean',
-			noDataExpression: true,
-			default: false,
-			description:
-				'Whether to accept the response even if SSL certificate validation is not possible',
-		},
-		{
-			displayName: 'Proxy',
-			name: 'proxy',
-			type: 'string',
-			default: '',
-			placeholder: 'e.g. http://myproxy:3128',
-			description:
-				'HTTP proxy to use. If authentication is required it can be defined as follow: http://username:password@myproxy:3128',
-		},
-		{
-			displayName: 'Timeout',
-			name: 'timeout',
-			type: 'number',
-			typeOptions: {
-				minValue: 1,
-			},
-			default: 10000,
-			description:
-				'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
-		},
-	],
-};
-
 /**
  * Determines if the provided node type has any output types other than the main connection type.
  * @param typeDescription The node's type description to check.
@@ -330,62 +250,6 @@ export function isSubNodeType(
 	return outputTypes
 		? outputTypes.filter((output) => output !== NodeConnectionTypes.Main).length > 0
 		: false;
-}
-
-/** Augments additional `Request Options` property on declarative node-type */
-export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
-	if (
-		nodeType.execute ||
-		nodeType.trigger ||
-		nodeType.webhook ||
-		nodeType.description.polling ||
-		isSubNodeType(nodeType.description)
-	) {
-		return;
-	}
-
-	const parameters = nodeType.description.properties;
-
-	if (!parameters) {
-		return;
-	}
-
-	// Was originally under "options" instead of "requestOptions" so the chance
-	// that that existed was quite high. With this name the chance is actually
-	// very low that it already exists but lets leave it in anyway to be sure.
-	const existingRequestOptionsIndex = parameters.findIndex(
-		(parameter) => parameter.name === 'requestOptions',
-	);
-	if (existingRequestOptionsIndex !== -1) {
-		parameters[existingRequestOptionsIndex] = {
-			...declarativeNodeOptionParameters,
-			options: [
-				...(declarativeNodeOptionParameters.options || []),
-				...(parameters[existingRequestOptionsIndex]?.options || []),
-			],
-		};
-
-		const options = parameters[existingRequestOptionsIndex]?.options;
-
-		if (options) {
-			options.sort((a, b) => {
-				if ('displayName' in a && 'displayName' in b) {
-					if (a.displayName < b.displayName) {
-						return -1;
-					}
-					if (a.displayName > b.displayName) {
-						return 1;
-					}
-				}
-
-				return 0;
-			});
-		}
-	} else {
-		parameters.push(declarativeNodeOptionParameters);
-	}
-
-	return;
 }
 
 const getPropertyValues = (
@@ -660,7 +524,7 @@ function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IPara
  * Returns in which order the parameters should be resolved
  * to have the parameters available they depend on
  */
-export function getParameterResolveOrder(
+function getParameterResolveOrder(
 	nodePropertiesArray: INodeProperties[],
 	parameterDependencies: IParameterDependencies,
 ): number[] {
@@ -722,7 +586,7 @@ export function getParameterResolveOrder(
 	return executionOrder;
 }
 
-export type GetNodeParametersOptions = {
+type GetNodeParametersOptions = {
 	onlySimpleTypes?: boolean;
 	dataIsResolved?: boolean; // If nodeValues are already fully resolved (so that all default values got added already)
 	nodeValuesRoot?: INodeParameters;
@@ -1164,75 +1028,6 @@ export function getNodeInputs(
 	}
 }
 
-export function getNodeHints(
-	workflow: Workflow,
-	node: INode,
-	nodeTypeData: INodeTypeDescription,
-	nodeInputData?: {
-		runExecutionData: IRunExecutionData | null;
-		runIndex: number;
-		connectionInputData: INodeExecutionData[];
-	},
-): NodeHint[] {
-	const hints: NodeHint[] = [];
-
-	if (nodeTypeData?.hints?.length) {
-		for (const hint of nodeTypeData.hints) {
-			if (hint.displayCondition) {
-				try {
-					let display;
-
-					if (nodeInputData === undefined) {
-						display = (workflow.expression.getSimpleParameterValue(
-							node,
-							hint.displayCondition,
-							'internal',
-							{},
-						) || false) as boolean;
-					} else {
-						const { runExecutionData, runIndex, connectionInputData } = nodeInputData;
-						display = workflow.expression.getParameterValue(
-							hint.displayCondition,
-							runExecutionData ?? null,
-							runIndex,
-							0,
-							node.name,
-							connectionInputData,
-							'manual',
-							{},
-						);
-					}
-
-					if (typeof display === 'string' && display.trim() === 'true') {
-						display = true;
-					}
-
-					if (typeof display !== 'boolean') {
-						console.warn(
-							`Condition was not resolved as boolean in '${node.name}' node for hint: `,
-							hint.message,
-						);
-						continue;
-					}
-
-					if (display) {
-						hints.push(hint);
-					}
-				} catch (e) {
-					console.warn(
-						`Could not calculate display condition in '${node.name}' node for hint: `,
-						hint.message,
-					);
-				}
-			} else {
-				hints.push(hint);
-			}
-		}
-	}
-
-	return hints;
-}
-
 export function getNodeOutputs(
 	workflow: Workflow,
 	node: INode,
@@ -1318,44 +1113,6 @@ export function getNodeParametersIssues(
 	}
 
 	return foundIssues;
-}
-
-/**
- * Returns the issues of the node as string
- *
- * @param {INodeIssues} issues The issues of the node
- * @param {INode} node The node
- */
-export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
-	const nodeIssues = [];
-
-	if (issues.execution !== undefined) {
-		nodeIssues.push('Execution Error.');
-	}
-
-	const objectProperties = ['parameters', 'credentials', 'input'];
-
-	let issueText: string;
-	let parameterName: string;
-	for (const propertyName of objectProperties) {
-		if (issues[propertyName] !== undefined) {
-			for (parameterName of Object.keys(issues[propertyName] as object)) {
-				for (issueText of (issues[propertyName] as INodeIssueObjectProperty)[parameterName]) {
-					nodeIssues.push(issueText);
-				}
-			}
-		}
-	}
-
-	if (issues.typeUnknown !== undefined) {
-		if (node !== undefined) {
-			nodeIssues.push(`Node Type "${node.type}" is not known.`);
-		} else {
-			nodeIssues.push('Node Type is not known.');
-		}
-	}
-
-	return nodeIssues;
 }
 
 /*
@@ -1802,5 +1559,108 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
 	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
 	const outputNames = getConnectionTypes(outputs);
-	return outputNames.includes(NodeConnectionTypes.Main) || isTriggerNode(nodeTypeData);
+	return (
+		outputNames.includes(NodeConnectionTypes.Main) ||
+		outputNames.includes(NodeConnectionTypes.AiTool) ||
+		isTriggerNode(nodeTypeData)
+	);
+}
+
+export function isNodeWithWorkflowSelector(node: INode) {
+	return [EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE].includes(node.type);
+}
+
+/**
+ * Generates a human-readable description for a node based on its parameters and type definition.
+ *
+ * This function creates a descriptive string that represents what the node does,
+ * based on its resource, operation, and node type information. The description is
+ * formatted in one of the following ways:
+ *
+ * 1. "{action} in {displayName}" if the operation has a defined action
+ * 2. "{operation} {resource} in {displayName}" if resource and operation exist
+ * 3. The node type's description field as a fallback
+ */
+export function makeDescription(
+	nodeParameters: INodeParameters,
+	nodeTypeDescription: INodeTypeDescription,
+): string {
+	let description = '';
+	const resource = nodeParameters.resource as string;
+	const operation = nodeParameters.operation as string;
+	const nodeTypeOperation = nodeTypeDescription.properties.find(
+		(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
+	);
+
+	if (nodeTypeOperation?.options && isINodePropertyOptionsList(nodeTypeOperation.options)) {
+		const foundOperation = nodeTypeOperation.options.find((option) => option.value === operation);
+		if (foundOperation?.action) {
+			description = `${foundOperation.action} in ${nodeTypeDescription.defaults.name}`;
+			return description;
+		}
+	}
+
+	if (!description && resource && operation) {
+		description = `${operation} ${resource} in ${nodeTypeDescription.defaults.name}`;
+	} else {
+		description = nodeTypeDescription.description;
+	}
+
+	return description;
+}
+
+/**
+ * Determines whether a tool description should be updated and returns the new description if needed.
+ * Returns undefined if no update is needed.
+ */
+
+export const getUpdatedToolDescription = (
+	currentNodeType: INodeTypeDescription | null,
+	newParameters: INodeParameters | null,
+	currentParameters?: INodeParameters,
+) => {
+	if (!currentNodeType) return;
+
+	if (newParameters?.descriptionType === 'manual' && currentParameters) {
+		const previousDescription = makeDescription(currentParameters, currentNodeType);
+		const newDescription = makeDescription(newParameters, currentNodeType);
+
+		if (
+			newParameters.toolDescription === previousDescription ||
+			!newParameters.toolDescription?.toString().trim() ||
+			newParameters.toolDescription === currentNodeType.description
+		) {
+			return newDescription;
+		}
+	}
+
+	return;
+};
+
+/**
+ * Generates a tool description for a given node based on its parameters and type.
+ */
+export function getToolDescriptionForNode(node: INode, nodeType: INodeType): string {
+	let toolDescription;
+	if (
+		node.parameters.descriptionType === 'auto' ||
+		!node?.parameters.toolDescription?.toString().trim()
+	) {
+		toolDescription = makeDescription(node.parameters, nodeType.description);
+	} else if (node?.parameters.toolDescription) {
+		toolDescription = node.parameters.toolDescription;
+	} else {
+		toolDescription = nodeType.description.description;
+	}
+	return toolDescription as string;
+}
+
+/**
+ * Attempts to retrieve the ID of a subworkflow from a execute workflow node.
+ */
+export function getSubworkflowId(node: INode): string | undefined {
+	if (isNodeWithWorkflowSelector(node) && isResourceLocatorValue(node.parameters.workflowId)) {
+		return node.parameters.workflowId.value as string;
+	}
+	return;
 }

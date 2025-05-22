@@ -1,7 +1,8 @@
+import { Get, Post, Patch, RestController, Delete } from '@n8n/decorators';
 import express from 'express';
+import { UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { Get, Post, Patch, RestController, Delete } from '@/decorators';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
@@ -26,10 +27,15 @@ export class TestDefinitionsController {
 	async getMany(req: TestDefinitionsRequest.GetMany) {
 		const userAccessibleWorkflowIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
-		return await this.testDefinitionService.getMany(
-			req.listQueryOptions,
-			userAccessibleWorkflowIds,
-		);
+		try {
+			return await this.testDefinitionService.getMany(
+				req.listQueryOptions,
+				userAccessibleWorkflowIds,
+			);
+		} catch (error) {
+			if (error instanceof UserError) throw new ForbiddenError(error.message);
+			throw error;
+		}
 	}
 
 	@Get('/:id')

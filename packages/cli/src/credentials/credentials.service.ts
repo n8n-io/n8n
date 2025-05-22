@@ -1,6 +1,15 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
+import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
+import {
+	CredentialsEntity,
+	SharedCredentials,
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
@@ -20,26 +29,18 @@ import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from '
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import type { ICredentialsDb } from '@/interfaces';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import type { ScopesField } from '@/services/role.service';
 import { RoleService } from '@/services/role.service';
+
+import { CredentialsFinderService } from './credentials-finder.service';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -64,6 +65,7 @@ export class CredentialsService {
 		private readonly projectService: ProjectService,
 		private readonly roleService: RoleService,
 		private readonly userRepository: UserRepository,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	async getMany(
@@ -72,14 +74,28 @@ export class CredentialsService {
 			listQueryOptions = {},
 			includeScopes = false,
 			includeData = false,
+			onlySharedWithMe = false,
 		}: {
 			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
+			onlySharedWithMe?: boolean;
 		} = {},
 	) {
-		const returnAll = user.hasGlobalScope('credential:list');
+		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
+		const projectId =
+			typeof listQueryOptions.filter?.projectId === 'string'
+				? listQueryOptions.filter.projectId
+				: undefined;
+
+		if (onlySharedWithMe) {
+			listQueryOptions.filter = {
+				...listQueryOptions.filter,
+				withRole: 'credential:user',
+				user,
+			};
+		}
 
 		if (includeData) {
 			// We need the scopes to check if we're allowed to include the decrypted
@@ -91,6 +107,21 @@ export class CredentialsService {
 		}
 
 		if (returnAll) {
+			let project: Project | undefined;
+
+			if (projectId) {
+				try {
+					project = await this.projectService.getProject(projectId);
+				} catch {}
+			}
+
+			if (project?.type === 'personal') {
+				listQueryOptions.filter = {
+					...listQueryOptions.filter,
+					withRole: 'credential:owner',
+				};
+			}
+
 			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
 
 			if (isDefaultSelect) {
@@ -99,7 +130,10 @@ export class CredentialsService {
 				// it's shared to a project, it won't be able to find the home project.
 				// To solve this, we have to get all the relation now, even though
 				// we're deleting them later.
-				if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+				if (
+					(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+					onlySharedWithMe
+				) {
 					const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 						credentials.map((c) => c.id),
 					);
@@ -134,18 +168,7 @@ export class CredentialsService {
 			return credentials;
 		}
 
-		// If the workflow is part of a personal project we want to show the
-		// credentials the user making the request has access to, not the
-		// credentials the user owning the workflow has access to.
-		if (typeof listQueryOptions.filter?.projectId === 'string') {
-			const project = await this.projectService.getProject(listQueryOptions.filter.projectId);
-			if (project?.type === 'personal') {
-				const currentUsersPersonalProject = await this.projectService.getPersonalProject(user);
-				listQueryOptions.filter.projectId = currentUsersPersonalProject?.id;
-			}
-		}
-
-		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
+		const ids = await this.credentialsFinderService.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
 
@@ -160,7 +183,10 @@ export class CredentialsService {
 			// it's shared to a project, it won't be able to find the home project.
 			// To solve this, we have to get all the relation now, even though
 			// we're deleting them later.
-			if ((listQueryOptions.filter?.shared as { projectId?: string })?.projectId) {
+			if (
+				(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
+				onlySharedWithMe
+			) {
 				const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 					credentials.map((c) => c.id),
 				);
@@ -203,7 +229,7 @@ export class CredentialsService {
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
 		// get all credentials the user has access to
-		const allCredentials = await this.credentialsRepository.findCredentialsForUser(user, [
+		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
 
@@ -232,7 +258,7 @@ export class CredentialsService {
 		// If the workflow is owned by a personal project and the owner of the
 		// project has global read permissions it can use all personal credentials.
 		const user = await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
-		if (user?.hasGlobalScope('credential:read')) {
+		if (user && hasGlobalScope(user, 'credential:read')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
 
@@ -246,7 +272,7 @@ export class CredentialsService {
 		// read permissions then all workflows in that project can use all
 		// credentials of all personal projects.
 		const user = await this.userRepository.findPersonalOwnerForProject(projectId);
-		if (user?.hasGlobalScope('credential:read')) {
+		if (user && hasGlobalScope(user, 'credential:read')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
 
@@ -266,7 +292,7 @@ export class CredentialsService {
 	): Promise<SharedCredentials | null> {
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		if (!user.hasGlobalScope(globalScopes, { mode: 'allOf' })) {
+		if (!hasGlobalScope(user, globalScopes, { mode: 'allOf' })) {
 			where = {
 				...where,
 				role: 'credential:owner',
@@ -379,7 +405,8 @@ export class CredentialsService {
 
 		await this.externalHooks.run('credentials.create', [encryptedData]);
 
-		const result = await Db.transaction(async (transactionManager) => {
+		const { manager: dbManager } = this.credentialsRepository;
+		const result = await dbManager.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
 			savedCredential.data = newCredential.data;
@@ -434,7 +461,7 @@ export class CredentialsService {
 	async delete(user: User, credentialId: string) {
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:delete'],

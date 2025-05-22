@@ -1,16 +1,14 @@
 import { RoleChangeRequestDto, SettingsUpdateRequestDto } from '@n8n/api-types';
-import { Response } from 'express';
-import { Logger } from 'n8n-core';
-
-import { AuthService } from '@/auth/auth.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { AuthIdentity } from '@/databases/entities/auth-identity';
-import { Project } from '@/databases/entities/project';
-import { User } from '@/databases/entities/user';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { PublicUser } from '@n8n/db';
+import {
+	Project,
+	User,
+	AuthIdentity,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@n8n/db';
 import {
 	GlobalScope,
 	Delete,
@@ -20,15 +18,19 @@ import {
 	Licensed,
 	Body,
 	Param,
-} from '@/decorators';
+} from '@n8n/decorators';
+import { Response } from 'express';
+import { Logger } from 'n8n-core';
+
+import { AuthService } from '@/auth/auth.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { PublicUser } from '@/interfaces';
 import { listQueryMiddleware } from '@/middlewares';
-import { AuthenticatedRequest, ListQuery, UserRequest } from '@/requests';
+import { ListQuery, AuthenticatedRequest, UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
@@ -241,7 +243,7 @@ export class UsersController {
 		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
 
 		for (const { workflowId } of ownedSharedWorkflows) {
-			await this.workflowService.delete(userToDelete, workflowId);
+			await this.workflowService.delete(userToDelete, workflowId, true);
 		}
 
 		for (const credential of ownedCredentials) {

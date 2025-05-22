@@ -1,0 +1,49 @@
+name: 'Setup Environment and Build Project'
+description: 'Sets up Node.js with pnpm, installs dependencies, enables Turborepo caching, and builds the project.'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use.'
+    required: false
+    default: '22.x'
+  enable-caching:
+    description: Flag to enable/disable all caching (pnpm store, Turborepo, and dist folders).'
+    required: false
+    default: 'true'
+  cache-suffix:
+    description: 'Suffix to add to the dist folder cache key.'
+    required: false
+    default: 'build'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup pnpm CLI
+      uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      with:
+        run_install: false
+
+    - name: Setup Node.js
+      uses: useblacksmith/setup-node@v5
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      shell: bash
+
+    - name: Configure Turborepo Cache
+      if: inputs.enable-caching == 'true'
+      uses: useblacksmith/caching-for-turbo@v1
+
+    - name: Build packages
+      run: pnpm build
+      shell: bash
+
+    - name: Cache 'dist' folders
+      if: inputs.enable-caching == 'true'
+      uses: useblacksmith/cache@v5
+      with:
+        path: ./packages/**/dist
+        key: ${{ github.sha }}:${{ inputs.cache-suffix }}

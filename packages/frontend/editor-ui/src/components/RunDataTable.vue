@@ -33,6 +33,8 @@ type Props = {
 	hasDefaultHoverState?: boolean;
 	search?: string;
 	headerBgColor?: 'base' | 'light';
+	compact?: boolean;
+	disableHoverHighlight?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,6 +45,8 @@ const props = withDefaults(defineProps<Props>(), {
 	hasDefaultHoverState: false,
 	search: '',
 	headerBgColor: 'base',
+	disableHoverHighlight: false,
+	compact: false,
 });
 const emit = defineEmits<{
 	activeRowChanged: [row: number | null];
@@ -91,6 +95,10 @@ onMounted(() => {
 });
 
 function isHoveringRow(row: number): boolean {
+	if (props.disableHoverHighlight) {
+		return false;
+	}
+
 	if (row === activeRow.value) {
 		return true;
 	}
@@ -427,7 +435,11 @@ watch(focusedMappableInput, (curr) => {
 	<div
 		:class="[
 			$style.dataDisplay,
-			{ [$style.highlight]: highlight, [$style.lightHeader]: headerBgColor === 'light' },
+			{
+				[$style.highlight]: highlight,
+				[$style.lightHeader]: headerBgColor === 'light',
+				[$style.compact]: props.compact,
+			},
 		]"
 	>
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
@@ -681,6 +693,10 @@ watch(focusedMappableInput, (curr) => {
 	word-break: normal;
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
+
+	&.compact {
+		padding-left: var(--spacing-2xs);
+	}
 }
 
 .table {
@@ -848,6 +864,12 @@ watch(focusedMappableInput, (curr) => {
 	border-right: none !important;
 	border-top: none !important;
 	border-bottom: none !important;
+
+	.compact & {
+		padding: 0;
+		min-width: var(--spacing-2xs);
+		max-width: var(--spacing-2xs);
+	}
 }
 
 .hoveringRow {

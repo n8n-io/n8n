@@ -2,23 +2,38 @@ import {
 	CreateFolderDto,
 	DeleteFolderDto,
 	ListFolderQueryDto,
+	TransferFolderBodyDto,
 	UpdateFolderDto,
 } from '@n8n/api-types';
+import {
+	Post,
+	RestController,
+	ProjectScope,
+	Body,
+	Get,
+	Patch,
+	Delete,
+	Query,
+	Put,
+	Param,
+} from '@n8n/decorators';
 import { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
-import { Post, RestController, ProjectScope, Body, Get, Patch, Delete, Query } from '@/decorators';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ListQuery } from '@/requests';
 import { AuthenticatedRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 @RestController('/projects/:projectId/folders')
 export class ProjectController {
-	constructor(private readonly folderService: FolderService) {}
+	constructor(
+		private readonly folderService: FolderService,
+		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
+	) {}
 
 	@Post('/')
 	@ProjectScope('folder:create')
@@ -88,7 +103,7 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
-			await this.folderService.deleteFolder(folderId, projectId, payload);
+			await this.folderService.deleteFolder(req.user, folderId, projectId, payload);
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -108,10 +123,7 @@ export class ProjectController {
 	) {
 		const { projectId } = req.params;
 
-		const [data, count] = await this.folderService.getManyAndCount(
-			projectId,
-			payload as ListQuery.Options,
-		);
+		const [data, count] = await this.folderService.getManyAndCount(projectId, payload);
 
 		res.json({ count, data });
 	}
@@ -135,5 +147,24 @@ export class ProjectController {
 			}
 			throw new InternalServerError(undefined, e);
 		}
+	}
+
+	@Put('/:folderId/transfer')
+	@ProjectScope('folder:move')
+	async transferFolderToProject(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('folderId') sourceFolderId: string,
+		@Param('projectId') sourceProjectId: string,
+		@Body body: TransferFolderBodyDto,
+	) {
+		return await this.enterpriseWorkflowService.transferFolder(
+			req.user,
+			sourceProjectId,
+			sourceFolderId,
+			body.destinationProjectId,
+			body.destinationParentFolderId,
+			body.shareCredentials,
+		);
 	}
 }

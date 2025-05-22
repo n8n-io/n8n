@@ -113,6 +113,8 @@ const { t } = useI18n();
 }
 .tooltipIcon {
 	margin-left: var(--spacing-3xs);
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
 }
 .panelArrow {
 	font-size: var(--font-size-2xs);

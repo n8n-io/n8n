@@ -19,9 +19,9 @@ export const binaryResponse = async (
 ): Promise<{ data: string | Buffer; fileName: string; type: string }> => {
 	const inputDataFieldName = context.getNodeParameter('inputDataFieldName', '') as string;
 	const parentNodes = context.getParentNodes(context.getNode().name);
-	const binaryNode = parentNodes.find((node) =>
-		getBinaryDataFromNode(context, node?.name)?.hasOwnProperty(inputDataFieldName),
-	);
+	const binaryNode = parentNodes
+		.reverse()
+		.find((node) => getBinaryDataFromNode(context, node?.name)?.hasOwnProperty(inputDataFieldName));
 	if (!binaryNode) {
 		throw new OperationalError(`No binary data with field ${inputDataFieldName} found.`);
 	}

@@ -2,16 +2,17 @@ import { chatWithAssistant, replaceCode } from '@/api/ai';
 import {
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
-	STORES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	CREDENTIAL_EDIT_MODAL_KEY,
+	ASK_AI_SLIDE_OUT_DURATION_MS,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
 import { computed, h, ref, watch } from 'vue';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
@@ -31,7 +32,7 @@ import { useCredentialsStore } from './credentials.store';
 import { useAIAssistantHelpers } from '@/composables/useAIAssistantHelpers';
 
 export const MAX_CHAT_WIDTH = 425;
-export const MIN_CHAT_WIDTH = 250;
+export const MIN_CHAT_WIDTH = 300;
 export const DEFAULT_CHAT_WIDTH = 330;
 export const ENABLED_VIEWS = [
 	...EDITABLE_CANVAS_VIEWS,
@@ -74,7 +75,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatSessionCredType = ref<ICredentialType | undefined>();
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
-	const currentSessionActiveExecutionId = ref<string | null>(null);
+	const currentSessionActiveExecutionId = ref<string | undefined>(undefined);
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
 	const nodeExecutionStatus = ref<NodeExecutionStatus>('not_executed');
@@ -125,7 +126,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		currentSessionId.value = undefined;
 		chatSessionError.value = undefined;
 		lastUnread.value = undefined;
-		currentSessionActiveExecutionId.value = null;
+		currentSessionActiveExecutionId.value = undefined;
 		suggestions.value = {};
 		nodeExecutionStatus.value = 'not_executed';
 		chatSessionCredType.value = undefined;
@@ -147,6 +148,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function closeChat() {
 		chatWindowOpen.value = false;
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
+		// Has to wait for longer than SlideTransition duration
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
@@ -156,7 +158,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			if (isSessionEnded.value) {
 				resetAssistantChat();
 			}
-		}, 200);
+		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
 
 	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
@@ -806,11 +808,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	);
 
 	watch(
-		() => workflowsStore.workflowExecutionData?.data?.resultData ?? {},
+		() => workflowsStore.workflowExecutionResultDataLastUpdate,
 		() => {
 			workflowExecutionDataStale.value = true;
 		},
-		{ deep: true, immediate: true },
+		{ immediate: true },
 	);
 
 	return {

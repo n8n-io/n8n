@@ -1,0 +1,55 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "delete",
+				"groupId": {
+					"__rl": true,
+					"value": "01302m922pmp3e4",
+					"mode": "list",
+					"cachedResultName": "new2"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [60, 1140],
+			"id": "9d6f8739-8a1b-4b85-9e5c-84a184e6dbaf",
+			"name": "Delete Group",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Delete Group",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Delete Group": [
+			{
+				"json": { "success": true }
+			}
+		]
+	}
+}

@@ -3,7 +3,7 @@
 		"startData": {},
 		"resultData": {
 			"runData": {
-				"When clicking ‘Test workflow’": [
+				"When clicking ‘Execute workflow’": [
 					{
 						"hints": [],
 						"startTime": 1737031584297,
@@ -18,7 +18,7 @@
 						"hints": [],
 						"startTime": 1737031584299,
 						"executionTime": 1,
-						"source": [{ "previousNode": "When clicking ‘Test workflow’" }],
+						"source": [{ "previousNode": "When clicking ‘Execute workflow’" }],
 						"executionStatus": "success",
 						"data": {
 							"main": [

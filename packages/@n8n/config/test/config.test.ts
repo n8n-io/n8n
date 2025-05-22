@@ -120,6 +120,9 @@ describe('GlobalConfig', () => {
 				enabled: true,
 				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
+				unverifiedEnabled: true,
+				verifiedEnabled: true,
+				preventLoading: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -138,20 +141,6 @@ describe('GlobalConfig', () => {
 			enabled: true,
 			endpoint: 'https://api.n8n.io/api/versions/',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
-		},
-		externalStorage: {
-			s3: {
-				host: '',
-				protocol: 'https',
-				bucket: {
-					name: '',
-					region: '',
-				},
-				credentials: {
-					accessKey: '',
-					accessSecret: '',
-				},
-			},
 		},
 		workflows: {
 			defaultName: 'My workflow',

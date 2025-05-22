@@ -1,9 +1,9 @@
 import { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
 import type { SourceControlledFile } from '@n8n/api-types';
+import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
 import express from 'express';
 import type { PullResult } from 'simple-git';
 
-import { Get, Post, Patch, RestController, GlobalScope, Body } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { AuthenticatedRequest } from '@/requests';

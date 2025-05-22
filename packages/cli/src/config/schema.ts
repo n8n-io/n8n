@@ -3,13 +3,6 @@ import { Container } from '@n8n/di';
 
 export const schema = {
 	executions: {
-		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
-		process: {
-			doc: 'Deprecated key, that will be removed in the future. Please remove it from your configuration and environment variables to prevent issues in the future.',
-			format: String,
-			default: '',
-			env: 'EXECUTIONS_PROCESS',
-		},
 		mode: {
 			doc: 'If it should run executions directly or via queue',
 			format: ['regular', 'queue'] as const,
@@ -286,25 +279,19 @@ export const schema = {
 		},
 	},
 
-	expression: {
-		evaluator: {
-			doc: 'Expression evaluator to use',
-			format: ['tmpl', 'tournament'] as const,
-			default: 'tournament',
-			env: 'N8N_EXPRESSION_EVALUATOR',
-		},
-		reportDifference: {
-			doc: 'Whether to report differences in the evaluator outputs',
-			format: Boolean,
-			default: false,
-			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
-		},
-	},
-
 	proxy_hops: {
 		format: Number,
 		default: 0,
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
+	},
+
+	logs_view: {
+		enabled: {
+			format: Boolean,
+			default: true,
+			env: 'N8N_ENABLE_LOGS_VIEW',
+			doc: 'Temporary env variable to enable logs view',
+		},
 	},
 };

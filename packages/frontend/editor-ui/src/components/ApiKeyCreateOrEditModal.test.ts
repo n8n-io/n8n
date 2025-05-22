@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY, STORES } from '@/constants';
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { cleanupAppModals, createAppModals, mockedStore, retry } from '@/__tests__/utils';
 import ApiKeyEditModal from './ApiKeyCreateOrEditModal.vue';
 import { fireEvent } from '@testing-library/vue';
@@ -329,11 +330,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await fireEvent.update(labelInput, 'updated api key');
 
-		const editButton = getByText('Edit');
+		const saveButton = getByText('Save');
 
-		expect(editButton).toBeInTheDocument();
+		expect(saveButton).toBeInTheDocument();
 
-		await fireEvent.click(editButton);
+		await fireEvent.click(saveButton);
 
 		expect(apiKeysStore.updateApiKey).toHaveBeenCalledWith('123', {
 			label: 'updated api key',

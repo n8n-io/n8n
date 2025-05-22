@@ -1,4 +1,5 @@
 import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
@@ -52,6 +53,7 @@ export class FrontendService {
 		private readonly pushConfig: PushConfig,
 		private readonly binaryDataConfig: BinaryDataConfig,
 		private readonly insightsService: InsightsService,
+		private readonly licenseState: LicenseState,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -173,8 +175,10 @@ export class FrontendService {
 				host: this.globalConfig.templates.host,
 			},
 			executionMode: config.getEnv('executions.mode'),
+			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
 			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
+			unverifiedCommunityNodesEnabled: this.globalConfig.nodes.communityPackages.unverifiedEnabled,
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},
@@ -216,9 +220,6 @@ export class FrontendService {
 			variables: {
 				limit: 0,
 			},
-			expressions: {
-				evaluator: config.getEnv('expression.evaluator'),
-			},
 			banners: {
 				dismissed: [],
 			},
@@ -250,6 +251,10 @@ export class FrontendService {
 				enabled: this.modulesConfig.modules.includes('insights'),
 				summary: true,
 				dashboard: false,
+				dateRanges: [],
+			},
+			logsView: {
+				enabled: false,
 			},
 		};
 	}
@@ -319,7 +324,7 @@ export class FrontendService {
 			variables: this.license.isVariablesEnabled(),
 			sourceControl: this.license.isSourceControlLicensed(),
 			externalSecrets: this.license.isExternalSecretsEnabled(),
-			showNonProdBanner: this.license.isFeatureEnabled(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
+			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
 			debugInEditor: this.license.isDebugInEditorLicensed(),
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workflowHistory:
@@ -373,8 +378,8 @@ export class FrontendService {
 
 		Object.assign(this.settings.insights, {
 			enabled: this.modulesConfig.loadedModules.has('insights'),
-			summary: this.license.isInsightsSummaryEnabled(),
-			dashboard: this.license.isInsightsDashboardEnabled(),
+			summary: this.licenseState.isInsightsSummaryLicensed(),
+			dashboard: this.licenseState.isInsightsDashboardLicensed(),
 			dateRanges: this.insightsService.getAvailableDateRanges(),
 		});
 
@@ -387,6 +392,8 @@ export class FrontendService {
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
 		this.settings.folders.enabled = this.license.isFoldersEnabled();
+
+		this.settings.logsView.enabled = config.get('logs_view.enabled');
 
 		return this.settings;
 	}

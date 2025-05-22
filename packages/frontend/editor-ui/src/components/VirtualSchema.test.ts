@@ -106,6 +106,7 @@ async function setupStore() {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
+	const ndvStore = useNDVStore();
 	settingsStore.setSettings(defaultSettings);
 
 	nodeTypesStore.setNodeTypes([
@@ -124,6 +125,7 @@ async function setupStore() {
 		}),
 	]);
 	workflowsStore.workflow = workflow as IWorkflowDb;
+	ndvStore.activeNodeName = 'Test Node Name';
 
 	return pinia;
 }
@@ -133,6 +135,8 @@ function mockNodeOutputData(nodeName: string, data: INodeExecutionData[], output
 	vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
 		return {
 			...originalNodeHelpers,
+			getLastRunIndexWithData: vi.fn(() => 0),
+			hasNodeExecuted: vi.fn(() => true),
 			getNodeInputData: vi.fn((node, _, output) => {
 				if (node.name === nodeName && output === outputIndex) {
 					return data;
@@ -168,6 +172,8 @@ describe('VirtualSchema.vue', () => {
 		cleanup();
 		vi.resetAllMocks();
 		vi.setSystemTime('2025-01-01');
+		const pinia = await setupStore();
+
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {
 				stubs: {
@@ -177,12 +183,9 @@ describe('VirtualSchema.vue', () => {
 					Notice: NoticeStub,
 				},
 			},
-			pinia: await setupStore(),
+			pinia,
 			props: {
 				mappingEnabled: true,
-				runIndex: 1,
-				outputIndex: 0,
-				totalRuns: 2,
 				paneType: 'input',
 				connectionType: 'main',
 				search: '',
@@ -192,13 +195,9 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('renders schema for empty data for unexecuted nodes', async () => {
-		const { getAllByText, getAllByTestId } = renderComponent();
+		const { getAllByText } = renderComponent();
 
-		await waitFor(() => expect(getAllByText('Execute previous nodes').length).toBe(2));
-
-		// Collapse second node
-		await userEvent.click(getAllByTestId('run-data-schema-header')[1]);
-		expect(getAllByText('Execute previous nodes').length).toBe(1);
+		await waitFor(() => expect(getAllByText('Execute previous nodes').length).toBe(1));
 	});
 
 	it('renders schema for empty data with binary', async () => {
@@ -320,7 +319,9 @@ describe('VirtualSchema.vue', () => {
 
 		const { getAllByText } = renderComponent({ props: { paneType: 'output' } });
 		await waitFor(() =>
-			expect(getAllByText("No fields - item(s) exist, but they're empty").length).toBe(1),
+			expect(
+				getAllByText('No fields - node executed, but no items were sent on this branch').length,
+			).toBe(1),
 		);
 	});
 
@@ -352,7 +353,6 @@ describe('VirtualSchema.vue', () => {
 			const headers = getAllByTestId('run-data-schema-header');
 			expect(headers[0]).toHaveTextContent('If');
 			expect(headers[0]).toHaveTextContent('2 items');
-			expect(headers[0]).toMatchSnapshot();
 		});
 	});
 
@@ -434,7 +434,10 @@ describe('VirtualSchema.vue', () => {
 			},
 		});
 
-		await waitFor(() => expect(getAllByTestId('run-data-schema-item').length).toBe(2));
+		await waitFor(() => {
+			expect(getAllByTestId('run-data-schema-header')).toHaveLength(3);
+			expect(getAllByTestId('run-data-schema-item').length).toBe(1);
+		});
 	});
 
 	it('should show connections', async () => {
@@ -564,30 +567,27 @@ describe('VirtualSchema.vue', () => {
 			data: [{ json: { name: 'John' } }],
 		});
 
-		const { getAllByTestId, queryAllByTestId, rerender } = renderComponent();
+		const { getAllByTestId, queryAllByTestId, rerender, container } = renderComponent();
 
 		let headers: HTMLElement[] = [];
 		await waitFor(async () => {
 			headers = getAllByTestId('run-data-schema-header');
 			expect(headers.length).toBe(3);
-			expect(getAllByTestId('run-data-schema-item').length).toBe(2);
+			expect(getAllByTestId('run-data-schema-item').length).toBe(1);
 		});
 
-		// Collapse all nodes (Variables & context is collapsed by default)
-		await Promise.all(headers.slice(0, -1).map(async (header) => await userEvent.click(header)));
+		// Collapse first node (expanded by default)
+		await userEvent.click(headers[0]);
 
 		expect(queryAllByTestId('run-data-schema-item').length).toBe(0);
 
 		await rerender({ search: 'John' });
 
-		expect(getAllByTestId('run-data-schema-item').length).toBe(13);
+		expect(getAllByTestId('run-data-schema-item').length).toBe(2);
+		expect(container).toMatchSnapshot();
 	});
 
 	it('renders preview schema when enabled and available', async () => {
-		useWorkflowsStore().pinData({
-			node: mockNode1,
-			data: [],
-		});
 		useWorkflowsStore().pinData({
 			node: mockNode2,
 			data: [],
@@ -611,14 +611,18 @@ describe('VirtualSchema.vue', () => {
 			}),
 		);
 
-		const { getAllByTestId, queryAllByText, container } = renderComponent({});
-
-		await waitFor(() => {
-			expect(getAllByTestId('run-data-schema-header')).toHaveLength(3);
+		const { getAllByTestId, queryAllByText, container } = renderComponent({
+			props: {
+				nodes: [{ name: mockNode2.name, indicies: [], depth: 1 }],
+			},
 		});
 
+		await waitFor(() => {
+			expect(getAllByTestId('run-data-schema-header')).toHaveLength(2);
+		});
+
+		expect(getAllByTestId('schema-preview-warning')).toHaveLength(1);
 		expect(queryAllByText("No fields - item(s) exist, but they're empty")).toHaveLength(0);
-		expect(getAllByTestId('schema-preview-warning')).toHaveLength(2);
 		expect(container).toMatchSnapshot();
 	});
 

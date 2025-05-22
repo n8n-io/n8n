@@ -1,7 +1,7 @@
+import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode, IWorkflowBase, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/user';
 import type { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -92,6 +92,7 @@ describe('WorkflowExecutionService', () => {
 			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
 				startNodes: [],
 				destinationNode: undefined,
+				agentRequest: undefined,
 			});
 
 			workflowRunner.run.mockResolvedValue(executionId);
@@ -123,6 +124,7 @@ describe('WorkflowExecutionService', () => {
 				workflowData: { nodes: [node] },
 				startNodes: [],
 				destinationNode: node.name,
+				agentRequest: undefined,
 			});
 
 			jest
@@ -177,6 +179,7 @@ describe('WorkflowExecutionService', () => {
 						nodes: [triggerNode],
 					},
 					triggerToStartFrom: undefined,
+					agentRequest: undefined,
 				});
 
 				workflowRunner.run.mockResolvedValue(executionId);
@@ -234,6 +237,7 @@ describe('WorkflowExecutionService', () => {
 					id: 'abc',
 					name: 'test',
 					active: false,
+					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
 					},
@@ -301,6 +305,7 @@ describe('WorkflowExecutionService', () => {
 					id: 'abc',
 					name: 'test',
 					active: false,
+					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
 					},

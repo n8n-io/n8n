@@ -45,7 +45,7 @@ describe('formatTestCaseExecutionInputData', () => {
 		// Check format of specific node data
 		expect(data.json.originalExecution).toMatchObject({
 			'72256d90-3a67-4e29-b032-47df4e5768af': {
-				nodeName: 'When clicking ‘Test workflow’',
+				nodeName: 'When clicking ‘Execute workflow’',
 				runs: [
 					{
 						executionTime: 0,

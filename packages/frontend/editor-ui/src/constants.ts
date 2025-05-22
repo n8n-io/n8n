@@ -51,6 +51,7 @@ export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
+export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const ANNOTATION_TAGS_MANAGER_MODAL_KEY = 'annotationTagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
@@ -78,6 +79,9 @@ export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const COMMUNITY_PLUS_ENROLLMENT_MODAL = 'communityPlusEnrollment';
 export const DELETE_FOLDER_MODAL_KEY = 'deleteFolder';
 export const MOVE_FOLDER_MODAL_KEY = 'moveFolder';
+export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
+	'workflowActivationConflictingWebhook';
+export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -121,6 +125,7 @@ export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const AI_CODE_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
 export const AI_MCP_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+export const WIKIPEDIA_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWikipedia';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
@@ -211,6 +216,8 @@ export const GITHUB_NODE_TYPE = 'n8n-nodes-base.github';
 export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
 export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
 export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
+export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
+export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -476,8 +483,9 @@ export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_BUTTON';
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
-export const LOCAL_STORAGE_LOGS_2025_SPRING = 'N8N_LOGS_2025_SPRING';
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
+export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
+export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const COMMUNITY_PLUS_DOCS_URL =
 	'https://docs.n8n.io/hosting/community-edition-features/#registered-community-edition';
@@ -560,6 +568,9 @@ export const enum VIEWS {
 	FOLDERS = 'Folders',
 	PROJECTS_FOLDERS = 'ProjectsFolders',
 	INSIGHTS = 'Insights',
+	SHARED_WITH_ME = 'SharedWithMe',
+	SHARED_WORKFLOWS = 'SharedWorkflows',
+	SHARED_CREDENTIALS = 'SharedCredentials',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -611,7 +622,10 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
+	ARCHIVE = 'archive',
+	UNARCHIVE = 'unarchive',
 	SWITCH_NODE_VIEW_VERSION = 'switch-node-view-version',
+	RENAME = 'rename',
 }
 
 /**
@@ -678,38 +692,6 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	imaps: 'IMAP',
 };
 
-export const enum STORES {
-	COMMUNITY_NODES = 'communityNodes',
-	ROOT = 'root',
-	SETTINGS = 'settings',
-	UI = 'ui',
-	USERS = 'users',
-	WORKFLOWS = 'workflows',
-	WORKFLOWS_V2 = 'workflowsV2',
-	WORKFLOWS_EE = 'workflowsEE',
-	EXECUTIONS = 'executions',
-	NDV = 'ndv',
-	TEMPLATES = 'templates',
-	NODE_TYPES = 'nodeTypes',
-	CREDENTIALS = 'credentials',
-	TAGS = 'tags',
-	ANNOTATION_TAGS = 'annotationTags',
-	VERSIONS = 'versions',
-	NODE_CREATOR = 'nodeCreator',
-	WEBHOOKS = 'webhooks',
-	HISTORY = 'history',
-	CLOUD_PLAN = 'cloudPlan',
-	RBAC = 'rbac',
-	PUSH = 'push',
-	COLLABORATION = 'collaboration',
-	ASSISTANT = 'assistant',
-	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
-	PROJECTS = 'projects',
-	API_KEYS = 'apiKeys',
-	TEST_DEFINITION = 'testDefinition',
-	FOLDERS = 'folders',
-}
-
 export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
@@ -733,8 +715,8 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const CREDENTIAL_DOCS_EXPERIMENT = {
-	name: '024_credential_docs',
+export const EVALUATION_TRIGGER = {
+	name: '031-evaluation-trigger',
 	control: 'control',
 	variant: 'variant',
 };
@@ -751,17 +733,16 @@ export const AI_CREDITS_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const SCHEMA_PREVIEW_EXPERIMENT = {
-	name: '028_schema_preview',
+export const WORKFLOW_BUILDER_EXPERIMENT = {
+	name: '30_workflow_builder',
 	control: 'control',
 	variant: 'variant',
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	CREDENTIAL_DOCS_EXPERIMENT.name,
 	EASY_AI_WORKFLOW_EXPERIMENT.name,
 	AI_CREDITS_EXPERIMENT.name,
-	SCHEMA_PREVIEW_EXPERIMENT.name,
+	WORKFLOW_BUILDER_EXPERIMENT.name,
 ];
 
 export const WORKFLOW_EVALUATION_EXPERIMENT = '025_workflow_evaluation';
@@ -783,6 +764,7 @@ export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [
 	FILTER_NODE_TYPE,
 	SWITCH_NODE_TYPE,
 	REMOVE_DUPLICATES_NODE_TYPE,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
 ];
 
 type ClearOutgoingConnectonsEvents = {
@@ -822,10 +804,6 @@ export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n
 	? 'https://stage-app.n8n.cloud/account/change-plan'
 	: 'https://app.n8n.cloud/account/change-plan';
 
-export const CLOUD_BASE_URL_STAGING = 'https://stage-api.n8n.cloud';
-
-export const CLOUD_BASE_URL_PRODUCTION = 'https://api.n8n.cloud';
-
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
 
 // A path that does not exist so that nothing is selected by default
@@ -835,6 +813,7 @@ export const nonExistingJsonPath = '_!^&*';
 export const ASK_AI_MAX_PROMPT_LENGTH = 600;
 export const ASK_AI_MIN_PROMPT_LENGTH = 15;
 export const ASK_AI_LOADING_DURATION_MS = 12000;
+export const ASK_AI_SLIDE_OUT_DURATION_MS = 200;
 
 export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';
 
