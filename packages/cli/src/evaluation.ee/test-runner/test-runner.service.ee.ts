@@ -64,7 +64,8 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Runs a test case with the given input
+	 * Runs a test case with the given input.
+	 * Injects the input data as pinned data of evaluation trigger node.
 	 * Waits for the workflow under test to finish execution.
 	 */
 	private async runTestCase(
@@ -77,14 +78,6 @@ export class TestRunnerService {
 		if (abortSignal.aborted) {
 			return;
 		}
-
-		// Create pin data from the past execution data
-		// const pinData = createPinData(
-		// 	workflow,
-		// 	mockedNodes,
-		// 	pastExecutionData,
-		// 	pastExecutionWorkflowData,
-		// );
 
 		// Prepare the data to run the workflow
 		// Evaluation executions should run the same way as manual,

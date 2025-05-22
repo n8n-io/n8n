@@ -345,4 +345,351 @@ describe('TestRunnerService', () => {
 			expect(result).toEqual(expectedItems);
 		});
 	});
+
+	describe('runDatasetTrigger', () => {
+		let testRunnerService: TestRunnerService;
+
+		beforeEach(() => {
+			testRunnerService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+			);
+
+			// Setup mock execution response
+			const mockExecutionId = 'mock-execution-id';
+			const mockExecutionData = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			});
+
+			// Setup workflowRunner mock
+			workflowRunner.run.mockResolvedValue(mockExecutionId);
+
+			// Setup activeExecutions mock
+			activeExecutions.getPostExecutePromise.mockResolvedValue(mockExecutionData);
+		});
+
+		test('should throw an error if trigger node is not found', async () => {
+			// Create workflow without a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Regular Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			// Call the method and expect it to throw an error
+			await expect(
+				(testRunnerService as any).runDatasetTrigger(workflow, metadata),
+			).rejects.toThrow(TestRunError);
+
+			// Verify the error has the correct code
+			try {
+				await (testRunnerService as any).runDatasetTrigger(workflow, metadata);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('EVALUATION_TRIGGER_NOT_FOUND');
+			}
+		});
+
+		test('should call workflowRunner.run with correct data', async () => {
+			// Create workflow with a trigger node
+			const triggerNodeName = 'Dataset Trigger';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				settings: {
+					saveDataErrorExecution: 'all',
+				},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			// Call the method
+			await (testRunnerService as any).runDatasetTrigger(workflow, metadata);
+
+			// Verify workflowRunner.run was called
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+			// Get the argument passed to workflowRunner.run
+			const runCallArg = workflowRunner.run.mock.calls[0][0];
+
+			// Verify it has the correct structure
+			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('executionMode', 'manual');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
+			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
+			expect(runCallArg).toHaveProperty('userId', metadata.userId);
+			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
+
+			// Verify node execution stack contains the requestDataset flag
+			expect(runCallArg).toHaveProperty('executionData.executionData.nodeExecutionStack');
+			const nodeExecutionStack = runCallArg.executionData?.executionData?.nodeExecutionStack;
+			expect(nodeExecutionStack).toBeInstanceOf(Array);
+			expect(nodeExecutionStack).toHaveLength(1);
+			expect(nodeExecutionStack?.[0]).toHaveProperty('node.name', triggerNodeName);
+			expect(nodeExecutionStack?.[0]).toHaveProperty('data.main[0][0].json.requestDataset', true);
+		});
+
+		test('should wait for execution to finish and return result', async () => {
+			// Create workflow with a trigger node
+			const triggerNodeName = 'Dataset Trigger';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			// Setup mock for execution ID and result
+			const mockExecutionId = 'dataset-execution-id';
+			const mockExecutionResult = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							[triggerNodeName]: [
+								{
+									data: {
+										main: [[{ json: { test: 'data1' } }, { json: { test: 'data2' } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			});
+
+			workflowRunner.run.mockResolvedValue(mockExecutionId);
+			activeExecutions.getPostExecutePromise.mockResolvedValue(mockExecutionResult);
+
+			// Call the method
+			const result = await (testRunnerService as any).runDatasetTrigger(workflow, metadata);
+
+			// Verify the execution was waited for
+			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(mockExecutionId);
+
+			// Verify the result is correct
+			expect(result).toEqual(mockExecutionResult);
+		});
+	});
+
+	describe('runTestCase', () => {
+		let testRunnerService: TestRunnerService;
+
+		beforeEach(() => {
+			testRunnerService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+			);
+
+			// Setup mock execution response
+			const mockExecutionId = 'mock-execution-id';
+			const mockExecutionData = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			});
+
+			// Setup workflowRunner mock
+			workflowRunner.run.mockResolvedValue(mockExecutionId);
+
+			// Setup activeExecutions mock
+			activeExecutions.getPostExecutePromise.mockResolvedValue(mockExecutionData);
+		});
+
+		test('should return undefined if abortSignal is aborted', async () => {
+			// Create an aborted signal
+			const abortController = new AbortController();
+			abortController.abort();
+
+			// Create test data
+			const workflow = mock<IWorkflowBase>({
+				nodes: [],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			const testCase = { json: { id: 1, name: 'Test 1' } };
+
+			// Call the method
+			const result = await (testRunnerService as any).runTestCase(
+				workflow,
+				metadata,
+				testCase,
+				abortController.signal,
+			);
+
+			// Verify results
+			expect(result).toBeUndefined();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		test('should call workflowRunner.run with correct data', async () => {
+			// Setup test data
+			const triggerNodeName = 'TriggerNode';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			const testCase = { json: { id: 1, name: 'Test 1' } };
+			const abortController = new AbortController();
+
+			// Call the method
+			await (testRunnerService as any).runTestCase(
+				workflow,
+				metadata,
+				testCase,
+				abortController.signal,
+			);
+
+			// Verify workflowRunner.run was called with the correct data
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+			const runCallArg = workflowRunner.run.mock.calls[0][0];
+
+			// Verify the expected structure
+			expect(runCallArg).toEqual(
+				expect.objectContaining({
+					executionMode: 'evaluation',
+					pinData: {
+						[triggerNodeName]: [testCase],
+					},
+					workflowData: workflow,
+					userId: metadata.userId,
+					partialExecutionVersion: 2,
+					triggerToStartFrom: {
+						name: triggerNodeName,
+					},
+				}),
+			);
+		});
+
+		test('should register abort event listener and return execution results', async () => {
+			// Setup test data
+			const triggerNodeName = 'TriggerNode';
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: triggerNodeName,
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			const metadata = {
+				testRunId: 'test-run-id',
+				userId: 'user-id',
+			};
+
+			const testCase = { json: { id: 1, name: 'Test 1' } };
+			const abortController = new AbortController();
+
+			// Mock addEventListener on AbortSignal
+			const mockAddEventListener = jest.fn();
+			const originalAddEventListener = abortController.signal.addEventListener;
+			abortController.signal.addEventListener = mockAddEventListener;
+
+			try {
+				// Call the method
+				const result = await (testRunnerService as any).runTestCase(
+					workflow,
+					metadata,
+					testCase,
+					abortController.signal,
+				);
+
+				// Verify addEventListener was called
+				expect(mockAddEventListener).toHaveBeenCalledTimes(1);
+				expect(mockAddEventListener.mock.calls[0][0]).toBe('abort');
+
+				// Verify the expected result structure
+				expect(result).toHaveProperty('executionData');
+				expect(result.executionData?.data).toBeDefined();
+				expect(result).toHaveProperty('executionId');
+				expect(result.executionId).toEqual(expect.any(String));
+			} finally {
+				// Restore original method
+				abortController.signal.addEventListener = originalAddEventListener;
+			}
+		});
+	});
 });
