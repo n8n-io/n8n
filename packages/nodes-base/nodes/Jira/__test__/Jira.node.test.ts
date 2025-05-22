@@ -5,7 +5,7 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import * as GenericFunctions from '../GenericFunctions';
 import { Jira } from '../Jira.node';
 
-jest.mock('../../GenericFunctions', () => ({
+jest.mock('../GenericFunctions', () => ({
 	jiraSoftwareCloudApiRequest: jest.fn().mockResolvedValue({ issues: [] }),
 	jiraSoftwareCloudApiRequestAllItems: jest.fn().mockResolvedValue([]),
 }));
