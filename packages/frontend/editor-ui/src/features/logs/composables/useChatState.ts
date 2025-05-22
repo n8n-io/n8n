@@ -16,8 +16,8 @@ import { v4 as uuid } from 'uuid';
 import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { restoreChatHistory } from '@/components/CanvasChat/utils';
 import { useLogsStore } from '@/features/logs/logs.store';
+import { restoreChatHistory } from '@/features/logs/logs.utils';
 
 interface ChatState {
 	currentSessionId: Ref<string>;

@@ -13,7 +13,7 @@ import {
 	AI_SUBCATEGORY,
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
-import { isChatNode } from '@/components/CanvasChat/utils';
+import { isChatNode } from '@/features/logs/logs.utils';
 
 export interface ChatTriggerDependencies {
 	getNodeByName: (name: string) => INodeUi | null;

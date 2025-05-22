@@ -107,8 +107,8 @@ import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import { isChatNode } from '@/components/CanvasChat/utils';
 import { useLogsStore } from '@/features/logs/logs.store';
+import { isChatNode } from '@/features/logs/logs.utils';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
