@@ -493,7 +493,7 @@ export class SourceControlService {
 
 		if (options.direction === 'pull' && !hasGlobalScope(user, 'sourceControl:pull')) {
 			// A pull is only allowed by global admins or owners
-			return new ForbiddenError('You do not have permission to pull from source control');
+			throw new ForbiddenError('You do not have permission to pull from source control');
 		}
 
 		const sourceControlledFiles: SourceControlledFile[] = [];
