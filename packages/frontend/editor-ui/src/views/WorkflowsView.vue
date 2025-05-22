@@ -55,6 +55,7 @@ import {
 	N8nCard,
 	N8nHeading,
 	N8nIcon,
+	N8nInlineRename,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
@@ -1492,17 +1493,10 @@ const onNameSubmit = async ({
 				>
 					<template #append>
 						<span :class="$style['path-separator']">/</span>
-						<InlineTextEdit
-							data-test-id="breadcrumbs-item-current"
+
+						<N8nInlineRename
 							:model-value="currentFolder.name"
-							:preview-value="currentFolder.name"
-							:is-edit-enabled="isNameEditEnabled"
-							:max-length="30"
-							:disabled="readOnlyEnv || !hasPermissionToUpdateFolders"
-							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
-							:placeholder="i18n.baseText('folders.rename.placeholder')"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
+							@update:model-value="(value) => onNameSubmit({ name: value, onSubmit: () => {} })"
 						/>
 					</template>
 				</FolderBreadcrumbs>

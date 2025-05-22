@@ -16,7 +16,6 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: `
 		<div style="padding: 2rem; display: flex; gap: 1rem;">
 			<n8n-inline-rename v-bind="args" />
-			<button>Hi</button>
 		</div>
 	`,
 });

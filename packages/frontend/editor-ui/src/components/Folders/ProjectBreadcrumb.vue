@@ -69,7 +69,6 @@ const onProjectMouseUp = () => {
 <style module lang="scss">
 .home-project {
 	display: flex;
-	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 	border: var(--border-width-base) var(--border-style-base) transparent;
 
 	&.dragging:hover {

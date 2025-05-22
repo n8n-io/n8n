@@ -684,7 +684,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							>/</span
 						>
 						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
-							<template #default="{ shortenedName }">
+							<template #default>
 								<N8nInlineRename
 									:model-value="name"
 									@update:model-value="(value) => onNameSubmit({ name: value, onSubmit: () => {} })"
