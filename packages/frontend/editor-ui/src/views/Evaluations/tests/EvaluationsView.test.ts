@@ -59,14 +59,6 @@ describe('EvaluationsView', () => {
 	});
 
 	describe('Test Runs functionality', () => {
-		it('should load test data', async () => {
-			const evaluationStore = mockedStore(useEvaluationStore);
-			evaluationStore.fetchTestRuns.mockResolvedValue(mockTestRuns);
-
-			renderComponent();
-			expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith('workflow-id');
-		});
-
 		it('should display test runs table when runs exist', async () => {
 			const evaluationStore = mockedStore(useEvaluationStore);
 			evaluationStore.testRunsById = {
@@ -78,16 +70,6 @@ describe('EvaluationsView', () => {
 			const { getByTestId } = renderComponent();
 			await waitFor(() => expect(getByTestId('past-runs-table')).toBeInTheDocument());
 			// expect(getByTestId('past-runs-table')).toBeInTheDocument();
-		});
-
-		it('should not display test runs table when no runs exist', async () => {
-			const { queryByTestId } = renderComponent();
-			expect(queryByTestId('past-runs-table')).not.toBeInTheDocument();
-		});
-
-		it('should display setup wizard when no runs exist', async () => {
-			const { queryByTestId } = renderComponent();
-			await waitFor(() => expect(queryByTestId('evaluation-setup-wizard')).toBeInTheDocument());
 		});
 
 		it('should start a test run when run test button is clicked', async () => {

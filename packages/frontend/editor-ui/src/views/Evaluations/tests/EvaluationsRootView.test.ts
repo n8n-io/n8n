@@ -33,6 +33,8 @@ describe('TestDefinitionRootView', () => {
 		usedCredentials: [],
 	};
 
+	const mockTestRuns: TestRunRecord[] = [mock<TestRunRecord>({ workflowId: mockWorkflow.id })];
+
 	beforeEach(() => {
 		createTestingPinia();
 	});
@@ -56,6 +58,17 @@ describe('TestDefinitionRootView', () => {
 		renderComponent({ props: { name: mockWorkflow.id } });
 
 		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('should load test data', async () => {
+		const evaluationStore = mockedStore(useEvaluationStore);
+		evaluationStore.fetchTestRuns.mockResolvedValue(mockTestRuns);
+
+		renderComponent({ props: { name: mockWorkflow.id } });
+
+		await waitFor(() =>
+			expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith(mockWorkflow.id),
+		);
 	});
 
 	it('should not render setup wizard when there are test runs', async () => {
