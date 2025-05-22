@@ -2,7 +2,7 @@ import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import type { UsageState } from '@/Interface';
 import * as usageApi from '@/api/usage';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 
 export type UsageTelemetry = {

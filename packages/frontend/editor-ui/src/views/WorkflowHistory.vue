@@ -18,7 +18,7 @@ import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { telemetry } from '@/plugins/telemetry';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { getResourcePermissions } from '@/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 

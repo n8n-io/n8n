@@ -1,0 +1,583 @@
+{
+  "createdAt": "2021-02-16T15:33:11.177Z",
+  "updatedAt": "2021-06-04T17:17:22.109Z",
+  "id": "20",
+  "name": "Hubspot:Contact:upsert getall search getRecentlyCreatedUpdated get delete:Company:getall searchByDomain getRecentlyCreated update getRecentlyModified delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "d8cbfb90-51ba-45b9-a701-1d278992b7d5"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "email": "nodeqa@n8n.io",
+        "additionalFields": {}
+      },
+      "name": "Hubspot",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        410,
+        260
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=associated-company",
+      "id": "6b417cab-bf37-4b57-8fdf-24f011106618"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "getRecentlyCreatedUpdated",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Hubspot1",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        260
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "0be3e59d-9094-4422-a834-bcc945725a75"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "getAll",
+        "limit": 1,
+        "additionalFields": {}
+      },
+      "name": "Hubspot2",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        710,
+        260
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "5180a058-b5ff-481b-90aa-421f8609b091"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "search",
+        "limit": 1,
+        "filterGroupsUi": {
+          "filterGroupsValues": []
+        },
+        "additionalFields": {}
+      },
+      "name": "Hubspot3",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        260
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "notes": "CAP_RESULTS_LENGTH=1",
+      "id": "2e18e4b1-d379-4fa4-b9ad-2da493c43a22"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "delete",
+        "contactId": "={{$json[\"vid\"]}}"
+      },
+      "name": "Hubspot4",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        1880,
+        260
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "573f1fdf-4d4e-44e4-a086-b1389dab7ff8"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "get",
+        "contactId": "={{$json[\"vid\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Hubspot5",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        260
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=associated-company",
+      "id": "ae17da34-808d-4e19-81f1-42546ec64dbc"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(1500);\n\nreturn [items[0]];"
+      },
+      "name": "Function",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        260
+      ],
+      "notesInFlow": true,
+      "notes": "Limit Contacts to single one",
+      "id": "702edf3d-4e2e-4091-875f-b477c842802c"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "name": "n8n",
+        "additionalFields": {
+          "companyDomainName": "n8n.io"
+        }
+      },
+      "name": "Hubspot6",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        410,
+        430
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "30467fe0-8ba4-4b71-942e-0cfa7adde3c1"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "getAll",
+        "limit": 1,
+        "options": {}
+      },
+      "name": "Hubspot7",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        570,
+        430
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "2d35a462-2a30-4297-a7df-1aca9be285c3"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "getRecentlyCreated",
+        "limit": 1
+      },
+      "name": "Hubspot8",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        910,
+        430
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "98a71897-123f-4c6e-a0c7-ba79e5947823"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "searchByDomain",
+        "domain": "n8n.io",
+        "limit": 1,
+        "options": {}
+      },
+      "name": "Hubspot9",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        740,
+        430
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "46d6962d-f16a-4d89-92d6-bce6506f6e58"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "update",
+        "companyId": "={{$node[\"Hubspot6\"].json[\"companyId\"]}}",
+        "updateFields": {
+          "city": "berlin"
+        }
+      },
+      "name": "Hubspot10",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        430
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "b69304b8-5093-4988-8304-89d3ee8e2c2e"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "getRecentlyModified",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Hubspot11",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        430
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "c0f52b10-af2e-41d2-a902-6892f14742e6"
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "delete",
+        "companyId": "={{$node[\"Hubspot6\"].json[\"companyId\"]}}"
+      },
+      "name": "Hubspot12",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [
+        1390,
+        430
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "11",
+          "name": "hubsport api key"
+        }
+      },
+      "id": "cc00b5ca-2611-472d-89da-4649e12afa89"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.5 second",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        550,
+        260
+      ],
+      "typeVersion": 1,
+      "notes": "IGNORED_PROPERTIES=associated-company",
+      "id": "d8a86813-0d02-4b5d-89f9-41818194c326"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.5 second1",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        850,
+        260
+      ],
+      "typeVersion": 1,
+      "id": "9276f38e-185a-4844-8764-ef4e91b0bd68"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.5 second2",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1480,
+        260
+      ],
+      "typeVersion": 1,
+      "id": "ea72ad5a-b5b1-40f3-8f5f-9ac4fb5c37c4"
+    },
+    {
+      "parameters": {
+        "functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+      },
+      "name": "Sleep 0.5 second3",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1730,
+        260
+      ],
+      "typeVersion": 1,
+      "notes": "IGNORED_PROPERTIES=associated-company",
+      "id": "0a60605e-e573-4386-9fe5-2198a3c838d8"
+    }
+  ],
+  "connections": {
+    "Hubspot": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.5 second",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot1": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.5 second2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot2": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.5 second1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot3": {
+      "main": [
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Hubspot6",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Hubspot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot5": {
+      "main": [
+        [
+          {
+            "node": "Sleep 0.5 second3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function": {
+      "main": [
+        [
+          {
+            "node": "Hubspot1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot6": {
+      "main": [
+        [
+          {
+            "node": "Hubspot7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot7": {
+      "main": [
+        [
+          {
+            "node": "Hubspot9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot8": {
+      "main": [
+        [
+          {
+            "node": "Hubspot10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot9": {
+      "main": [
+        [
+          {
+            "node": "Hubspot8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot10": {
+      "main": [
+        [
+          {
+            "node": "Hubspot11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubspot11": {
+      "main": [
+        [
+          {
+            "node": "Hubspot12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.5 second": {
+      "main": [
+        [
+          {
+            "node": "Hubspot2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.5 second1": {
+      "main": [
+        [
+          {
+            "node": "Hubspot3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.5 second2": {
+      "main": [
+        [
+          {
+            "node": "Hubspot5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sleep 0.5 second3": {
+      "main": [
+        [
+          {
+            "node": "Hubspot4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

@@ -229,8 +229,12 @@ export class AuthService {
 		return user;
 	}
 
-	createJWTHash({ email, password }: User) {
-		return this.hash(email + ':' + password).substring(0, 10);
+	createJWTHash({ email, password, mfaEnabled, mfaSecret }: User) {
+		const payload = [email, password];
+		if (mfaEnabled && mfaSecret) {
+			payload.push(mfaSecret.substring(0, 3));
+		}
+		return this.hash(payload.join(':')).substring(0, 10);
 	}
 
 	private hash(input: string) {

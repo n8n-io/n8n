@@ -1,0 +1,642 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747343994528,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp1": [
+          {
+            "startTime": 1747343994528,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 2401,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "c81277605b129fdafaacede5ae34e07c",
+                      "email_address": "nodeqa@n8n.io",
+                      "unique_email_id": "cb7624ba4b",
+                      "contact_id": "2f4ff7f445018adb50969f99df88dd9e",
+                      "full_name": "node qa",
+                      "web_id": 502612022,
+                      "email_type": "html",
+                      "status": "subscribed",
+                      "consents_to_one_to_one_messaging": true,
+                      "sms_phone_number": "",
+                      "sms_subscription_status": "",
+                      "sms_subscription_last_updated": "",
+                      "merge_fields": {
+                        "object": true
+                      },
+                      "interests": {
+                        "object": true
+                      },
+                      "stats": {
+                        "object": true
+                      },
+                      "ip_signup": "",
+                      "timestamp_signup": "",
+                      "ip_opt": "41.62.62.149",
+                      "timestamp_opt": "2021-02-19T10:59:04+00:00",
+                      "member_rating": 2,
+                      "last_changed": "2025-05-15T21:19:00+00:00",
+                      "language": "",
+                      "vip": false,
+                      "email_client": "",
+                      "location": {
+                        "object": true
+                      },
+                      "source": "Admin Add",
+                      "tags_count": 0,
+                      "tags": [
+                        "json array"
+                      ],
+                      "list_id": "eb9ad4be19",
+                      "_links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Function": [
+          {
+            "startTime": 1747343996929,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "email": "test43996930@gmail.com"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp7": [
+          {
+            "startTime": 1747343996930,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 398,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "category_id": "2adbc0d543",
+                      "list_id": "eb9ad4be19",
+                      "id": "928c597e2a",
+                      "name": "QA",
+                      "subscriber_count": "1",
+                      "display_order": 1,
+                      "_links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp8": [
+          {
+            "startTime": 1747343997328,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 446,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "e117a6f053",
+                      "status": "sent",
+                      "settings": {
+                        "object": true
+                      },
+                      "tracking": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp": [
+          {
+            "startTime": 1747343997774,
+            "executionIndex": 5,
+            "source": [
+              {
+                "previousNode": "Mailchimp1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 359,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "c81277605b129fdafaacede5ae34e07c",
+                      "email_address": "nodeqa@n8n.io",
+                      "unique_email_id": "cb7624ba4b",
+                      "contact_id": "2f4ff7f445018adb50969f99df88dd9e",
+                      "full_name": "node qa",
+                      "web_id": 502612022,
+                      "email_type": "html",
+                      "status": "subscribed",
+                      "consents_to_one_to_one_messaging": true,
+                      "sms_phone_number": "",
+                      "sms_subscription_status": "",
+                      "sms_subscription_last_updated": "",
+                      "merge_fields": {
+                        "object": true
+                      },
+                      "interests": {
+                        "object": true
+                      },
+                      "stats": {
+                        "object": true
+                      },
+                      "ip_signup": "",
+                      "timestamp_signup": "",
+                      "ip_opt": "41.62.62.149",
+                      "timestamp_opt": "2021-02-19T10:59:04+00:00",
+                      "member_rating": 2,
+                      "last_changed": "2025-05-15T21:19:00+00:00",
+                      "language": "",
+                      "vip": false,
+                      "email_client": "",
+                      "location": {
+                        "object": true
+                      },
+                      "source": "Admin Add",
+                      "tags_count": 0,
+                      "tags": [
+                        "json array"
+                      ],
+                      "list_id": "eb9ad4be19",
+                      "_links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp3": [
+          {
+            "startTime": 1747343998133,
+            "executionIndex": 6,
+            "source": [
+              {
+                "previousNode": "Function"
+              }
+            ],
+            "hints": [],
+            "executionTime": 571,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "e73ff29160716a59a89fa9ebe5dfb51d",
+                      "email_address": "test43996930@gmail.com",
+                      "unique_email_id": "a157130acb",
+                      "contact_id": "77fbbbd43baa1fdc2164af11cdc785a5",
+                      "full_name": "",
+                      "web_id": 606621185,
+                      "email_type": "html",
+                      "status": "subscribed",
+                      "consents_to_one_to_one_messaging": true,
+                      "sms_phone_number": "",
+                      "sms_subscription_status": "",
+                      "sms_subscription_last_updated": "",
+                      "merge_fields": {
+                        "object": true
+                      },
+                      "interests": {
+                        "object": true
+                      },
+                      "stats": {
+                        "object": true
+                      },
+                      "ip_signup": "",
+                      "timestamp_signup": "",
+                      "ip_opt": "193.203.152.163",
+                      "timestamp_opt": "2025-05-15T21:19:58+00:00",
+                      "member_rating": 2,
+                      "last_changed": "2025-05-15T21:19:58+00:00",
+                      "language": "",
+                      "vip": false,
+                      "email_client": "",
+                      "location": {
+                        "object": true
+                      },
+                      "source": "API - Generic",
+                      "tags_count": 0,
+                      "tags": [
+                        "json array"
+                      ],
+                      "list_id": "eb9ad4be19",
+                      "_links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp9": [
+          {
+            "startTime": 1747343998704,
+            "executionIndex": 7,
+            "source": [
+              {
+                "previousNode": "Mailchimp8"
+              }
+            ],
+            "hints": [],
+            "executionTime": 372,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "e117a6f053",
+                      "web_id": 4820246,
+                      "type": "plaintext",
+                      "create_time": "2021-02-19T12:32:03+00:00",
+                      "archive_url": "http://eepurl.com/hq3G0v",
+                      "long_archive_url": "https://us1.campaign-archive.com/?u=396affb9e515ed83edaecbba9&id=e117a6f053",
+                      "status": "sent",
+                      "emails_sent": 1,
+                      "send_time": "2021-02-19T12:33:21+00:00",
+                      "content_type": "template",
+                      "needs_block_refresh": false,
+                      "resendable": false,
+                      "recipients": {
+                        "object": true
+                      },
+                      "settings": {
+                        "object": true
+                      },
+                      "tracking": {
+                        "object": true
+                      },
+                      "report_summary": {
+                        "object": true
+                      },
+                      "delivery_status": {
+                        "object": true
+                      },
+                      "_links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp2": [
+          {
+            "startTime": 1747343999076,
+            "executionIndex": 8,
+            "source": [
+              {
+                "previousNode": "Mailchimp"
+              }
+            ],
+            "hints": [],
+            "executionTime": 454,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "c81277605b129fdafaacede5ae34e07c",
+                      "email_address": "nodeqa@n8n.io",
+                      "unique_email_id": "cb7624ba4b",
+                      "contact_id": "2f4ff7f445018adb50969f99df88dd9e",
+                      "full_name": "node qa",
+                      "web_id": 502612022,
+                      "email_type": "html",
+                      "status": "subscribed",
+                      "consents_to_one_to_one_messaging": true,
+                      "sms_phone_number": "",
+                      "sms_subscription_status": "",
+                      "sms_subscription_last_updated": "",
+                      "merge_fields": {
+                        "object": true
+                      },
+                      "interests": {
+                        "object": true
+                      },
+                      "stats": {
+                        "object": true
+                      },
+                      "ip_signup": "",
+                      "timestamp_signup": "",
+                      "ip_opt": "41.62.62.149",
+                      "timestamp_opt": "2021-02-19T10:59:04+00:00",
+                      "member_rating": 2,
+                      "last_changed": "2025-05-15T21:19:00+00:00",
+                      "language": "",
+                      "vip": false,
+                      "email_client": "",
+                      "location": {
+                        "object": true
+                      },
+                      "source": "Admin Add",
+                      "tags_count": 0,
+                      "tags": [
+                        "json array"
+                      ],
+                      "list_id": "eb9ad4be19",
+                      "_links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp4": [
+          {
+            "startTime": 1747343999530,
+            "executionIndex": 9,
+            "source": [
+              {
+                "previousNode": "Mailchimp"
+              }
+            ],
+            "hints": [],
+            "executionTime": 429,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp6": [
+          {
+            "startTime": 1747343999959,
+            "executionIndex": 10,
+            "source": [
+              {
+                "previousNode": "Mailchimp3"
+              }
+            ],
+            "hints": [],
+            "executionTime": 514,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp10": [
+          {
+            "startTime": 1747344000473,
+            "executionIndex": 11,
+            "source": [
+              {
+                "previousNode": "Mailchimp9"
+              }
+            ],
+            "hints": [],
+            "executionTime": 2041,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "3e3f70f4ea",
+                      "web_id": 11040424,
+                      "type": "plaintext",
+                      "create_time": "2025-05-15T21:20:00+00:00",
+                      "archive_url": "http://eepurl.com/jeUIs2",
+                      "long_archive_url": "https://us1.campaign-archive.com/?u=396affb9e515ed83edaecbba9&id=3e3f70f4ea",
+                      "status": "save",
+                      "emails_sent": 0,
+                      "send_time": "",
+                      "content_type": "template",
+                      "needs_block_refresh": false,
+                      "resendable": false,
+                      "recipients": {
+                        "object": true
+                      },
+                      "settings": {
+                        "object": true
+                      },
+                      "tracking": {
+                        "object": true
+                      },
+                      "delivery_status": {
+                        "object": true
+                      },
+                      "_links": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp5": [
+          {
+            "startTime": 1747344002514,
+            "executionIndex": 12,
+            "source": [
+              {
+                "previousNode": "Mailchimp4"
+              }
+            ],
+            "hints": [],
+            "executionTime": 369,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Mailchimp11": [
+          {
+            "startTime": 1747344002883,
+            "executionIndex": 13,
+            "source": [
+              {
+                "previousNode": "Mailchimp10"
+              }
+            ],
+            "hints": [],
+            "executionTime": 621,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Mailchimp11"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:19:54.527Z",
+  "stoppedAt": "2025-05-15T21:20:03.504Z",
+  "status": "running",
+  "finished": true
+}

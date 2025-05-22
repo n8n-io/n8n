@@ -28,6 +28,7 @@ export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
+export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';

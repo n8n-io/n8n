@@ -48,6 +48,9 @@ const InvalidSamlSetting: Settings = {
 	}),
 };
 
+const SamlMetadataWithoutRedirectBinding =
+	'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>';
+
 const SamlSettingWithInvalidUrl: Settings = {
 	loadOnStartup: true,
 	key: SAML_PREFERENCES_DB_KEY,
@@ -342,6 +345,14 @@ describe('SamlService', () => {
 			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
 		});
 
+		test('does throw `InvalidSamlMetadataError` when a metadata does not contain redirect binding', async () => {
+			await expect(
+				samlService.setSamlPreferences({
+					metadata: SamlMetadataWithoutRedirectBinding,
+				}),
+			).rejects.toThrowError(InvalidSamlMetadataError);
+		});
+
 		test('does throw `InvalidSamlMetadataError` when a metadata url is not a valid url', async () => {
 			await expect(
 				samlService.setSamlPreferences({
@@ -391,6 +402,17 @@ describe('SamlService', () => {
 				loginEnabled: true,
 			});
 			await expect(samlService.setSamlPreferences({})).rejects.toThrowError(
+				InvalidSamlMetadataError,
+			);
+		});
+	});
+
+	describe('getIdentityProviderInstance', () => {
+		test('does throw `InvalidSamlMetadataError` when a metadata does not contain redirect binding', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: SamlMetadataWithoutRedirectBinding,
+			});
+			expect(() => samlService.getIdentityProviderInstance(true)).toThrowError(
 				InvalidSamlMetadataError,
 			);
 		});

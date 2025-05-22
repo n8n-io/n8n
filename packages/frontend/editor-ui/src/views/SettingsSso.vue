@@ -7,7 +7,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const IdentityProviderSettingsType = {

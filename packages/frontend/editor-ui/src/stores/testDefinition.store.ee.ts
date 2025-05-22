@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import * as testDefinitionsApi from '@/api/testDefinition.ee';
 import type {
 	TestCaseExecutionRecord,
@@ -8,7 +8,8 @@ import type {
 	TestRunRecord,
 } from '@/api/testDefinition.ee';
 import { usePostHog } from './posthog.store';
-import { STORES, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
+import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { useAnnotationTagsStore } from './tags.store';
 import { useI18n } from '@/composables/useI18n';
 
@@ -226,10 +227,7 @@ export const useTestDefinitionStore = defineStore(
 		 * @returns {Promise<TestDefinitionRecord>} A promise that resolves to the newly created test definition.
 		 * @throws {Error} Throws an error if there is a problem creating the test definition.
 		 */
-		const create = async (params: {
-			name: string;
-			workflowId: string;
-		}) => {
+		const create = async (params: { name: string; workflowId: string }) => {
 			const createdDefinition = await testDefinitionsApi.createTestDefinition(
 				rootStore.restApiContext,
 				params,

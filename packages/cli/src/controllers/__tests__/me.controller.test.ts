@@ -1,7 +1,6 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { PublicUser } from '@n8n/db';
-import { AuthUserRepository } from '@n8n/db';
 import { InvalidAuthTokenRepository } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -30,7 +29,6 @@ describe('MeController', () => {
 	const userService = mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
 	const mockMfaService = mockInstance(MfaService);
-	mockInstance(AuthUserRepository);
 	mockInstance(InvalidAuthTokenRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
@@ -171,6 +169,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: 'global:owner',
 					mfaEnabled: true,
+					mfaSecret: 'secret',
 				});
 				const req = mock<AuthenticatedRequest>({ user, browserId });
 				const res = mock<Response>();
@@ -316,7 +315,7 @@ describe('MeController', () => {
 
 			it('should succeed when mfa code is correct', async () => {
 				const req = mock<AuthenticatedRequest>({
-					user: mock({ password: passwordHash, mfaEnabled: true }),
+					user: mock({ password: passwordHash, mfaEnabled: true, mfaSecret: 'secret' }),
 					browserId,
 				});
 				const res = mock<Response>();

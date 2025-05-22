@@ -38,7 +38,7 @@ describe('UserService', () => {
 			});
 
 			type MaybeSensitiveProperties = Partial<
-				Pick<User, 'password' | 'updatedAt' | 'authIdentities'>
+				Pick<User, 'password' | 'updatedAt' | 'authIdentities' | 'mfaSecret' | 'mfaRecoveryCodes'>
 			>;
 
 			// to prevent typechecking from blocking assertions
@@ -47,6 +47,8 @@ describe('UserService', () => {
 			expect(publicUser.password).toBeUndefined();
 			expect(publicUser.updatedAt).toBeUndefined();
 			expect(publicUser.authIdentities).toBeUndefined();
+			expect(publicUser.mfaSecret).toBeUndefined();
+			expect(publicUser.mfaRecoveryCodes).toBeUndefined();
 		});
 
 		it('should add scopes if requested', async () => {

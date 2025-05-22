@@ -580,6 +580,16 @@ export function flattenLogEntries(
 	return ret;
 }
 
+export function getEntryAtRelativeIndex(
+	entries: LogEntry[],
+	id: string,
+	relativeIndex: number,
+): LogEntry | undefined {
+	const offset = entries.findIndex((e) => e.id === id);
+
+	return offset === -1 ? undefined : entries[offset + relativeIndex];
+}
+
 function sortLogEntries<T extends { runData: ITaskData }>(a: T, b: T) {
 	// We rely on execution index only when startTime is different
 	// Because it is reset to 0 when execution is waited, and therefore not necessarily unique

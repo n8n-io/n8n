@@ -1,0 +1,128 @@
+{
+  "createdAt": "2021-03-03T14:18:03.010Z",
+  "updatedAt": "2021-03-03T14:18:09.549Z",
+  "id": "94",
+  "name": "XML:toJSON:toXML",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "50d8428b-c132-49cb-8f4c-2eeba448d666"
+    },
+    {
+      "parameters": {
+        "mode": "jsonToxml",
+        "options": {}
+      },
+      "name": "XML",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "id": "664b8c25-5107-4715-a463-9a954965c096"
+    },
+    {
+      "parameters": {
+        "functionCode": "item= {\n  name:'testing xml',\n  arr:[{key:'item1'},{key:'item2'}],\n  subobj:{\n    arr:[1,2,3,4,5],\n    secondarr:[{key:'subitem1'},{key:'subitem2'},{key:'subitem3'}]\n  }\n};\nreturn item;"
+      },
+      "name": "FunctionItem",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "id": "dfb38369-2fb3-4d92-b843-b663b3a4675a"
+    },
+    {
+      "parameters": {
+        "options": {
+          "explicitRoot": false
+        }
+      },
+      "name": "XML1",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        800,
+        350
+      ],
+      "id": "7085c1d8-a216-47a7-98d1-2f5e9e3eda47"
+    },
+    {
+      "parameters": {
+        "functionCode": "if(JSON.stringify($node['FunctionItem'].json) !== JSON.stringify($node['XML1'].json) ){\n    throw new Error('Problem in XML conversion');\n}\nreturn items;"
+      },
+      "name": "Function",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        990,
+        350
+      ],
+      "id": "f03b8331-fa37-4aeb-97c9-0a3514942f96"
+    }
+  ],
+  "connections": {
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "XML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FunctionItem": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML1": {
+      "main": [
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "FunctionItem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

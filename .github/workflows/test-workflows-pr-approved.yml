@@ -1,0 +1,20 @@
+name: Test Workflows on PR Approval
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  run_workflow_tests_after_approval:
+    name: Run Tests on Approved PR
+    if: github.event.review.state == 'approved'
+    uses: ./.github/workflows/test-workflows-callable.yml
+    with:
+      git_ref: ${{ github.event.pull_request.head.sha }}
+      send_webhook_report: true
+      pr_number: ${{ github.event.pull_request.number }}
+    secrets: inherit

@@ -1,0 +1,268 @@
+{
+  "createdAt": "2021-02-19T14:03:33.612Z",
+  "updatedAt": "2021-07-12T12:44:36.384Z",
+  "id": "47",
+  "name": "Airtable:append update read list delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        250
+      ],
+      "id": "033f4cbc-f36c-41df-bce3-5726a6aace1e"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "application": "appxv9J85H3ZM4WZp",
+        "table": "FixedTestTable",
+        "options": {}
+      },
+      "name": "Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [
+        550,
+        250
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "32",
+          "name": "Airtable creds"
+        }
+      },
+      "id": "284d290d-93c8-441b-9b4e-0e21902f55a9"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "Name",
+              "value": "Test"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        400,
+        250
+      ],
+      "notesInFlow": true,
+      "notes": "Set Name column value",
+      "id": "0cd5f3da-97bd-4121-95f7-502338856476"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "appxv9J85H3ZM4WZp",
+        "table": "FixedTestTable",
+        "id": "={{$node[\"Airtable\"].json[\"id\"]}}",
+        "updateAllFields": false,
+        "fields": [
+          "Name"
+        ],
+        "options": {}
+      },
+      "name": "Airtable1",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [
+        850,
+        250
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "32",
+          "name": "Airtable creds"
+        }
+      },
+      "id": "3642a3b3-3fc0-4354-b8ae-4340c2735b68"
+    },
+    {
+      "parameters": {
+        "application": "appxv9J85H3ZM4WZp",
+        "table": "FixedTestTable",
+        "id": "={{$node[\"Airtable\"].json[\"id\"]}}"
+      },
+      "name": "Airtable2",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        250
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "32",
+          "name": "Airtable creds"
+        }
+      },
+      "id": "3075d56b-f6d9-42e1-9ce5-0270650d39d6"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "Name",
+              "value": "UpdatedTest"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Set1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        700,
+        250
+      ],
+      "notesInFlow": true,
+      "notes": "Update Name column",
+      "id": "517e190a-792d-43b5-a8df-31f4348c62f6"
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "application": "appxv9J85H3ZM4WZp",
+        "table": "FixedTestTable",
+        "returnAll": false,
+        "limit": 1,
+        "additionalOptions": {}
+      },
+      "name": "Airtable3",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        250
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "32",
+          "name": "Airtable creds"
+        }
+      },
+      "id": "51a97002-565f-4ac1-a1a5-83e9190f6ae2"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "application": "appxv9J85H3ZM4WZp",
+        "table": "FixedTestTable",
+        "id": "={{$node[\"Airtable\"].json[\"id\"]}}"
+      },
+      "name": "Airtable4",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        250
+      ],
+      "credentials": {
+        "airtableApi": {
+          "id": "32",
+          "name": "Airtable creds"
+        }
+      },
+      "id": "5923a88f-cf48-4ea6-8fcd-fdf7ae8eb6ee"
+    }
+  ],
+  "connections": {
+    "Airtable": {
+      "main": [
+        [
+          {
+            "node": "Set1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set": {
+      "main": [
+        [
+          {
+            "node": "Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable1": {
+      "main": [
+        [
+          {
+            "node": "Airtable2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set1": {
+      "main": [
+        [
+          {
+            "node": "Airtable1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable2": {
+      "main": [
+        [
+          {
+            "node": "Airtable3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable3": {
+      "main": [
+        [
+          {
+            "node": "Airtable4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

@@ -1,6 +1,6 @@
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as publicApiApi from '@/api/api-keys';
 import { computed, ref } from 'vue';

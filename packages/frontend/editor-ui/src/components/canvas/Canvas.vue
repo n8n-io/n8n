@@ -69,6 +69,9 @@ const emit = defineEmits<{
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'update:node:inputs': [id: string];
 	'update:node:outputs': [id: string];
+	'update:logs-open': [open?: boolean];
+	'update:logs:input-open': [open?: boolean];
+	'update:logs:output-open': [open?: boolean];
 	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
@@ -100,6 +103,7 @@ const emit = defineEmits<{
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
+	'start-chat': [];
 }>();
 
 const props = withDefaults(
@@ -287,6 +291,9 @@ const keyMap = computed(() => {
 		ArrowRight: emitWithLastSelectedNode(selectRightNode),
 		shift_ArrowLeft: emitWithLastSelectedNode(selectUpstreamNodes),
 		shift_ArrowRight: emitWithLastSelectedNode(selectDownstreamNodes),
+		l: () => emit('update:logs-open'),
+		i: () => emit('update:logs:input-open'),
+		o: () => emit('update:logs:output-open'),
 	};
 
 	if (props.readOnly) return readOnlyKeymap;
@@ -305,6 +312,7 @@ const keyMap = computed(() => {
 		ctrl_enter: () => emit('run:workflow'),
 		ctrl_s: () => emit('save:workflow'),
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
+		c: () => emit('start-chat'),
 	};
 	return fullKeymap;
 });

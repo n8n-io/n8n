@@ -71,8 +71,8 @@ describe('Insights Transformers', () => {
 	describe('transformInsightsDeviation', () => {
 		describe('for total and failed types', () => {
 			it('should calculate percentage deviation', () => {
-				expect(transformInsightsDeviation.total(100, 10)).toBe(10);
-				expect(transformInsightsDeviation.failed(50, 5)).toBe(10);
+				expect(transformInsightsDeviation.total(110, 10)).toBe(10);
+				expect(transformInsightsDeviation.failed(55, 5)).toBe(10);
 			});
 
 			it('should return 0 if value and deviation are 0', () => {
@@ -80,9 +80,9 @@ describe('Insights Transformers', () => {
 				expect(transformInsightsDeviation.failed(0, 0)).toBe(0);
 			});
 
-			it('should return Infinity if value is 0 and deviation is not 0', () => {
-				expect(transformInsightsDeviation.total(0, 10)).toBe(Infinity);
-				expect(transformInsightsDeviation.failed(0, 5)).toBe(Infinity);
+			it('should return Infinity if value equals deviation (and thus previous value is 0)', () => {
+				expect(transformInsightsDeviation.total(10, 10)).toBe(Infinity);
+				expect(transformInsightsDeviation.failed(5, 5)).toBe(Infinity);
 			});
 
 			it('should return 0 if deviation is 0 and value is not 0', () => {
@@ -122,7 +122,7 @@ describe('Insights Transformers', () => {
 		it('should correctly transform InsightsSummary data and respect INSIGHTS_SUMMARY_ORDER', () => {
 			const summaryData: InsightsSummary = {
 				timeSaved: { value: 1200, deviation: 120, unit: 'minute' },
-				total: { value: 100, deviation: 10, unit: 'count' },
+				total: { value: 110, deviation: 10, unit: 'count' },
 				failureRate: { value: 0.05, deviation: 0.01, unit: 'ratio' },
 				averageRunTime: { value: 5000, deviation: 1000, unit: 'millisecond' },
 				failed: { value: 5, deviation: 1, unit: 'count' },
@@ -131,7 +131,7 @@ describe('Insights Transformers', () => {
 			const expectedOutput = [
 				{
 					id: 'total',
-					value: 100,
+					value: 110,
 					deviation: 10,
 					deviationUnit: '%',
 					unit: '',
@@ -139,7 +139,7 @@ describe('Insights Transformers', () => {
 				{
 					id: 'failed',
 					value: 5,
-					deviation: 20,
+					deviation: 25,
 					deviationUnit: '%',
 					unit: '',
 				},
@@ -176,7 +176,7 @@ describe('Insights Transformers', () => {
 				'averageRunTime',
 			]);
 
-			expect(INSIGHTS_UNIT_MAPPING.total).toHaveBeenCalledWith(100);
+			expect(INSIGHTS_UNIT_MAPPING.total).toHaveBeenCalledWith(110);
 			expect(INSIGHTS_DEVIATION_UNIT_MAPPING.total).toHaveBeenCalledWith(10);
 			expect(INSIGHTS_UNIT_MAPPING.failed).toHaveBeenCalledWith(5);
 			expect(INSIGHTS_DEVIATION_UNIT_MAPPING.failed).toHaveBeenCalledWith(1);
@@ -208,7 +208,7 @@ describe('Insights Transformers', () => {
 				{
 					id: 'failed',
 					value: 5,
-					deviation: 20,
+					deviation: 25,
 					deviationUnit: '%',
 					unit: '',
 				},

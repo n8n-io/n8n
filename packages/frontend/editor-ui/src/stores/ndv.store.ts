@@ -17,8 +17,8 @@ import {
 	LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
-	STORES,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';

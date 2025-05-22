@@ -4,7 +4,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { N8nLoading } from '@n8n/design-system';

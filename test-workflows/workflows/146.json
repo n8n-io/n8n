@@ -1,0 +1,232 @@
+{
+  "createdAt": "2021-03-23T19:24:34.036Z",
+  "updatedAt": "2021-03-23T19:24:34.036Z",
+  "id": "146",
+  "name": "TimescaleDB:insert update executeQuery",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "22efcecd-6cad-42b4-9571-123444740429"
+    },
+    {
+      "parameters": {
+        "table": "conditions",
+        "columns": "temperature,location,time"
+      },
+      "name": "TimescaleDB",
+      "type": "n8n-nodes-base.timescaleDb",
+      "typeVersion": 1,
+      "position": [
+        550,
+        300
+      ],
+      "credentials": {
+        "timescaleDb": {
+          "id": "117",
+          "name": "TimescaleDB creds"
+        }
+      },
+      "id": "e1b1c99c-bf00-4203-b879-bce0feda1963"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "location",
+              "value": "n8n"
+            },
+            {
+              "name": "time",
+              "value": "={{(new Date()).toISOString()}}"
+            }
+          ],
+          "number": [
+            {
+              "name": "temperature",
+              "value": "={{Math.random()*100}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ],
+      "id": "834fa03b-7027-435b-acb0-21ca690a6252"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "conditions",
+        "updateKey": "temperature",
+        "columns": "location"
+      },
+      "name": "TimescaleDB1",
+      "type": "n8n-nodes-base.timescaleDb",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {
+        "timescaleDb": {
+          "id": "117",
+          "name": "TimescaleDB creds"
+        }
+      },
+      "id": "1fae6a3d-91b5-4c4d-8204-270856d7d6de"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT *\nFROM conditions\nWHERE time='{{$node[\"Set\"].json[\"time\"]}}'"
+      },
+      "name": "TimescaleDB2",
+      "type": "n8n-nodes-base.timescaleDb",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "timescaleDb": {
+          "id": "117",
+          "name": "TimescaleDB creds"
+        }
+      },
+      "notes": "Select row using query",
+      "id": "6e296996-47ee-446a-8784-731d7ecfc9e7"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "location",
+              "value": "updatedn8n"
+            }
+          ],
+          "number": []
+        },
+        "options": {}
+      },
+      "name": "Set1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "id": "344e4ad6-aba8-4792-b846-508e61592a38"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM conditions;"
+      },
+      "name": "TimescaleDB3",
+      "type": "n8n-nodes-base.timescaleDb",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        300
+      ],
+      "credentials": {
+        "timescaleDb": {
+          "id": "117",
+          "name": "TimescaleDB creds"
+        }
+      },
+      "id": "516e1804-3f18-4897-86e7-cf924f92b5aa"
+    }
+  ],
+  "connections": {
+    "TimescaleDB": {
+      "main": [
+        [
+          {
+            "node": "TimescaleDB2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set": {
+      "main": [
+        [
+          {
+            "node": "TimescaleDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TimescaleDB2": {
+      "main": [
+        [
+          {
+            "node": "Set1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set1": {
+      "main": [
+        [
+          {
+            "node": "TimescaleDB1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TimescaleDB1": {
+      "main": [
+        [
+          {
+            "node": "TimescaleDB3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

@@ -6,9 +6,9 @@ import {
 	CUSTOM_API_CALL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	REGULAR_NODE_CREATOR_VIEW,
-	STORES,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type {
 	NodeFilterType,
 	NodeCreatorOpenSource,

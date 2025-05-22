@@ -1,0 +1,124 @@
+{
+  "createdAt": "2021-03-11T17:20:04.889Z",
+  "updatedAt": "2021-03-11T17:22:00.219Z",
+  "id": "128",
+  "name": "Yourls:Url:shorten stats expand",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "04b33b0d-9424-4705-955d-c4a8087c055c"
+    },
+    {
+      "parameters": {
+        "url": "=https://n8n.io/{{Date.now()}}",
+        "additionalFields": {
+          "title": "n8n-ulr with random suffix"
+        }
+      },
+      "name": "Yourls",
+      "type": "n8n-nodes-base.yourls",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "yourlsApi": {
+          "id": "95",
+          "name": "Yourls API creds"
+        }
+      },
+      "id": "d5e11a39-5fc4-4e33-b83e-9706e46c8aba"
+    },
+    {
+      "parameters": {
+        "operation": "stats",
+        "shortUrl": "={{$node[\"Yourls\"].json[\"shorturl\"]}}"
+      },
+      "name": "Yourls1",
+      "type": "n8n-nodes-base.yourls",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "yourlsApi": {
+          "id": "95",
+          "name": "Yourls API creds"
+        }
+      },
+      "id": "c3e4bb2a-977c-4f7d-88ce-4954ece456c5"
+    },
+    {
+      "parameters": {
+        "operation": "expand",
+        "shortUrl": "={{$node[\"Yourls\"].json[\"shorturl\"]}}"
+      },
+      "name": "Yourls2",
+      "type": "n8n-nodes-base.yourls",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "yourlsApi": {
+          "id": "95",
+          "name": "Yourls API creds"
+        }
+      },
+      "id": "a1126d46-f429-47e8-9a52-08549a8ed2da"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Yourls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Yourls": {
+      "main": [
+        [
+          {
+            "node": "Yourls1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Yourls1": {
+      "main": [
+        [
+          {
+            "node": "Yourls2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

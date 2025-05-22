@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { cleanupAppModals, createAppModals, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import FixedCollectionParameter, { type Props } from '@/components/FixedCollectionParameter.vue';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';

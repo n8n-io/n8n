@@ -4,10 +4,10 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import {
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
-	STORES,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/stores/ui.store';

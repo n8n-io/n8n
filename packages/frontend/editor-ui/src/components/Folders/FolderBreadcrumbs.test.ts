@@ -123,4 +123,19 @@ describe('FolderBreadcrumbs', () => {
 		expect(queryAllByTestId('breadcrumbs-item')).toHaveLength(2);
 		expect(queryByTestId('ellipsis')).not.toBeInTheDocument();
 	});
+
+	it('should render personal project as fallback', () => {
+		foldersStore.getCachedFolder.mockReturnValue(TEST_FOLDER);
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = TEST_PROJECT;
+
+		const { getByTestId } = renderComponent({
+			props: {
+				currentFolder: TEST_FOLDER_CHILD,
+			},
+		});
+		// Now, parent folder should also be visible
+		expect(getByTestId('folder-breadcrumbs')).toBeVisible();
+		expect(getByTestId('home-project')).toBeVisible();
+	});
 });

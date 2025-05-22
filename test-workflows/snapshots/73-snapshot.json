@@ -1,0 +1,965 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1678116858529,
+            "executionTime": 1,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube13": [
+          {
+            "startTime": 1678116858530,
+            "executionTime": 703,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube18": [
+          {
+            "startTime": 1678116859234,
+            "executionTime": 131,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#videoCategory",
+                      "etag": "grPOPYEUUZN3ltuDUGEWlrTR90U",
+                      "id": "1",
+                      "snippet": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube4": [
+          {
+            "startTime": 1678116859365,
+            "executionTime": 729,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#playlist",
+                      "etag": "cZxvObsnYlgTQ5KURoRfgGtFZpA",
+                      "id": "PLSug7srxxXFf2x85_vM2dVCsrTnKaCbE0",
+                      "snippet": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube1": [
+          {
+            "startTime": 1678116860094,
+            "executionTime": 176,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#channel",
+                      "etag": "w0TrUr6fWdqCBhWBjQVLPE3AAp0",
+                      "id": "UCiHVTkJtWSdc9N3h0nUGWLg",
+                      "snippet": {
+                        "object": true
+                      },
+                      "contentDetails": {
+                        "object": true
+                      },
+                      "statistics": {
+                        "object": true
+                      },
+                      "topicDetails": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      },
+                      "brandingSettings": {
+                        "object": true
+                      },
+                      "contentOwnerDetails": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second4": [
+          {
+            "startTime": 1678116860270,
+            "executionTime": 513,
+            "source": [
+              {
+                "previousNode": "YouTube13"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second1": [
+          {
+            "startTime": 1678116860783,
+            "executionTime": 504,
+            "source": [
+              {
+                "previousNode": "YouTube4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#playlist",
+                      "etag": "cZxvObsnYlgTQ5KURoRfgGtFZpA",
+                      "id": "PLSug7srxxXFf2x85_vM2dVCsrTnKaCbE0",
+                      "snippet": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second": [
+          {
+            "startTime": 1678116861287,
+            "executionTime": 504,
+            "source": [
+              {
+                "previousNode": "YouTube1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#channel",
+                      "etag": "w0TrUr6fWdqCBhWBjQVLPE3AAp0",
+                      "id": "UCiHVTkJtWSdc9N3h0nUGWLg",
+                      "snippet": {
+                        "object": true
+                      },
+                      "contentDetails": {
+                        "object": true
+                      },
+                      "statistics": {
+                        "object": true
+                      },
+                      "topicDetails": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      },
+                      "brandingSettings": {
+                        "object": true
+                      },
+                      "contentOwnerDetails": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube14": [
+          {
+            "startTime": 1678116861791,
+            "executionTime": 163,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#video",
+                      "etag": "CU762SGxLJSQ9Zoa5a5lMfVPIRY",
+                      "id": "sJO3b0WXm8I",
+                      "snippet": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube5": [
+          {
+            "startTime": 1678116861954,
+            "executionTime": 534,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#playlist",
+                      "etag": "x1ifiVNV20WdssD7ZZvcIylYEI8",
+                      "id": "PLSug7srxxXFf2x85_vM2dVCsrTnKaCbE0",
+                      "snippet": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube": [
+          {
+            "startTime": 1678116862488,
+            "executionTime": 263,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#channel",
+                      "etag": "fCuCBJVzK5ufWTV-IWDIgBqRptA",
+                      "id": "UCkdph8FDLpq2UD2i_OlwErA",
+                      "snippet": {
+                        "object": true
+                      },
+                      "contentDetails": {
+                        "object": true
+                      },
+                      "statistics": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      },
+                      "brandingSettings": {
+                        "object": true
+                      },
+                      "contentOwnerDetails": {
+                        "object": true
+                      },
+                      "localizations": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "HTTP Request": [
+          {
+            "startTime": 1678116862752,
+            "executionTime": 0,
+            "source": [
+              {
+                "previousNode": "YouTube14"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#video",
+                      "etag": "CU762SGxLJSQ9Zoa5a5lMfVPIRY",
+                      "id": "sJO3b0WXm8I",
+                      "snippet": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube9": [
+          {
+            "startTime": 1678116862752,
+            "executionTime": 491,
+            "source": [
+              {
+                "previousNode": "YouTube5"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#playlistItem",
+                      "etag": "51b2-FnJVTOoejrxHMjUub8dQmc",
+                      "id": "UExTdWc3c3J4eFhGZjJ4ODVfdk0yZFZDc3JUbkthQ2JFMC41NkI0NEY2RDEwNTU3Q0M2",
+                      "snippet": {
+                        "object": true
+                      },
+                      "contentDetails": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube2": [
+          {
+            "startTime": 1678116863243,
+            "executionTime": 1225,
+            "source": [
+              {
+                "previousNode": "YouTube"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#channel",
+                      "etag": "FJbGUwCbpYOnGAel0jE_WyNVJqk",
+                      "id": "UCkdph8FDLpq2UD2i_OlwErA",
+                      "brandingSettings": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second5": [
+          {
+            "startTime": 1678116864468,
+            "executionTime": 1,
+            "source": [
+              {
+                "previousNode": "HTTP Request"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#video",
+                      "etag": "CU762SGxLJSQ9Zoa5a5lMfVPIRY",
+                      "id": "sJO3b0WXm8I",
+                      "snippet": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second2": [
+          {
+            "startTime": 1678116864469,
+            "executionTime": 504,
+            "source": [
+              {
+                "previousNode": "YouTube9"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#playlistItem",
+                      "etag": "51b2-FnJVTOoejrxHMjUub8dQmc",
+                      "id": "UExTdWc3c3J4eFhGZjJ4ODVfdk0yZFZDc3JUbkthQ2JFMC41NkI0NEY2RDEwNTU3Q0M2",
+                      "snippet": {
+                        "object": true
+                      },
+                      "contentDetails": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Read Binary File": [
+          {
+            "startTime": 1678116864974,
+            "executionTime": 0,
+            "source": [
+              {
+                "previousNode": "YouTube2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#channel",
+                      "etag": "FJbGUwCbpYOnGAel0jE_WyNVJqk",
+                      "id": "UCkdph8FDLpq2UD2i_OlwErA",
+                      "brandingSettings": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube15": [
+          {
+            "startTime": 1678116864974,
+            "executionTime": 0,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second5"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#video",
+                      "etag": "CU762SGxLJSQ9Zoa5a5lMfVPIRY",
+                      "id": "sJO3b0WXm8I",
+                      "snippet": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube10": [
+          {
+            "startTime": 1678116864974,
+            "executionTime": 247,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#playlistItem",
+                      "etag": "vfNj2T80rWmuEtn3bdR9w-gJxKM",
+                      "id": "UExTdWc3c3J4eFhGZjJ4ODVfdk0yZFZDc3JUbkthQ2JFMC41NkI0NEY2RDEwNTU3Q0M2",
+                      "contentDetails": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube3": [
+          {
+            "startTime": 1678116865221,
+            "executionTime": 0,
+            "source": [
+              {
+                "previousNode": "Read Binary File"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#channel",
+                      "etag": "FJbGUwCbpYOnGAel0jE_WyNVJqk",
+                      "id": "UCkdph8FDLpq2UD2i_OlwErA",
+                      "brandingSettings": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube16": [
+          {
+            "startTime": 1678116865221,
+            "executionTime": 0,
+            "source": [
+              {
+                "previousNode": "YouTube15"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#video",
+                      "etag": "CU762SGxLJSQ9Zoa5a5lMfVPIRY",
+                      "id": "sJO3b0WXm8I",
+                      "snippet": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube11": [
+          {
+            "startTime": 1678116865221,
+            "executionTime": 244,
+            "source": [
+              {
+                "previousNode": "YouTube10"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#playlistItem",
+                      "etag": "vfNj2T80rWmuEtn3bdR9w-gJxKM",
+                      "id": "UExTdWc3c3J4eFhGZjJ4ODVfdk0yZFZDc3JUbkthQ2JFMC41NkI0NEY2RDEwNTU3Q0M2",
+                      "contentDetails": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second6": [
+          {
+            "startTime": 1678116865465,
+            "executionTime": 0,
+            "source": [
+              {
+                "previousNode": "YouTube16"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#video",
+                      "etag": "CU762SGxLJSQ9Zoa5a5lMfVPIRY",
+                      "id": "sJO3b0WXm8I",
+                      "snippet": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Sleep 0.5 second3": [
+          {
+            "startTime": 1678116865465,
+            "executionTime": 503,
+            "source": [
+              {
+                "previousNode": "YouTube11"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#playlistItem",
+                      "etag": "vfNj2T80rWmuEtn3bdR9w-gJxKM",
+                      "id": "UExTdWc3c3J4eFhGZjJ4ODVfdk0yZFZDc3JUbkthQ2JFMC41NkI0NEY2RDEwNTU3Q0M2",
+                      "contentDetails": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    },
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube17": [
+          {
+            "startTime": 1678116865969,
+            "executionTime": 0,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second6"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#video",
+                      "etag": "CU762SGxLJSQ9Zoa5a5lMfVPIRY",
+                      "id": "sJO3b0WXm8I",
+                      "snippet": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube12": [
+          {
+            "startTime": 1678116865969,
+            "executionTime": 589,
+            "source": [
+              {
+                "previousNode": "Sleep 0.5 second3"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube6": [
+          {
+            "startTime": 1678116866558,
+            "executionTime": 290,
+            "source": [
+              {
+                "previousNode": "YouTube12"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "kind": "youtube#playlist",
+                      "etag": "PovpXjHyDmQRrWiHF2py5vCN0sE",
+                      "id": "PLSug7srxxXFf2x85_vM2dVCsrTnKaCbE0",
+                      "snippet": {
+                        "object": true
+                      },
+                      "status": {
+                        "object": true
+                      },
+                      "contentDetails": {
+                        "object": true
+                      },
+                      "player": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "YouTube7": [
+          {
+            "startTime": 1678116866849,
+            "executionTime": 480,
+            "source": [
+              {
+                "previousNode": "YouTube6"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "YouTube7"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2023-03-06T15:34:18.525Z",
+  "stoppedAt": "2023-03-06T15:34:27.329Z",
+  "status": "running",
+  "finished": true
+}

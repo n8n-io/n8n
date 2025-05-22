@@ -1,0 +1,253 @@
+{
+  "createdAt": "2021-02-17T14:32:51.109Z",
+  "updatedAt": "2021-06-02T11:29:13.526Z",
+  "id": "34",
+  "name": "Strava:Activity:create get update getAll getComments getKudos getLaps",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "afcd2eb5-ee88-4fd8-ad2a-122f2ee05b6d"
+    },
+    {
+      "parameters": {
+        "name": "TestActivity",
+        "type": "Run",
+        "startDate": "={{Date.now()}}",
+        "elapsedTime": 5,
+        "additionalFields": {}
+      },
+      "name": "Strava",
+      "type": "n8n-nodes-base.strava",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "stravaOAuth2Api": {
+          "id": "17",
+          "name": "Strava credentials"
+        }
+      },
+      "id": "3a0f90c9-47d1-4e97-b2ef-d04ffc09c7ab"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "activityId": "={{$node[\"Strava\"].json[\"id\"]}}",
+        "updateFields": {
+          "type": "Ride"
+        }
+      },
+      "name": "Strava1",
+      "type": "n8n-nodes-base.strava",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "stravaOAuth2Api": {
+          "id": "17",
+          "name": "Strava credentials"
+        }
+      },
+      "id": "b7731003-b34b-4cc9-b7cb-d6e1391268f8"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "Strava2",
+      "type": "n8n-nodes-base.strava",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "stravaOAuth2Api": {
+          "id": "17",
+          "name": "Strava credentials"
+        }
+      },
+      "notes": "IGNORED_PROPERTIES=device_watts",
+      "id": "7619daca-da98-4c79-9575-237c5ac602d2"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "activityId": "={{$node[\"Strava\"].json[\"id\"]}}"
+      },
+      "name": "Strava3",
+      "type": "n8n-nodes-base.strava",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "stravaOAuth2Api": {
+          "id": "17",
+          "name": "Strava credentials"
+        }
+      },
+      "id": "a2d40830-1aa4-4ffc-bc4c-de84003490ed"
+    },
+    {
+      "parameters": {
+        "operation": "getComments",
+        "activityId": "={{$node[\"Strava\"].json[\"id\"]}}",
+        "limit": 1
+      },
+      "name": "Strava4",
+      "type": "n8n-nodes-base.strava",
+      "typeVersion": 1,
+      "position": [
+        600,
+        460
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "stravaOAuth2Api": {
+          "id": "17",
+          "name": "Strava credentials"
+        }
+      },
+      "id": "1d83183d-5238-47eb-b89d-4283af3953a8"
+    },
+    {
+      "parameters": {
+        "operation": "getKudos",
+        "activityId": "={{$node[\"Strava\"].json[\"id\"]}}",
+        "limit": 1
+      },
+      "name": "Strava5",
+      "type": "n8n-nodes-base.strava",
+      "typeVersion": 1,
+      "position": [
+        750,
+        460
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "stravaOAuth2Api": {
+          "id": "17",
+          "name": "Strava credentials"
+        }
+      },
+      "id": "cdbc41db-3938-46a2-b167-c714aaa8dd5b"
+    },
+    {
+      "parameters": {
+        "operation": "getLaps",
+        "activityId": "={{$node[\"Strava\"].json[\"id\"]}}",
+        "limit": 1
+      },
+      "name": "Strava6",
+      "type": "n8n-nodes-base.strava",
+      "typeVersion": 1,
+      "position": [
+        900,
+        460
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "stravaOAuth2Api": {
+          "id": "17",
+          "name": "Strava credentials"
+        }
+      },
+      "id": "86be5364-f022-43cb-b567-2b983f422ce7"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Strava",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strava": {
+      "main": [
+        [
+          {
+            "node": "Strava4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Strava3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strava1": {
+      "main": [
+        [
+          {
+            "node": "Strava2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strava5": {
+      "main": [
+        [
+          {
+            "node": "Strava6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strava4": {
+      "main": [
+        [
+          {
+            "node": "Strava5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strava3": {
+      "main": [
+        [
+          {
+            "node": "Strava1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

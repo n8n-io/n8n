@@ -2,7 +2,7 @@
 import { useI18n } from '@/composables/useI18n';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/constants';
-import { useAgentRequestStore } from '@/stores/agentRequest.store';
+import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {

@@ -2,7 +2,7 @@
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import { useClipboard } from '@/composables/useClipboard';
 import { useDebugInfo } from '@/composables/useDebugInfo';

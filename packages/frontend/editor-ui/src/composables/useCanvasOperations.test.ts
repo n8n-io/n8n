@@ -43,9 +43,9 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	STORES,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
@@ -2972,24 +2972,6 @@ describe('useCanvasOperations', () => {
 			connectAdjacentNodes(nodeB.id);
 
 			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('toggleChatOpen', () => {
-		it('should invoke workflowsStore#toggleLogsPanelOpen with 2nd argument passed through as 1st argument', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const { toggleChatOpen } = useCanvasOperations({ router });
-
-			workflowsStore.getCurrentWorkflow.mockReturnValue(createTestWorkflowObject());
-
-			await toggleChatOpen('main');
-			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(undefined);
-
-			await toggleChatOpen('main', true);
-			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(true);
-
-			await toggleChatOpen('main', false);
-			expect(workflowsStore.toggleLogsPanelOpen).toHaveBeenCalledWith(false);
 		});
 	});
 

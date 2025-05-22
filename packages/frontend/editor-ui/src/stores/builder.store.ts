@@ -3,14 +3,14 @@ import type { VIEWS } from '@/constants';
 import {
 	ASK_AI_SLIDE_OUT_DURATION_MS,
 	EDITABLE_CANVAS_VIEWS,
-	STORES,
 	WORKFLOW_BUILDER_EXPERIMENT,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';

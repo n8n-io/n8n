@@ -14,7 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from './useTelemetry';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { isFullExecutionResponse } from '@/utils/typeGuards';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { usePageRedirectionHelper } from './usePageRedirectionHelper';

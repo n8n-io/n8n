@@ -10,7 +10,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {

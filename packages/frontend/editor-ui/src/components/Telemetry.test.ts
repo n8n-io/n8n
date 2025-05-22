@@ -4,7 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import Telemetry from './Telemetry.vue';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTelemetry } from '@/composables/useTelemetry';

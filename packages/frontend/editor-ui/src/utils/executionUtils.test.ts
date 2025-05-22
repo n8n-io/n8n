@@ -16,7 +16,7 @@ const WAIT_NODE_TYPE = 'waitNode';
 
 const windowOpenSpy = vi.spyOn(window, 'open');
 
-vi.mock('@/stores/root.store', () => ({
+vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		formWaitingUrl: 'http://localhost:5678/form-waiting',
 		webhookWaitingUrl: 'http://localhost:5678/webhook-waiting',
@@ -33,9 +33,9 @@ vi.mock('@/plugins/i18n', () => ({
 	i18n: {
 		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
 			const texts: { [key: string]: string } = {
-				'ndv.output.waitNodeWaiting': 'Waiting for execution to resume...',
-				'ndv.output.waitNodeWaitingForFormSubmission': 'Waiting for form submission: ',
-				'ndv.output.waitNodeWaitingForWebhook': 'Waiting for webhook call: ',
+				'ndv.output.waitNodeWaiting.description.timer': 'Waiting for execution to resume...',
+				'ndv.output.waitNodeWaiting.description.form': 'Waiting for form submission: ',
+				'ndv.output.waitNodeWaiting.description.webhook': 'Waiting for webhook call: ',
 				'ndv.output.githubNodeWaitingForWebhook': 'Waiting for webhook call: ',
 				'ndv.output.sendAndWaitWaitingApproval': 'Waiting for approval...',
 				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,

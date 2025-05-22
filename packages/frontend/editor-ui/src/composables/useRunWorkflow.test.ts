@@ -25,7 +25,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
-import { useAgentRequestStore } from '@/stores/agentRequest.store';
+import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 
 vi.mock('@/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {

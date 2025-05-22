@@ -11,6 +11,7 @@ export const setOutputProperties: INodeProperties[] = [
 	},
 	{
 		...document,
+		displayName: 'Document Containing Dataset',
 		displayOptions: {
 			show: {
 				operation: ['setOutputs'],
@@ -19,6 +20,7 @@ export const setOutputProperties: INodeProperties[] = [
 	},
 	{
 		...sheet,
+		displayName: 'Sheet Containing Dataset',
 		displayOptions: {
 			show: {
 				operation: ['setOutputs'],

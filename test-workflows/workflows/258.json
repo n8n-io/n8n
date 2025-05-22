@@ -1,0 +1,263 @@
+{
+  "createdAt": "2025-03-11T17:52:12.078Z",
+  "updatedAt": "2025-03-11T17:56:05.000Z",
+  "id": "258",
+  "name": "Agent:auto-fix:openai",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "9152fa2f-1cf1-4745-bf52-3d3374e501c5",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        160,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "What time is my check-in?",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        480,
+        820
+      ],
+      "id": "1c390448-79da-4a49-b7f2-3a7a99a23167",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-2024-05-13",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-2024-05-13"
+        },
+        "options": {
+          "temperature": 0,
+          "maxRetries": 3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        1100
+      ],
+      "id": "71ffd19c-f0eb-4735-bdd5-4c8e9511fcc2",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "Zak03cqeLUOsgkFI",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+      "typeVersion": 1,
+      "position": [
+        720,
+        1100
+      ],
+      "id": "72cafb7e-889c-46cf-bfe1-ac71e9803037",
+      "name": "Auto-fixing Output Parser"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"resolution\": {\n      \"type\": \"string\",\n      \"description\": \"The customer-facing resolution or response that should be communicated to the customer\"\n    },\n    \"reasoning\": {\n      \"type\": \"string\",\n      \"description\": \"Detailed explanation of the solution and reasoning for internal use\"\n    }\n  },\n  \"additionalProperties\": true,\n  \"required\": [\"resolution\", \"reasoning\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        860,
+        1240
+      ],
+      "id": "58ab5ac8-9f75-4448-a4c9-55a8d2afa8fd",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "memory6"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        500,
+        1100
+      ],
+      "id": "af4542a6-23e2-4baf-8544-b01aa16d22aa",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        1240
+      ],
+      "id": "84ebbc2c-ed7f-418b-b4b0-e0f273912d79",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "Zak03cqeLUOsgkFI",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "What time is my check-in?",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        880,
+        820
+      ],
+      "id": "92c04ad7-f491-4f0f-86de-c32fe82c2148",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "content": "## Auto-fixing Output Parser + Memory\n",
+        "height": 88,
+        "width": 386
+      },
+      "id": "38f59837-adec-49dc-b848-0b97561c3842",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        320,
+        700
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-fixing Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Auto-fixing Output Parser",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Auto-fixing Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "e00984a3-c69b-42b6-afb9-91b44c6a0e37",
+  "triggerCount": 0,
+  "tags": []
+}

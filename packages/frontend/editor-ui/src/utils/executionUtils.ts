@@ -12,7 +12,7 @@ import type { ExecutionFilterType, ExecutionsQueryFilter, INodeUi } from '@/Inte
 import { isEmpty } from '@/utils/typesUtils';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, GITHUB_NODE_TYPE } from '../constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@/plugins/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
@@ -157,7 +157,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 		if (resume) {
 			if (!['webhook', 'form'].includes(resume as string)) {
-				return i18n.baseText('ndv.output.waitNodeWaiting');
+				return i18n.baseText('ndv.output.waitNodeWaiting.description.timer');
 			}
 
 			const { webhookSuffix } = (node.parameters.options ?? {}) as { webhookSuffix: string };
@@ -168,12 +168,12 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 
 			if (resume === 'form') {
 				resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			}
 
 			if (resume === 'webhook') {
 				resumeUrl = `${useRootStore().webhookWaitingUrl}/${useWorkflowsStore().activeExecutionId}${suffix}`;
-				message = i18n.baseText('ndv.output.waitNodeWaitingForWebhook');
+				message = i18n.baseText('ndv.output.waitNodeWaiting.description.webhook');
 			}
 
 			if (message && resumeUrl) {
@@ -182,7 +182,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 		}
 
 		if (node?.type === FORM_NODE_TYPE) {
-			const message = i18n.baseText('ndv.output.waitNodeWaitingForFormSubmission');
+			const message = i18n.baseText('ndv.output.waitNodeWaiting.description.form');
 			const resumeUrl = `${useRootStore().formWaitingUrl}/${useWorkflowsStore().activeExecutionId}`;
 			return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
 		}

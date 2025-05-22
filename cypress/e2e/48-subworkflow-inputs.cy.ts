@@ -55,13 +55,16 @@ describe('Sub-workflow creation and typed usage', () => {
 
 		openNode('Execute Workflow');
 
+		let openedUrl = '';
+
 		// Prevent sub-workflow from opening in new window
 		cy.window().then((win) => {
 			cy.stub(win, 'open').callsFake((url) => {
-				cy.visit(url);
+				openedUrl = url;
 			});
 		});
 		selectResourceLocatorItem('workflowId', 0, 'Create a');
+		cy.then(() => cy.visit(openedUrl));
 		// **************************
 		// NAVIGATE TO CHILD WORKFLOW
 		// **************************

@@ -7,7 +7,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -45,7 +45,7 @@ vi.mock('@/stores/projects.store', () => ({
 	useProjectsStore: vi.fn(),
 }));
 
-vi.mock('@/stores/root.store', () => ({
+vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(),
 }));
 

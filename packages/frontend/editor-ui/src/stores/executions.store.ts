@@ -11,7 +11,7 @@ import type {
 	IExecutionsListResponse,
 	IExecutionsStopData,
 } from '@/Interface';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
 import { useProjectsStore } from '@/stores/projects.store';

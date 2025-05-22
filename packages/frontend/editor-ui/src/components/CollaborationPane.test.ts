@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
 
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 import type { IUser } from '@/Interface';
 

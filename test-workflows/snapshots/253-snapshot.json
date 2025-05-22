@@ -1,0 +1,1821 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "When clicking \"Test workflow\"": [
+          {
+            "startTime": 1747344001053,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Window Buffer Memory1": [
+          {
+            "startTime": 1747344001060,
+            "executionTime": 0,
+            "executionIndex": 2,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent5",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "loadMemoryVariables",
+                      "chatHistory": [
+                        "json array"
+                      ]
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "loadMemoryVariables",
+                      "values": {
+                        "input": "Hi, my name is Oleg. Tell me about magnets like I'm 5.",
+                        "system_message": "You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise.",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer."
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "Window Buffer Memory1",
+                  "runIndex": 0
+                },
+                {
+                  "node": "Window Buffer Memory1",
+                  "runIndex": 1
+                },
+                {
+                  "node": "Window Buffer Memory1",
+                  "runIndex": 2
+                },
+                {
+                  "node": "Window Buffer Memory1",
+                  "runIndex": 3
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344004762,
+            "executionTime": 0,
+            "executionIndex": 5,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent5",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "saveContext",
+                      "chatHistory": [
+                        "json array"
+                      ]
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "saveContext",
+                      "input": {
+                        "input": "Hi, my name is Oleg. Tell me about magnets like I'm 5.",
+                        "system_message": "You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise.",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer."
+                      },
+                      "output": {
+                        "input": "Hi, my name is Oleg. Tell me about magnets like I'm 5.",
+                        "system_message": "You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise.",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.",
+                        "chat_history": [],
+                        "output": {
+                          "english_answer": "Magnets are special things that can pull some metals, like iron, towards them. They can stick to your fridge or make toys move without touching them! There are two sides to a magnet: one side is called 'north' and the other is 'south.' If you put two magnets together, the north side of one will stick to the south side of the other, but if you try to put two north sides together, they will push away from each other!",
+                          "czech_answer": "Magnety jsou zvláštní věci, které mohou přitahovat některé kovy, jako je železo. Mohou se přichytit na vaši lednici nebo pohybovat hračkami, aniž byste se jich dotkli! Magnet má dvě strany: jedna se nazývá 'sever' a druhá 'jih.' Když dáte dva magnety k sobě, severní strana jednoho se přichytí k jižní straně druhého, ale když se pokusíte dát dvě severní strany k sobě, budou se od sebe odtlačovat!"
+                        }
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          },
+          {
+            "startTime": 1747344004765,
+            "executionTime": 0,
+            "executionIndex": 7,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent3",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "loadMemoryVariables",
+                      "chatHistory": [
+                        "json array"
+                      ]
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "loadMemoryVariables",
+                      "values": {
+                        "input": "Can you still remember my name?",
+                        "system_message": "You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise.",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer."
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          },
+          {
+            "startTime": 1747344005687,
+            "executionTime": 0,
+            "executionIndex": 10,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent3",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "saveContext",
+                      "chatHistory": [
+                        "json array"
+                      ]
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_memory": [
+                [
+                  {
+                    "json": {
+                      "action": "saveContext",
+                      "input": {
+                        "input": "Can you still remember my name?",
+                        "system_message": "You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise.",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer."
+                      },
+                      "output": {
+                        "input": "Can you still remember my name?",
+                        "system_message": "You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise.",
+                        "formatting_instructions": "IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.",
+                        "chat_history": [
+                          {
+                            "lc": 1,
+                            "type": "constructor",
+                            "id": [
+                              "langchain_core",
+                              "messages",
+                              "HumanMessage"
+                            ],
+                            "kwargs": {
+                              "content": "Hi, my name is Oleg. Tell me about magnets like I'm 5.",
+                              "additional_kwargs": {},
+                              "response_metadata": {}
+                            }
+                          },
+                          {
+                            "lc": 1,
+                            "type": "constructor",
+                            "id": [
+                              "langchain_core",
+                              "messages",
+                              "AIMessage"
+                            ],
+                            "kwargs": {
+                              "content": "{\"output\":{\"english_answer\":\"Magnets are special things that can pull some metals, like iron, towards them. They can stick to your fridge or make toys move without touching them! There are two sides to a magnet: one side is called 'north' and the other is 'south.' If you put two magnets together, the north side of one will stick to the south side of the other, but if you try to put two north sides together, they will push away from each other!\",\"czech_answer\":\"Magnety jsou zvláštní věci, které mohou přitahovat některé kovy, jako je železo. Mohou se přichytit na vaši lednici nebo pohybovat hračkami, aniž byste se jich dotkli! Magnet má dvě strany: jedna se nazývá 'sever' a druhá 'jih.' Když dáte dva magnety k sobě, severní strana jednoho se přichytí k jižní straně druhého, ale když se pokusíte dát dvě severní strany k sobě, budou se od sebe odtlačovat!\"}}",
+                              "tool_calls": [],
+                              "invalid_tool_calls": [],
+                              "additional_kwargs": {},
+                              "response_metadata": {}
+                            }
+                          }
+                        ],
+                        "output": {
+                          "english_answer": "Yes, your name is Oleg!",
+                          "czech_answer": "Ano, vaše jméno je Oleg!"
+                        }
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "OpenAI Chat Model3": [
+          {
+            "startTime": 1747344001063,
+            "executionTime": 3698,
+            "executionIndex": 3,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent5",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise.\n\nIMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.\nHuman: Hi, my name is Oleg. Tell me about magnets like I'm 5."
+                      ],
+                      "estimatedTokens": 122,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0.1,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "OpenAI Chat Model3",
+                  "runIndex": 0
+                },
+                {
+                  "node": "OpenAI Chat Model3",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344004773,
+            "executionTime": 913,
+            "executionIndex": 8,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent3",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant. Always provide both `english_answer` and `czech_answer` in the final output and be very concise.\n\nIMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.\nHuman: Hi, my name is Oleg. Tell me about magnets like I'm 5.\nAI: {\"output\":{\"english_answer\":\"Magnets are special things that can pull some metals, like iron, towards them. They can stick to your fridge or make toys move without touching them! There are two sides to a magnet: one side is called 'north' and the other is 'south.' If you put two magnets together, the north side of one will stick to the south side of the other, but if you try to put two north sides together, they will push away from each other!\",\"czech_answer\":\"Magnety jsou zvláštní věci, které mohou přitahovat některé kovy, jako je železo. Mohou se přichytit na vaši lednici nebo pohybovat hračkami, aniž byste se jich dotkli! Magnet má dvě strany: jedna se nazývá 'sever' a druhá 'jih.' Když dáte dva magnety k sobě, severní strana jednoho se přichytí k jižní straně druhého, ale když se pokusíte dát dvě severní strany k sobě, budou se od sebe odtlačovat!\"}}\nHuman: Can you still remember my name?"
+                      ],
+                      "estimatedTokens": 373,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0.1,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Structured Output Parser1": [
+          {
+            "startTime": 1747344004761,
+            "executionTime": 0,
+            "executionIndex": 4,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent5",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "response": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "text": "{\"output\":{\"english_answer\":\"Magnets are special things that can pull some metals, like iron, towards them. They can stick to your fridge or make toys move without touching them! There are two sides to a magnet: one side is called 'north' and the other is 'south.' If you put two magnets together, the north side of one will stick to the south side of the other, but if you try to put two north sides together, they will push away from each other!\",\"czech_answer\":\"Magnety jsou zvláštní věci, které mohou přitahovat některé kovy, jako je železo. Mohou se přichytit na vaši lednici nebo pohybovat hračkami, aniž byste se jich dotkli! Magnet má dvě strany: jedna se nazývá 'sever' a druhá 'jih.' Když dáte dva magnety k sobě, severní strana jednoho se přichytí k jižní straně druhého, ale když se pokusíte dát dvě severní strany k sobě, budou se od sebe odtlačovat!\"}}"
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "Structured Output Parser1",
+                  "runIndex": 0
+                },
+                {
+                  "node": "Structured Output Parser1",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344005686,
+            "executionTime": 0,
+            "executionIndex": 9,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent3",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "response": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "text": "{\"output\":{\"english_answer\":\"Yes, your name is Oleg!\",\"czech_answer\":\"Ano, vaše jméno je Oleg!\"}}"
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "AI Agent5": [
+          {
+            "startTime": 1747344001053,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "When clicking \"Test workflow\""
+              }
+            ],
+            "hints": [],
+            "executionTime": 3709,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "output": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "AI Agent3": [
+          {
+            "startTime": 1747344004762,
+            "executionIndex": 6,
+            "source": [
+              {
+                "previousNode": "AI Agent5"
+              }
+            ],
+            "hints": [],
+            "executionTime": 925,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "output": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Edit Fields1": [
+          {
+            "startTime": 1747344005687,
+            "executionIndex": 11,
+            "source": [
+              {
+                "previousNode": "AI Agent3"
+              }
+            ],
+            "hints": [],
+            "executionTime": 3,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "contain_both_answers": true,
+                      "recalled_name": "true"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "OpenAI Chat Model2": [
+          {
+            "startTime": 1747344005694,
+            "executionTime": 558,
+            "executionIndex": 13,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent2",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\nHuman: Fetch example website"
+                      ],
+                      "estimatedTokens": 13,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0.3,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "OpenAI Chat Model2",
+                  "runIndex": 0
+                },
+                {
+                  "node": "OpenAI Chat Model2",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344006735,
+            "executionTime": 6742,
+            "executionIndex": 15,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent2",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\nHuman: Fetch example website\nAI: \nTool: <!doctype html>\n<html>\n<head>\n    <title>Example Domain</title>\n\n    <meta charset=\"utf-8\" />\n    <meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <style type=\"text/css\">\n    body {\n        background-color: #f0f0f2;\n        margin: 0;\n        padding: 0;\n        font-family: -apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", \"Open Sans\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n        \n    }\n    div {\n        width: 600px;\n        margin: 5em auto;\n        padding: 2em;\n        background-color: #fdfdff;\n        border-radius: 0.5em;\n        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);\n    }\n    a:link, a:visited {\n        color: #38488f;\n        text-decoration: none;\n    }\n    @media (max-width: 700px) {\n        div {\n            margin: 0 auto;\n            width: auto;\n        }\n    }\n    </style>    \n</head>\n\n<body>\n<div>\n    <h1>Example Domain</h1>\n    <p>This domain is for use in illustrative examples in documents. You may use this\n    domain in literature without prior coordination or asking for permission.</p>\n    <p><a href=\"https://www.iana.org/domains/example\">More information...</a></p>\n</div>\n</body>\n</html>\n"
+                      ],
+                      "estimatedTokens": 378,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0.3,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "HTTP Request": [
+          {
+            "startTime": 1747344006253,
+            "executionTime": 481,
+            "executionIndex": 14,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent2",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "response": "<!doctype html>\n<html>\n<head>\n    <title>Example Domain</title>\n\n    <meta charset=\"utf-8\" />\n    <meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <style type=\"text/css\">\n    body {\n        background-color: #f0f0f2;\n        margin: 0;\n        padding: 0;\n        font-family: -apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", \"Open Sans\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n        \n    }\n    div {\n        width: 600px;\n        margin: 5em auto;\n        padding: 2em;\n        background-color: #fdfdff;\n        border-radius: 0.5em;\n        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);\n    }\n    a:link, a:visited {\n        color: #38488f;\n        text-decoration: none;\n    }\n    @media (max-width: 700px) {\n        div {\n            margin: 0 auto;\n            width: auto;\n        }\n    }\n    </style>    \n</head>\n\n<body>\n<div>\n    <h1>Example Domain</h1>\n    <p>This domain is for use in illustrative examples in documents. You may use this\n    domain in literature without prior coordination or asking for permission.</p>\n    <p><a href=\"https://www.iana.org/domains/example\">More information...</a></p>\n</div>\n</body>\n</html>\n"
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "query": {}
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "HTTP Request",
+                  "runIndex": 0
+                }
+              ]
+            }
+          }
+        ],
+        "AI Agent2": [
+          {
+            "startTime": 1747344005690,
+            "executionIndex": 12,
+            "source": [
+              {
+                "previousNode": "When clicking \"Test workflow\""
+              }
+            ],
+            "hints": [],
+            "executionTime": 7788,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "output": "Here is the content of the example website:\n\n```html\n<!doctype html>\n<html>\n<head>\n    <title>Example Domain</title>\n\n    <meta charset=\"utf-8\" />\n    <meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <style type=\"text/css\">\n    body {\n        background-color: #f0f0f2;\n        margin: 0;\n        padding: 0;\n        font-family: -apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", \"Open Sans\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n        \n    }\n    div {\n        width: 600px;\n        margin: 5em auto;\n        padding: 2em;\n        background-color: #fdfdff;\n        border-radius: 0.5em;\n        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);\n    }\n    a:link, a:visited {\n        color: #38488f;\n        text-decoration: none;\n    }\n    @media (max-width: 700px) {\n        div {\n            margin: 0 auto;\n            width: auto;\n        }\n    }\n    </style>    \n</head>\n\n<body>\n<div>\n    <h1>Example Domain</h1>\n    <p>This domain is for use in illustrative examples in documents. You may use this\n    domain in literature without prior coordination or asking for permission.</p>\n    <p><a href=\"https://www.iana.org/domains/example\">More information...</a></p>\n</div>\n</body>\n</html>\n```\n\n### Summary of the Content:\n- **Title**: Example Domain\n- **Description**: This domain is for use in illustrative examples in documents. You may use this domain in literature without prior coordination or asking for permission.\n- **Link**: [More information...](https://www.iana.org/domains/example) \n\nThe page has a simple layout with a heading, a paragraph, and a link.",
+                      "intermediateSteps": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Edit Fields9": [
+          {
+            "startTime": 1747344013478,
+            "executionIndex": 16,
+            "source": [
+              {
+                "previousNode": "AI Agent2"
+              }
+            ],
+            "hints": [],
+            "executionTime": 4,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "empty_args": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "OpenAI Chat Model1": [
+          {
+            "startTime": 1747344013488,
+            "executionTime": 791,
+            "executionIndex": 18,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent1",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\nHuman: Convert this JSON array to a single string: ['This', 'Is', 'An', 'Array!']."
+                      ],
+                      "estimatedTokens": 32,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0.3,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "OpenAI Chat Model1",
+                  "runIndex": 0
+                },
+                {
+                  "node": "OpenAI Chat Model1",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344014286,
+            "executionTime": 710,
+            "executionIndex": 20,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent1",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\nHuman: Convert this JSON array to a single string: ['This', 'Is', 'An', 'Array!'].\nAI: \nTool: This, Is, An, Array!"
+                      ],
+                      "estimatedTokens": 46,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0.3,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Code Tool": [
+          {
+            "startTime": 1747344014280,
+            "executionTime": 4,
+            "executionIndex": 19,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent1",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "response": "This, Is, An, Array!"
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "query": {
+                        "strings_array": [
+                          "This",
+                          "Is",
+                          "An",
+                          "Array!"
+                        ]
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "Code Tool",
+                  "runIndex": 0
+                }
+              ]
+            }
+          }
+        ],
+        "AI Agent1": [
+          {
+            "startTime": 1747344013482,
+            "executionIndex": 17,
+            "source": [
+              {
+                "previousNode": "When clicking \"Test workflow\""
+              }
+            ],
+            "hints": [],
+            "executionTime": 1515,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "output": "The JSON array has been converted to a single string: \"This, Is, An, Array!\"",
+                      "intermediateSteps": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Edit Fields8": [
+          {
+            "startTime": 1747344014997,
+            "executionIndex": 21,
+            "source": [
+              {
+                "previousNode": "AI Agent1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 8,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "passed_array_parameter": {
+                        "object": true
+                      },
+                      "has_correct_length": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "OpenAI Chat Model": [
+          {
+            "startTime": 1747344015011,
+            "executionTime": 612,
+            "executionIndex": 23,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\n\nIMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.\nHuman: Tell me about M.C. Escher"
+                      ],
+                      "estimatedTokens": 91,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0.1,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "OpenAI Chat Model",
+                  "runIndex": 0
+                },
+                {
+                  "node": "OpenAI Chat Model",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344015633,
+            "executionTime": 1154,
+            "executionIndex": 25,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\n\nIMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.\nHuman: Tell me about M.C. Escher\nAI: \nTool: {\n  \"response\": \"Maurits Cornelis Escher (Dutch pronunciation: [ˈmʌurɪts kɔrˈneːlɪs ˈɛɕər]; 17 June 1898 – 27 March 1972) was a Dutch graphic artist who made woodcuts, lithographs, and mezzotints, many of which were inspired by mathematics. Despite wide popular interest, for most of his life Escher was neglected in the art world, even in his native Netherlands. He was 70 before a retrospective exhibition was held. In the late twentieth century, he became more widely appreciated, and in the twenty-first century he has been celebrated in exhibitions around the world.\\n\\nHis work features mathematical objects and operations including impossible objects, explorations of infinity, reflection, symmetry, perspective, truncated and stellated polyhedra, hyperbolic geometry, and tessellations. Although Escher believed he had no mathematical ability, he interacted with the mathematicians George Pólya, Roger Penrose, and Donald Coxeter, and the crystallographer Friedrich Haag, and conducted his own research into tessellation.\\n\\nEarly in his career, he drew inspiration from nature, making studies of insects, landscapes, and plants such as lichens, all of which he used as details in his artworks. He traveled in Italy and Spain, sketching buildings, townscapes, architecture and the tilings of the Alhambra and the Mezquita of Cordoba, and became steadily more interested in their mathematical structure.\\n\\nEscher's art became well known among scientists and mathematicians, and in popular culture, especially after it was featured by Martin Gardner in his April 1966 Mathematical Games column in Scientific American. Apart from being used in a variety of technical papers, his work has appeared on the covers of many books and albums. He was one of the major inspirations for Douglas Hofstadter's Pulitzer Prize-winning 1979 book Gödel, Escher, Bach.\\n\\nExhibitions\\n\\nPoster advertising the first major exhibition of Escher's work in Britain (Dulwich Picture Gallery, 14 October 2015 – 17 January 2016). The image, which shows Escher and his interest in geometric distortion and multiple levels of distance from reality, is based on his Hand with Reflecting Sphere, 1935.[62][22]\\nDespite wide popular interest, Escher was for a long time somewhat neglected in the art world; even in his native Netherlands, he was 70 before a retrospective exhibition was held.[43][k] In the twenty-first century, major exhibitions have been held in cities around the world.[63][64][65] An exhibition of his work in Rio de Janeiro attracted more than 573,000 visitors in 2011;[63] its daily visitor count of 9,677 made it the most visited museum exhibition of the year, anywhere in the world.[66] No major exhibition of Escher's work was held in Britain until 2015, when the Scottish National Gallery of Modern Art ran one in Edinburgh from June to September 2015,[64] moving in October 2015 to the Dulwich Picture Gallery, London. The exhibition poster is based on Hand with Reflecting Sphere, 1935, which shows Escher in his house reflected in a handheld sphere, thus illustrating the artist, his interest in levels of reality in art (e.g., is the hand in the foreground more real than the reflected one?), perspective, and spherical geometry.[22][62][67] The exhibition moved to Italy in 2015–2016, attracting over 500,000 visitors in Rome and Bologna,[65] and then Milan.[68][69][70]\"\n}"
+                      ],
+                      "estimatedTokens": 867,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0.1,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Search Wiki": [
+          {
+            "startTime": 1747344015624,
+            "executionTime": 7,
+            "executionIndex": 24,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "response": "Maurits Cornelis Escher (Dutch pronunciation: [ˈmʌurɪts kɔrˈneːlɪs ˈɛɕər]; 17 June 1898 – 27 March 1972) was a Dutch graphic artist who made woodcuts, lithographs, and mezzotints, many of which were inspired by mathematics. Despite wide popular interest, for most of his life Escher was neglected in the art world, even in his native Netherlands. He was 70 before a retrospective exhibition was held. In the late twentieth century, he became more widely appreciated, and in the twenty-first century he has been celebrated in exhibitions around the world.\n\nHis work features mathematical objects and operations including impossible objects, explorations of infinity, reflection, symmetry, perspective, truncated and stellated polyhedra, hyperbolic geometry, and tessellations. Although Escher believed he had no mathematical ability, he interacted with the mathematicians George Pólya, Roger Penrose, and Donald Coxeter, and the crystallographer Friedrich Haag, and conducted his own research into tessellation.\n\nEarly in his career, he drew inspiration from nature, making studies of insects, landscapes, and plants such as lichens, all of which he used as details in his artworks. He traveled in Italy and Spain, sketching buildings, townscapes, architecture and the tilings of the Alhambra and the Mezquita of Cordoba, and became steadily more interested in their mathematical structure.\n\nEscher's art became well known among scientists and mathematicians, and in popular culture, especially after it was featured by Martin Gardner in his April 1966 Mathematical Games column in Scientific American. Apart from being used in a variety of technical papers, his work has appeared on the covers of many books and albums. He was one of the major inspirations for Douglas Hofstadter's Pulitzer Prize-winning 1979 book Gödel, Escher, Bach.\n\nExhibitions\n\nPoster advertising the first major exhibition of Escher's work in Britain (Dulwich Picture Gallery, 14 October 2015 – 17 January 2016). The image, which shows Escher and his interest in geometric distortion and multiple levels of distance from reality, is based on his Hand with Reflecting Sphere, 1935.[62][22]\nDespite wide popular interest, Escher was for a long time somewhat neglected in the art world; even in his native Netherlands, he was 70 before a retrospective exhibition was held.[43][k] In the twenty-first century, major exhibitions have been held in cities around the world.[63][64][65] An exhibition of his work in Rio de Janeiro attracted more than 573,000 visitors in 2011;[63] its daily visitor count of 9,677 made it the most visited museum exhibition of the year, anywhere in the world.[66] No major exhibition of Escher's work was held in Britain until 2015, when the Scottish National Gallery of Modern Art ran one in Edinburgh from June to September 2015,[64] moving in October 2015 to the Dulwich Picture Gallery, London. The exhibition poster is based on Hand with Reflecting Sphere, 1935, which shows Escher in his house reflected in a handheld sphere, thus illustrating the artist, his interest in levels of reality in art (e.g., is the hand in the foreground more real than the reflected one?), perspective, and spherical geometry.[22][62][67] The exhibition moved to Italy in 2015–2016, attracting over 500,000 visitors in Rome and Bologna,[65] and then Milan.[68][69][70]"
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "query": "M.C. Escher"
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subExecution": {
+                "executionId": "3991",
+                "workflowId": "253"
+              },
+              "subRun": [
+                {
+                  "node": "Search Wiki",
+                  "runIndex": 0
+                }
+              ]
+            }
+          }
+        ],
+        "Structured Output Parser": [
+          {
+            "startTime": 1747344016787,
+            "executionTime": 1,
+            "executionIndex": 26,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "response": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_outputParser": [
+                [
+                  {
+                    "json": {
+                      "action": "parse",
+                      "text": "{\"output\":{\"name\":\"Maurits Cornelis Escher\",\"birthDate\":\"1898-06-17\",\"deathDate\":\"1972-03-27\",\"nationality\":\"Dutch\",\"profession\":\"Graphic Artist\",\"notableWorks\":[\"Relativity\",\"Waterfall\",\"Ascending and Descending\",\"Drawing Hands\",\"Metamorphosis II\"]}}"
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "Structured Output Parser",
+                  "runIndex": 0
+                }
+              ]
+            }
+          }
+        ],
+        "AI Agent": [
+          {
+            "startTime": 1747344015005,
+            "executionIndex": 22,
+            "source": [
+              {
+                "previousNode": "When clicking \"Test workflow\""
+              }
+            ],
+            "hints": [],
+            "executionTime": 1784,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "output": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Edit Fields7": [
+          {
+            "startTime": 1747344016789,
+            "executionIndex": 27,
+            "source": [
+              {
+                "previousNode": "AI Agent"
+              }
+            ],
+            "hints": [],
+            "executionTime": 8,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "has_birth_date": true,
+                      "has_death_date": "true",
+                      "has_name": "true",
+                      "has_works": "false"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "OpenAI Chat Model4": [
+          {
+            "startTime": 1747344016801,
+            "executionTime": 1075,
+            "executionIndex": 29,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent4",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\nHuman: Help me plan my day in Berlin, Germany. Check current the weather  and get the upcoming events and respond with weather and details about the upcoming events.\n\nEach tool should only be called only once."
+                      ],
+                      "estimatedTokens": 50,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subRun": [
+                {
+                  "node": "OpenAI Chat Model4",
+                  "runIndex": 0
+                },
+                {
+                  "node": "OpenAI Chat Model4",
+                  "runIndex": 1
+                }
+              ]
+            }
+          },
+          {
+            "startTime": 1747344017902,
+            "executionTime": 5549,
+            "executionIndex": 32,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent4",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "response": {
+                        "object": true
+                      },
+                      "tokenUsage": {
+                        "object": true
+                      }
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_languageModel": [
+                [
+                  {
+                    "json": {
+                      "messages": [
+                        "System: You are a helpful assistant\nHuman: Help me plan my day in Berlin, Germany. Check current the weather  and get the upcoming events and respond with weather and details about the upcoming events.\n\nEach tool should only be called only once.\nAI: \nTool: {\n  \"response\": \"{\\n    \\\"created\\\": \\\"2024-03-04T09:26:23+01:00\\\",\\n    \\\"symbolCode\\\": {\\n        \\\"next1Hour\\\": \\\"fog\\\"\\n    },\\n    \\\"temperature\\\": {\\n        \\\"value\\\": 5.1,\\n        \\\"feelsLike\\\": 4\\n    },\\n    \\\"precipitation\\\": {\\n        \\\"value\\\": 0.0\\n    },\\n    \\\"wind\\\": {\\n        \\\"direction\\\": 275,\\n        \\\"speed\\\": 1.7\\n    },\\n    \\\"status\\\": {\\n        \\\"code\\\": \\\"Ok\\\"\\n    }\\n}\"\n}\nTool: {\n  \"response\": \"[\\n    {\\n        \\\"description\\\": \\\"***Movie Barf* is a new English friendly film night presented by film journalist and blogger Ryan Keating-Lambert, dedicated to screening a diverse variety of award-winning films both contemporary and classic. Ryan’s late night shows includes intriguing chats with various guests (in person or over Skype in the case of the international ones) and special drink offers at the bar.**\\\\n\\\\n*Dune: Part Two* / Denis Villeneuve / Canada, USA 2024 / 166 min – Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.\\\",\\n        \\\"name\\\": \\\"Movie Barf: Dune – Part Two\\\",\\n        \\\"endDate\\\": \\\"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\\\"\\n    },\\n    {\\n        \\\"description\\\": \\\"Luboš Pospíšil will perform with the renewed band 5P on March 14 at the cultural house of Barikadník.\\\",\\n        \\\"name\\\": \\\"Luboš Pospíšil & 5P\\\",\\n        \\\"endDate\\\": \\\"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\\\"\\n    },\\n    {\\n        \\\"description\\\": \\\"An insomniac office worker looking for a way to change his life crosses paths with a devil-may-care soap maker and they form an underground fight club that evolves into something much, much more...\\\",\\n        \\\"name\\\": \\\"Fight Club\\\",\\n        \\\"endDate\\\": \\\"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\\\"\\n    },\\n    {\\n        \\\"description\\\": \\\"From filmmaker Yorgos Lanthimos and producer Emma Stone comes the incredible tale and fantastical evolution of Bella Baxter (Stone), a young woman brought back to life by the brilliant and unorthodox scientist Dr. Godwin Baxter (Willem Dafoe). Under Baxter's protection, Bella is eager to learn. Hungry for the worldliness she is lacking, she runs off with Duncan Wedderburn (Mark Ruffalo), a slick and debauched lawyer, on a whirlwind adventure across the continents. Free from the prejudices of her times, Bella grows steadfast in her purpose to stand for equality and liberation.\\\",\\n        \\\"name\\\": \\\"Poor Things\\\",\\n        \\\"endDate\\\": \\\"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\\\"\\n    },\\n    {\\n        \\\"description\\\": \\\"Concert of Bharata Rajnošek, who decided to do something very brave - pay tribute to king of the pop, Michael Jackson in jazz.\\\",\\n        \\\"name\\\": \\\"Tribute to World Legends: Michael Jackson\\\",\\n        \\\"endDate\\\": \\\"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\\\"\\n    }\\n]\"\n}"
+                      ],
+                      "estimatedTokens": 862,
+                      "options": {
+                        "openai_api_key": {
+                          "lc": 1,
+                          "type": "secret",
+                          "id": [
+                            "OPENAI_API_KEY"
+                          ]
+                        },
+                        "model": "gpt-4o-mini",
+                        "temperature": 0,
+                        "timeout": 60000,
+                        "max_retries": 2,
+                        "configuration": {
+                          "baseURL": "https://api.openai.com/v1"
+                        },
+                        "model_kwargs": {}
+                      }
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Get Weather": [
+          {
+            "startTime": 1747344017877,
+            "executionTime": 22,
+            "executionIndex": 30,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent4",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "response": "{\n    \"created\": \"2024-03-04T09:26:23+01:00\",\n    \"symbolCode\": {\n        \"next1Hour\": \"fog\"\n    },\n    \"temperature\": {\n        \"value\": 5.1,\n        \"feelsLike\": 4\n    },\n    \"precipitation\": {\n        \"value\": 0.0\n    },\n    \"wind\": {\n        \"direction\": 275,\n        \"speed\": 1.7\n    },\n    \"status\": {\n        \"code\": \"Ok\"\n    }\n}"
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "query": "Berlin, Germany"
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subExecution": {
+                "executionId": "3992",
+                "workflowId": "253"
+              },
+              "subRun": [
+                {
+                  "node": "Get Weather",
+                  "runIndex": 0
+                }
+              ]
+            }
+          }
+        ],
+        "Get Events": [
+          {
+            "startTime": 1747344017878,
+            "executionTime": 21,
+            "executionIndex": 31,
+            "executionStatus": "success",
+            "source": [
+              {
+                "previousNode": "AI Agent4",
+                "previousNodeRun": 0
+              }
+            ],
+            "data": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "response": "[\n    {\n        \"description\": \"***Movie Barf* is a new English friendly film night presented by film journalist and blogger Ryan Keating-Lambert, dedicated to screening a diverse variety of award-winning films both contemporary and classic. Ryan’s late night shows includes intriguing chats with various guests (in person or over Skype in the case of the international ones) and special drink offers at the bar.**\\n\\n*Dune: Part Two* / Denis Villeneuve / Canada, USA 2024 / 166 min – Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.\",\n        \"name\": \"Movie Barf: Dune – Part Two\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    },\n    {\n        \"description\": \"Luboš Pospíšil will perform with the renewed band 5P on March 14 at the cultural house of Barikadník.\",\n        \"name\": \"Luboš Pospíšil & 5P\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    },\n    {\n        \"description\": \"An insomniac office worker looking for a way to change his life crosses paths with a devil-may-care soap maker and they form an underground fight club that evolves into something much, much more...\",\n        \"name\": \"Fight Club\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    },\n    {\n        \"description\": \"From filmmaker Yorgos Lanthimos and producer Emma Stone comes the incredible tale and fantastical evolution of Bella Baxter (Stone), a young woman brought back to life by the brilliant and unorthodox scientist Dr. Godwin Baxter (Willem Dafoe). Under Baxter's protection, Bella is eager to learn. Hungry for the worldliness she is lacking, she runs off with Duncan Wedderburn (Mark Ruffalo), a slick and debauched lawyer, on a whirlwind adventure across the continents. Free from the prejudices of her times, Bella grows steadfast in her purpose to stand for equality and liberation.\",\n        \"name\": \"Poor Things\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    },\n    {\n        \"description\": \"Concert of Bharata Rajnošek, who decided to do something very brave - pay tribute to king of the pop, Michael Jackson in jazz.\",\n        \"name\": \"Tribute to World Legends: Michael Jackson\",\n        \"endDate\": \"Mon Mar 04 2024 23:59:59 GMT+0100 (Central European Standard Time)\"\n    }\n]"
+                    }
+                  }
+                ]
+              ]
+            },
+            "inputOverride": {
+              "ai_tool": [
+                [
+                  {
+                    "json": {
+                      "query": "Berlin, Germany"
+                    }
+                  }
+                ]
+              ]
+            },
+            "metadata": {
+              "subExecution": {
+                "executionId": "3993",
+                "workflowId": "253"
+              },
+              "subRun": [
+                {
+                  "node": "Get Events",
+                  "runIndex": 0
+                }
+              ]
+            }
+          }
+        ],
+        "AI Agent4": [
+          {
+            "startTime": 1747344016797,
+            "executionIndex": 28,
+            "source": [
+              {
+                "previousNode": "When clicking \"Test workflow\""
+              }
+            ],
+            "hints": [],
+            "executionTime": 6656,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "output": "### Weather in Berlin, Germany\n- **Current Temperature**: 5.1°C (Feels like 4°C)\n- **Weather Condition**: Fog\n- **Wind**: 1.7 m/s from the west (275°)\n- **Precipitation**: None expected\n\n### Upcoming Events in Berlin\n1. **Movie Barf: Dune – Part Two**\n   - **Description**: A new English-friendly film night featuring *Dune: Part Two*, where Paul Atreides seeks revenge against the conspirators who destroyed his family. Includes intriguing chats with guests and special drink offers.\n   - **End Date**: March 4, 2024, 23:59\n\n2. **Luboš Pospíšil & 5P**\n   - **Description**: Performance by Luboš Pospíšil with the band 5P at the cultural house of Barikadníků.\n   - **End Date**: March 4, 2024, 23:59\n\n3. **Fight Club**\n   - **Description**: A film screening about an insomniac office worker who forms an underground fight club that evolves into something much more.\n   - **End Date**: March 4, 2024, 23:59\n\n4. **Poor Things**\n   - **Description**: A film about Bella Baxter, a young woman brought back to life by an unorthodox scientist, who embarks on a whirlwind adventure seeking equality and liberation.\n   - **End Date**: March 4, 2024, 23:59\n\n5. **Tribute to World Legends: Michael Jackson**\n   - **Description**: A concert paying tribute to the King of Pop, Michael Jackson, in a jazz style by Bharata Rajnošek.\n   - **End Date**: March 4, 2024, 23:59\n\n### Summary\nYou can enjoy a cozy day in Berlin with foggy weather, perfect for indoor activities. Consider attending one of the film screenings or the Michael Jackson tribute concert for a fun evening!"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Edit Fields6": [
+          {
+            "startTime": 1747344023453,
+            "executionIndex": 33,
+            "source": [
+              {
+                "previousNode": "AI Agent4"
+              }
+            ],
+            "hints": [],
+            "executionTime": 1,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "has_weather": true,
+                      "has_movie": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Edit Fields6"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {
+        "Window Buffer Memory1": [
+          {
+            "subRun": [
+              {
+                "node": "Window Buffer Memory1",
+                "runIndex": 0
+              },
+              {
+                "node": "Window Buffer Memory1",
+                "runIndex": 1
+              },
+              {
+                "node": "Window Buffer Memory1",
+                "runIndex": 2
+              },
+              {
+                "node": "Window Buffer Memory1",
+                "runIndex": 3
+              }
+            ]
+          }
+        ],
+        "OpenAI Chat Model3": [
+          {
+            "subRun": [
+              {
+                "node": "OpenAI Chat Model3",
+                "runIndex": 0
+              },
+              {
+                "node": "OpenAI Chat Model3",
+                "runIndex": 1
+              }
+            ]
+          }
+        ],
+        "Structured Output Parser1": [
+          {
+            "subRun": [
+              {
+                "node": "Structured Output Parser1",
+                "runIndex": 0
+              },
+              {
+                "node": "Structured Output Parser1",
+                "runIndex": 1
+              }
+            ]
+          }
+        ],
+        "OpenAI Chat Model2": [
+          {
+            "subRun": [
+              {
+                "node": "OpenAI Chat Model2",
+                "runIndex": 0
+              },
+              {
+                "node": "OpenAI Chat Model2",
+                "runIndex": 1
+              }
+            ]
+          }
+        ],
+        "HTTP Request": [
+          {
+            "subRun": [
+              {
+                "node": "HTTP Request",
+                "runIndex": 0
+              }
+            ]
+          }
+        ],
+        "OpenAI Chat Model1": [
+          {
+            "subRun": [
+              {
+                "node": "OpenAI Chat Model1",
+                "runIndex": 0
+              },
+              {
+                "node": "OpenAI Chat Model1",
+                "runIndex": 1
+              }
+            ]
+          }
+        ],
+        "Code Tool": [
+          {
+            "subRun": [
+              {
+                "node": "Code Tool",
+                "runIndex": 0
+              }
+            ]
+          }
+        ],
+        "OpenAI Chat Model": [
+          {
+            "subRun": [
+              {
+                "node": "OpenAI Chat Model",
+                "runIndex": 0
+              },
+              {
+                "node": "OpenAI Chat Model",
+                "runIndex": 1
+              }
+            ]
+          }
+        ],
+        "Search Wiki": [
+          {
+            "subRun": [
+              {
+                "node": "Search Wiki",
+                "runIndex": 0
+              }
+            ]
+          }
+        ],
+        "Structured Output Parser": [
+          {
+            "subRun": [
+              {
+                "node": "Structured Output Parser",
+                "runIndex": 0
+              }
+            ]
+          }
+        ],
+        "OpenAI Chat Model4": [
+          {
+            "subRun": [
+              {
+                "node": "OpenAI Chat Model4",
+                "runIndex": 0
+              },
+              {
+                "node": "OpenAI Chat Model4",
+                "runIndex": 1
+              }
+            ]
+          }
+        ],
+        "Get Weather": [
+          {
+            "subRun": [
+              {
+                "node": "Get Weather",
+                "runIndex": 0
+              }
+            ]
+          }
+        ],
+        "Get Events": [
+          {
+            "subRun": [
+              {
+                "node": "Get Events",
+                "runIndex": 0
+              }
+            ]
+          }
+        ]
+      },
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:20:01.053Z",
+  "stoppedAt": "2025-05-15T21:20:23.454Z",
+  "status": "running",
+  "finished": true
+}

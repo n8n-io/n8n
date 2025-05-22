@@ -3,7 +3,7 @@ import { ExpressionExtensions } from 'n8n-workflow';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '../composables/useTelemetry';
 import type { Compartment } from '@codemirror/state';
 import { debounce } from 'lodash-es';

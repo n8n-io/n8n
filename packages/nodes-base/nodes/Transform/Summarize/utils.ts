@@ -252,6 +252,7 @@ export function aggregateAndSplitData({
 				fieldsToSummarize,
 				options,
 				getValue,
+				convertKeysToString,
 			}),
 		]),
 	);

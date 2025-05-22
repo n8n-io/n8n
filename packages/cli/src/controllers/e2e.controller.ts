@@ -1,7 +1,7 @@
 import type { PushMessage } from '@n8n/api-types';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import { AuthUserRepository, SettingsRepository, UserRepository } from '@n8n/db';
+import { SettingsRepository, UserRepository } from '@n8n/db';
 import { Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
@@ -149,7 +149,6 @@ export class E2EController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventBus: MessageEventBus,
 		private readonly userRepository: UserRepository,
-		private readonly authUserRepository: AuthUserRepository,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -280,7 +279,7 @@ export class E2EController {
 			const { encryptedRecoveryCodes, encryptedSecret } =
 				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
 
-			await this.authUserRepository.update(newOwner.user.id, {
+			await this.userRepository.update(newOwner.user.id, {
 				mfaSecret: encryptedSecret,
 				mfaRecoveryCodes: encryptedRecoveryCodes,
 			});

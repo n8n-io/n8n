@@ -1,17 +1,17 @@
 import { createTagsApi } from '@/api/tags';
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { ITag } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 import { useWorkflowsStore } from './workflows.store';
 
 const apiMapping = {
 	[STORES.TAGS]: createTagsApi('/tags'),
 	[STORES.ANNOTATION_TAGS]: createTagsApi('/annotation-tags'),
-};
+} as const;
 
-const createTagsStore = (id: STORES.TAGS | STORES.ANNOTATION_TAGS) => {
+const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS) => {
 	const tagsApi = apiMapping[id];
 
 	return defineStore(

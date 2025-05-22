@@ -78,7 +78,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
@@ -116,12 +116,13 @@ import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
 import { useFoldersStore } from '@/stores/folders.store';
-import { useAgentRequestStore } from '@/stores/agentRequest.store';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
+import { useLogsStore } from '@/stores/logs.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -175,6 +176,7 @@ const templatesStore = useTemplatesStore();
 const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
 const agentRequestStore = useAgentRequestStore();
+const logsStore = useLogsStore();
 
 const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
@@ -224,7 +226,7 @@ const {
 	editableWorkflow,
 	editableWorkflowObject,
 	lastClickPosition,
-	toggleChatOpen,
+	startChat,
 } = useCanvasOperations({ router });
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
@@ -272,7 +274,7 @@ const keyBindingsEnabled = computed(() => {
 	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
 });
 
-const isLogsPanelOpen = computed(() => workflowsStore.logsPanelState !== LOGS_PANEL_STATE.CLOSED);
+const isLogsPanelOpen = computed(() => logsStore.isOpen);
 
 /**
  * Initialization
@@ -1358,12 +1360,8 @@ const chatTriggerNodePinnedData = computed(() => {
 	return workflowsStore.pinDataByNodeName(chatTriggerNode.value.name);
 });
 
-async function onToggleChat() {
-	await toggleChatOpen('main');
-}
-
-async function onOpenChat() {
-	await toggleChatOpen('main', true);
+function onOpenChat() {
+	startChat('main');
 }
 
 /**
@@ -1933,6 +1931,9 @@ onBeforeUnmount(() => {
 		@update:node:parameters="onUpdateNodeParameters"
 		@update:node:inputs="onUpdateNodeInputs"
 		@update:node:outputs="onUpdateNodeOutputs"
+		@update:logs-open="logsStore.toggleOpen($event)"
+		@update:logs:input-open="logsStore.toggleInputOpen"
+		@update:logs:output-open="logsStore.toggleOutputOpen"
 		@open:sub-workflow="onOpenSubWorkflow"
 		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"
@@ -1958,6 +1959,7 @@ onBeforeUnmount(() => {
 		@selection:end="onSelectionEnd"
 		@drag-and-drop="onDragAndDrop"
 		@tidy-up="onTidyUp"
+		@start-chat="startChat()"
 	>
 		<Suspense>
 			<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
@@ -1972,12 +1974,25 @@ onBeforeUnmount(() => {
 				@mouseleave="onRunWorkflowButtonMouseLeave"
 				@click="runEntireWorkflow('main')"
 			/>
-			<CanvasChatButton
-				v-if="containsChatTriggerNodes"
-				:type="isLogsPanelOpen ? 'tertiary' : 'primary'"
-				:label="isLogsPanelOpen ? i18n.baseText('chat.hide') : i18n.baseText('chat.open')"
-				@click="onToggleChat"
-			/>
+			<template v-if="containsChatTriggerNodes">
+				<CanvasChatButton
+					v-if="isLogsPanelOpen"
+					type="tertiary"
+					:label="i18n.baseText('chat.hide')"
+					@click="logsStore.toggleOpen(false)"
+				/>
+				<KeyboardShortcutTooltip
+					v-else
+					:label="i18n.baseText('chat.open')"
+					:shortcut="{ keys: ['c'] }"
+				>
+					<CanvasChatButton
+						type="primary"
+						:label="i18n.baseText('chat.open')"
+						@click="onOpenChat"
+					/>
+				</KeyboardShortcutTooltip>
+			</template>
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"
 				:stopping="isStoppingExecution"

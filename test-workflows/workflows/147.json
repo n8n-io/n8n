@@ -1,0 +1,447 @@
+{
+  "createdAt": "2021-03-24T08:48:20.306Z",
+  "updatedAt": "2021-03-24T08:55:26.613Z",
+  "id": "147",
+  "name": "Raindrop:User:get:Collection:create get update getAll delete:Bookmark:create get update getAll delete:Tag:getAll delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "953c7b03-6474-482f-84d8-1f38d7183bd3"
+    },
+    {
+      "parameters": {
+        "resource": "user"
+      },
+      "name": "Raindrop",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        460,
+        230
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "c299bc92-d175-4684-9c2e-e7d6b730d94c"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "title": "=Collection{{Date.now()}}",
+        "additionalFields": {
+          "public": false
+        }
+      },
+      "name": "Raindrop1",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        460,
+        380
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "30ba40e6-5e26-4937-ae66-5a5257529c11"
+    },
+    {
+      "parameters": {
+        "collectionId": "={{$node[\"Raindrop1\"].json[\"_id\"]}}"
+      },
+      "name": "Raindrop2",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        600,
+        380
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "7dad07a5-e3d6-450d-89bb-c769e31352ad"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collectionId": "={{$node[\"Raindrop1\"].json[\"_id\"]}}",
+        "updateFields": {
+          "title": "=Updated{{$node[\"Raindrop1\"].json[\"title\"]}}"
+        }
+      },
+      "name": "Raindrop3",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        750,
+        380
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "cc020621-137d-42b4-9d89-80efcc6a2b84"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1
+      },
+      "name": "Raindrop4",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        900,
+        380
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "142119f2-857c-4f0c-b64b-869fc06c7b95"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "collectionId": "={{$node[\"Raindrop1\"].json[\"_id\"]}}"
+      },
+      "name": "Raindrop5",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        2100,
+        370
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "bea41e9d-700f-42a2-99b7-53ff087665b8"
+    },
+    {
+      "parameters": {
+        "resource": "bookmark",
+        "operation": "create",
+        "collectionId": "={{$node[\"Raindrop1\"].json[\"_id\"]}}",
+        "link": "https://n8n.io/",
+        "additionalFields": {
+          "tags": "n8n,automation,worfklow,test",
+          "title": "=Bookmark{{Date.now()}}"
+        }
+      },
+      "name": "Raindrop6",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        500
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "c8a5347b-d739-4cf1-be7c-1a6039837561"
+    },
+    {
+      "parameters": {
+        "resource": "bookmark",
+        "bookmarkId": "={{$node[\"Raindrop6\"].json[\"_id\"]}}"
+      },
+      "name": "Raindrop7",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        500
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "f37f269e-85b5-4159-85a5-34bd8401a8b4"
+    },
+    {
+      "parameters": {
+        "resource": "bookmark",
+        "operation": "update",
+        "bookmarkId": "={{$node[\"Raindrop6\"].json[\"_id\"]}}",
+        "updateFields": {
+          "title": "=Updated{{$node[\"Raindrop6\"].json[\"title\"]}}"
+        }
+      },
+      "name": "Raindrop8",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        1350,
+        500
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "d715febb-1ab1-41d3-8a19-93da561c50bb"
+    },
+    {
+      "parameters": {
+        "resource": "bookmark",
+        "operation": "getAll",
+        "collectionId": "={{$node[\"Raindrop1\"].json[\"_id\"]}}",
+        "limit": 1
+      },
+      "name": "Raindrop9",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        500
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "847a3d9e-862b-406e-a34f-547af4ac0daa"
+    },
+    {
+      "parameters": {
+        "resource": "bookmark",
+        "operation": "delete",
+        "bookmarkId": "={{$node[\"Raindrop6\"].json[\"_id\"]}}"
+      },
+      "name": "Raindrop10",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        1950,
+        500
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "6e9390e2-9249-481e-8345-c6f039a267b9"
+    },
+    {
+      "parameters": {
+        "resource": "tag",
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Raindrop11",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        650
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "e6c67559-328b-4442-b3e8-167a3c58116a"
+    },
+    {
+      "parameters": {
+        "resource": "tag",
+        "operation": "delete",
+        "tags": "test",
+        "additionalFields": {}
+      },
+      "name": "Raindrop12",
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        650
+      ],
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "118",
+          "name": "Raindrop OAuth2 API creds"
+        }
+      },
+      "id": "4db832b9-cbce-4e45-b404-fe5f7d0e7924"
+    }
+  ],
+  "connections": {
+    "Raindrop1": {
+      "main": [
+        [
+          {
+            "node": "Raindrop2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop2": {
+      "main": [
+        [
+          {
+            "node": "Raindrop3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop3": {
+      "main": [
+        [
+          {
+            "node": "Raindrop4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop4": {
+      "main": [
+        [
+          {
+            "node": "Raindrop6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop6": {
+      "main": [
+        [
+          {
+            "node": "Raindrop7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop7": {
+      "main": [
+        [
+          {
+            "node": "Raindrop8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop8": {
+      "main": [
+        [
+          {
+            "node": "Raindrop9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop9": {
+      "main": [
+        [
+          {
+            "node": "Raindrop11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop11": {
+      "main": [
+        [
+          {
+            "node": "Raindrop12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop12": {
+      "main": [
+        [
+          {
+            "node": "Raindrop10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raindrop10": {
+      "main": [
+        [
+          {
+            "node": "Raindrop5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Raindrop",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Raindrop1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}

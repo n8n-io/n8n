@@ -1,0 +1,423 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "startTime": 1747343895845,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "CustomerIo": [
+          {
+            "startTime": 1747343895845,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 391,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 1,
+                      "deduplicate_id": "1:1621034971",
+                      "name": "Onboarding Campaign",
+                      "type": "segment",
+                      "created": 1614868557,
+                      "updated": 1621034971,
+                      "active": false,
+                      "state": "draft",
+                      "actions": [
+                        "json array"
+                      ],
+                      "first_started": 0,
+                      "created_by": "nodeqa@n8n.io",
+                      "tags": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "CustomerIo3": [
+          {
+            "startTime": 1747343896236,
+            "executionIndex": 2,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "hints": [],
+            "executionTime": 184,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": "customer1747343896241",
+                      "email": "fakeemail1747343896244@gmail.com"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "CustomerIo1": [
+          {
+            "startTime": 1747343896420,
+            "executionIndex": 3,
+            "source": [
+              {
+                "previousNode": "CustomerIo"
+              }
+            ],
+            "hints": [],
+            "executionTime": 393,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "series": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "CustomerIo5": [
+          {
+            "startTime": 1747343896813,
+            "executionIndex": 4,
+            "source": [
+              {
+                "previousNode": "CustomerIo3"
+              }
+            ],
+            "hints": [],
+            "executionTime": 173,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "CustomerIo7": [
+          {
+            "startTime": 1747343896986,
+            "executionIndex": 5,
+            "source": [
+              {
+                "previousNode": "CustomerIo3"
+              }
+            ],
+            "hints": [],
+            "executionTime": 167,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "CustomerIo2": [
+          {
+            "startTime": 1747343897153,
+            "executionIndex": 6,
+            "source": [
+              {
+                "previousNode": "CustomerIo1"
+              }
+            ],
+            "hints": [],
+            "executionTime": 365,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "id": 1,
+                      "deduplicate_id": "1:1621034971",
+                      "name": "Onboarding Campaign",
+                      "type": "segment",
+                      "created": 1614868557,
+                      "updated": 1621034971,
+                      "active": false,
+                      "state": "draft",
+                      "actions": [
+                        "json array"
+                      ],
+                      "first_started": 0,
+                      "tags": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "id": 2,
+                      "deduplicate_id": "2:1621034971",
+                      "name": "Re-engage Inactive Users",
+                      "type": "segment",
+                      "created": 1614868557,
+                      "updated": 1621034971,
+                      "active": false,
+                      "state": "draft",
+                      "actions": [
+                        "json array"
+                      ],
+                      "first_started": 0,
+                      "tags": [
+                        "json array"
+                      ]
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "id": 4,
+                      "deduplicate_id": "4:1646029232",
+                      "name": "Order Confirmation",
+                      "type": "event",
+                      "created": 1614868557,
+                      "updated": 1646029232,
+                      "active": false,
+                      "state": "draft",
+                      "actions": [
+                        "json array"
+                      ],
+                      "first_started": 0,
+                      "tags": [
+                        "json array"
+                      ],
+                      "event_name": "purchase"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "id": 5,
+                      "deduplicate_id": "5:1646029232",
+                      "name": "Anniversary Campaign",
+                      "type": "date",
+                      "created": 1614868557,
+                      "updated": 1646029232,
+                      "active": false,
+                      "state": "draft",
+                      "actions": [
+                        "json array"
+                      ],
+                      "first_started": 0,
+                      "tags": [
+                        "json array"
+                      ],
+                      "frequency": "yearly",
+                      "date_attribute": "created_at",
+                      "timezone": "US/Eastern",
+                      "use_customer_timezone": false,
+                      "start_hour": 10,
+                      "start_minutes": 0
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  },
+                  {
+                    "json": {
+                      "id": 7,
+                      "deduplicate_id": "7:1657207430",
+                      "name": "test cmpg",
+                      "type": "segment",
+                      "created": 1657207358,
+                      "updated": 1657207430,
+                      "active": false,
+                      "state": "draft",
+                      "actions": [
+                        "json array"
+                      ],
+                      "first_started": 0,
+                      "tags": {
+                        "object": true
+                      }
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "CustomerIo6": [
+          {
+            "startTime": 1747343897518,
+            "executionIndex": 7,
+            "source": [
+              {
+                "previousNode": "CustomerIo5"
+              }
+            ],
+            "hints": [],
+            "executionTime": 166,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "CustomerIo8": [
+          {
+            "startTime": 1747343897684,
+            "executionIndex": 8,
+            "source": [
+              {
+                "previousNode": "CustomerIo7"
+              }
+            ],
+            "hints": [],
+            "executionTime": 178,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "CustomerIo4": [
+          {
+            "startTime": 1747343897862,
+            "executionIndex": 9,
+            "source": [
+              {
+                "previousNode": "CustomerIo8"
+              }
+            ],
+            "hints": [],
+            "executionTime": 168,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "success": true
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "CustomerIo4"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2025-05-15T21:18:15.844Z",
+  "stoppedAt": "2025-05-15T21:18:18.030Z",
+  "status": "running",
+  "finished": true
+}

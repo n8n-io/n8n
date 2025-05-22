@@ -1,0 +1,260 @@
+{
+  "data": {
+    "startData": {},
+    "resultData": {
+      "runData": {
+        "Start": [
+          {
+            "hints": [],
+            "startTime": 1726655396881,
+            "executionTime": 0,
+            "source": [],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {},
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Beeminder": [
+          {
+            "hints": [],
+            "startTime": 1726655396881,
+            "executionTime": 2507,
+            "source": [
+              {
+                "previousNode": "Start"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "timestamp": 1726655397,
+                      "value": 1,
+                      "comment": "",
+                      "id": "66eaaba5f0168a005520990a",
+                      "updated_at": 1726655397,
+                      "requestid": {
+                        "object": true
+                      },
+                      "canonical": "18 1",
+                      "fulltext": "2024-Sep-18 entered at 12:29 by n8nsandbox via api",
+                      "urtext": {
+                        "object": true
+                      },
+                      "origin": "api",
+                      "creator": "n8nsandbox",
+                      "created_at": "2024-09-18T10:29:57.000Z",
+                      "daystamp": "20240918",
+                      "status": "created"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Beeminder1": [
+          {
+            "hints": [],
+            "startTime": 1726655399388,
+            "executionTime": 652,
+            "source": [
+              {
+                "previousNode": "Beeminder"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "timestamp": 1726655397,
+                      "value": 1,
+                      "comment": "",
+                      "id": "66eaaba5f0168a005520990a",
+                      "updated_at": 1726655397,
+                      "requestid": {
+                        "object": true
+                      },
+                      "canonical": "18 1",
+                      "fulltext": "2024-Sep-18 entered at 12:29 by n8nsandbox via api",
+                      "urtext": {
+                        "object": true
+                      },
+                      "origin": "api",
+                      "creator": "n8nsandbox",
+                      "created_at": "2024-09-18T10:29:57.000Z",
+                      "daystamp": "20240918"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Beeminder2": [
+          {
+            "hints": [],
+            "startTime": 1726655400040,
+            "executionTime": 5736,
+            "source": [
+              {
+                "previousNode": "Beeminder1"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "timestamp": 1726655397,
+                      "value": 10,
+                      "comment": "",
+                      "id": "66eaaba5f0168a005520990a",
+                      "updated_at": 1726655405,
+                      "requestid": {
+                        "object": true
+                      },
+                      "canonical": "18 10",
+                      "fulltext": "2024-Sep-18 entered at 12:29 by n8nsandbox via api",
+                      "urtext": {
+                        "object": true
+                      },
+                      "origin": "api",
+                      "creator": "n8nsandbox",
+                      "created_at": "2024-09-18T10:29:57.000Z",
+                      "daystamp": "20240918"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Beeminder4": [
+          {
+            "hints": [],
+            "startTime": 1726655405776,
+            "executionTime": 5760,
+            "source": [
+              {
+                "previousNode": "Beeminder2"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "timestamp": 1726655411,
+                      "value": 3,
+                      "comment": "",
+                      "id": "66eaabb3f0168a0069209095",
+                      "updated_at": 1726655411,
+                      "requestid": {
+                        "object": true
+                      },
+                      "canonical": "18 3",
+                      "fulltext": "2024-Sep-18 entered at 12:30 by n8nsandbox via api",
+                      "urtext": {
+                        "object": true
+                      },
+                      "origin": "api",
+                      "creator": "n8nsandbox",
+                      "created_at": "2024-09-18T10:30:11.000Z",
+                      "daystamp": "20240918",
+                      "status": "created"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Beeminder3": [
+          {
+            "hints": [],
+            "startTime": 1726655411536,
+            "executionTime": 5731,
+            "source": [
+              {
+                "previousNode": "Beeminder4"
+              }
+            ],
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "timestamp": 1726655411,
+                      "value": 3,
+                      "comment": "",
+                      "id": "66eaabb3f0168a0069209095",
+                      "updated_at": 1726655411,
+                      "requestid": {
+                        "object": true
+                      },
+                      "canonical": "18 3",
+                      "fulltext": "2024-Sep-18 entered at 12:30 by n8nsandbox via api",
+                      "urtext": {
+                        "object": true
+                      },
+                      "origin": "api",
+                      "creator": "n8nsandbox",
+                      "created_at": "2024-09-18T10:30:11.000Z",
+                      "daystamp": "20240918"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Beeminder3"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {}
+    }
+  },
+  "mode": "cli",
+  "startedAt": "2024-09-18T10:29:56.881Z",
+  "stoppedAt": "2024-09-18T10:30:17.267Z",
+  "status": "running",
+  "finished": true
+}

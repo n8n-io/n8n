@@ -1,0 +1,162 @@
+{
+  "createdAt": "2021-02-25T10:14:44.063Z",
+  "updatedAt": "2021-02-25T10:14:44.063Z",
+  "id": "66",
+  "name": "Storyblok:Story:get getAll publish unpublish",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "0da0a738-e19c-4837-af8b-0a1ae6cd7943"
+    },
+    {
+      "parameters": {
+        "source": "managementApi",
+        "operation": "getAll",
+        "space": 106530,
+        "returnAll": true,
+        "filters": {}
+      },
+      "name": "Storyblok",
+      "type": "n8n-nodes-base.storyblok",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ],
+      "credentials": {
+        "storyblokManagementApi": {
+          "id": "56",
+          "name": "Storyblok Management creds"
+        }
+      },
+      "id": "76bbeb75-0065-41cf-943e-2cdf4cdc53b1"
+    },
+    {
+      "parameters": {
+        "source": "managementApi",
+        "space": 106530,
+        "storyId": "={{$node[\"Storyblok\"].json[\"id\"]}}"
+      },
+      "name": "Storyblok1",
+      "type": "n8n-nodes-base.storyblok",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "storyblokManagementApi": {
+          "id": "56",
+          "name": "Storyblok Management creds"
+        }
+      },
+      "id": "27852b2f-f00f-4dee-8df5-30f7aaabbfc2"
+    },
+    {
+      "parameters": {
+        "source": "managementApi",
+        "operation": "publish",
+        "space": 106530,
+        "storyId": "={{$node[\"Storyblok\"].json[\"id\"]}}",
+        "options": {}
+      },
+      "name": "Storyblok2",
+      "type": "n8n-nodes-base.storyblok",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "storyblokManagementApi": {
+          "id": "56",
+          "name": "Storyblok Management creds"
+        }
+      },
+      "id": "fa39cb57-fe77-46c3-9ac9-82d3c3b6fced"
+    },
+    {
+      "parameters": {
+        "source": "managementApi",
+        "operation": "unpublish",
+        "space": 106530,
+        "storyId": "={{$node[\"Storyblok\"].json[\"id\"]}}"
+      },
+      "name": "Storyblok3",
+      "type": "n8n-nodes-base.storyblok",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "storyblokManagementApi": {
+          "id": "56",
+          "name": "Storyblok Management creds"
+        }
+      },
+      "id": "12a65877-f3a5-46ae-b033-0296c9c23314"
+    }
+  ],
+  "connections": {
+    "Storyblok": {
+      "main": [
+        [
+          {
+            "node": "Storyblok1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Storyblok1": {
+      "main": [
+        [
+          {
+            "node": "Storyblok2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Storyblok2": {
+      "main": [
+        [
+          {
+            "node": "Storyblok3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Storyblok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}
