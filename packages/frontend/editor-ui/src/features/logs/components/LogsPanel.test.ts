@@ -2,7 +2,6 @@ import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { mockedStore } from '@/__tests__/utils';
 import LogsPanel from '@/features/logs/components/LogsPanel.vue';
-import { useSettingsStore } from '@/stores/settings.store';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createRouter, createWebHistory, useRouter } from 'vue-router';
@@ -23,13 +22,12 @@ import { deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
 import { useLogsStore } from '@/features/logs/logs.store';
 import { useUIStore } from '@/stores/ui.store';
-import { LOGS_PANEL_STATE } from '../logs.types';
+import { LOGS_PANEL_STATE } from '../logs.constants';
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
 
 	let pinia: TestingPinia;
-	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
@@ -54,8 +52,6 @@ describe('LogsPanel', () => {
 		pinia = createTestingPinia({ stubActions: false, fakeApp: true });
 
 		setActivePinia(pinia);
-
-		settingsStore = mockedStore(useSettingsStore);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.setWorkflowExecutionData(null);

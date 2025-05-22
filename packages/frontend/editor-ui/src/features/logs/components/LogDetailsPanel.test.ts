@@ -13,7 +13,7 @@ import {
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { type FrontendSettings } from '@n8n/api-types';
-import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.types';
+import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
 import type { LogEntry } from '../logs.types';
 import { createTestLogEntry } from '../__test__/mocks';
 

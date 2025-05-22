@@ -5,7 +5,6 @@ import LogsViewRunData from '@/features/logs/components/LogsViewRunData.vue';
 import { useResizablePanel } from '@/composables/useResizablePanel';
 import {
 	type LatestNodeInfo,
-	LOG_DETAILS_PANEL_STATE,
 	type LogEntry,
 	type LogDetailsPanelState,
 } from '@/features/logs/logs.types';
@@ -17,6 +16,7 @@ import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
 import { computed, useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { getSubtreeTotalConsumedTokens } from '@/features/logs/logs.utils';
+import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
 
 const MIN_IO_PANEL_WIDTH = 200;
 

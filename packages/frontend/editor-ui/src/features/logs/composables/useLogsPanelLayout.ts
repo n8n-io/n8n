@@ -3,13 +3,13 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { watch } from 'vue';
 import { useLogsStore } from '@/features/logs/logs.store';
 import { useResizablePanel } from '@/composables/useResizablePanel';
+import { LOGS_PANEL_STATE } from '../logs.constants';
+import { usePiPWindow } from '@/features/logs/composables/usePiPWindow';
 import {
 	LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
 	LOCAL_STORAGE_PANEL_HEIGHT,
 	LOCAL_STORAGE_PANEL_WIDTH,
-} from '@/components/CanvasChat/composables/useResize';
-import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
-import { LOGS_PANEL_STATE } from '../logs.types';
+} from '@/features/logs/logs.constants';
 
 export function useLogsPanelLayout(
 	pipContainer: Readonly<ShallowRef<HTMLElement | null>>,

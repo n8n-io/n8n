@@ -4,10 +4,9 @@ import { Workflow, type IRunExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useThrottleFn } from '@vueuse/core';
-import { createLogTree, deepToRaw, mergeStartData } from '@/features/logs/logs.utils';
+import { createLogTree, deepToRaw, isChatNode, mergeStartData } from '@/features/logs/logs.utils';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
-import { isChatNode } from '@/components/CanvasChat/utils';
 import type { LatestNodeInfo, LogEntry } from '../logs.types';
 
 export function useLogsExecutionData() {
