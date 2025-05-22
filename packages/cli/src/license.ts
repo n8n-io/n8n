@@ -68,12 +68,8 @@ export class License implements LicenseProvider {
 		const onFeatureChange = isMainInstance
 			? async (features: TFeatures) => await this.onFeatureChange(features)
 			: async () => {};
-		const collectUsageMetrics = isMainInstance
-			? async () => await this.licenseMetricsService.collectUsageMetrics()
-			: async () => [];
-		const collectPassthroughData = isMainInstance
-			? async () => await this.licenseMetricsService.collectPassthroughData()
-			: async () => ({});
+		const collectUsageMetrics = async () => [];
+		const collectPassthroughData = async () => ({});
 
 		const { isLeader } = this.instanceSettings;
 		const { autoRenewalEnabled } = this.globalConfig.license;
@@ -219,8 +215,8 @@ export class License implements LicenseProvider {
 		this.logger.debug('License shut down');
 	}
 
-	isLicensed(feature: BooleanLicenseFeature) {
-		return this.manager?.hasFeatureEnabled(feature) ?? false;
+	isLicensed(_feature: BooleanLicenseFeature) {
+		return true;
 	}
 
 	/** @deprecated Use `LicenseState.isSharingLicensed` instead. */
@@ -348,6 +344,18 @@ export class License implements LicenseProvider {
 	}
 
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
+		if (feature === 'planName') {
+			return 'Enterprise' as FeatureReturnType[T];
+		}
+
+		if (Object.values(LICENSE_QUOTAS).includes(feature as unknown as LICENSE_QUOTAS)) {
+			return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
+		}
+
+		if (Object.values(LICENSE_FEATURES).includes(feature as unknown as LICENSE_FEATURES)) {
+			return true as FeatureReturnType[T];
+		}
+
 		return this.manager?.getFeatureValue(feature) as FeatureReturnType[T];
 	}
 
@@ -415,7 +423,7 @@ export class License implements LicenseProvider {
 	}
 
 	getPlanName(): string {
-		return this.getValue('planName') ?? 'Community';
+		return 'Enterprise';
 	}
 
 	getInfo(): string {
