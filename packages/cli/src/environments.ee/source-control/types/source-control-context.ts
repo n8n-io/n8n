@@ -8,7 +8,7 @@ export class SourceControlContext {
 		return this.userInternal;
 	}
 
-	accessToAllProjects() {
-		return hasGlobalScope(this.userInternal, 'project:read');
+	hasAccessToAllProjects() {
+		return hasGlobalScope(this.userInternal, 'project:update');
 	}
 }

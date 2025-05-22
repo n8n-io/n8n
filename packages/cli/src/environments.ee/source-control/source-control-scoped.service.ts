@@ -21,7 +21,7 @@ export class SourceControlScopedService {
 	) {}
 
 	async getAdminProjectsFromContext(context: SourceControlContext): Promise<Project[] | undefined> {
-		if (context.accessToAllProjects()) {
+		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
@@ -41,7 +41,7 @@ export class SourceControlScopedService {
 	async getWorkflowsInAdminProjectsFromContext(
 		context: SourceControlContext,
 	): Promise<WorkflowEntity[] | undefined> {
-		if (context.accessToAllProjects()) {
+		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
@@ -57,7 +57,7 @@ export class SourceControlScopedService {
 	getAdminProjectsByContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<Project> | undefined {
-		if (context.accessToAllProjects()) {
+		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
@@ -74,7 +74,7 @@ export class SourceControlScopedService {
 	getFoldersInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<Folder> | undefined {
-		if (context.accessToAllProjects()) {
+		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
@@ -89,7 +89,7 @@ export class SourceControlScopedService {
 	getWorkflowsInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<WorkflowEntity> | undefined {
-		if (context.accessToAllProjects()) {
+		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
@@ -107,7 +107,7 @@ export class SourceControlScopedService {
 	getCredentialsInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<CredentialsEntity> | undefined {
-		if (context.accessToAllProjects()) {
+		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}
@@ -125,7 +125,7 @@ export class SourceControlScopedService {
 	getWorkflowTagMappingInAdminProjectsFromContextFilter(
 		context: SourceControlContext,
 	): FindOptionsWhere<WorkflowTagMapping> | undefined {
-		if (context.accessToAllProjects()) {
+		if (context.hasAccessToAllProjects()) {
 			// In case the user is a global admin or owner, we don't need a filter
 			return;
 		}

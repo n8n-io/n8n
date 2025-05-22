@@ -47,6 +47,8 @@ import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { hasGlobalScope } from '@n8n/permissions';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @Service()
 export class SourceControlService {
@@ -489,9 +491,9 @@ export class SourceControlService {
 
 		const context = new SourceControlContext(user);
 
-		if (options.direction === 'pull' && !context.accessToAllProjects()) {
+		if (options.direction === 'pull' && !hasGlobalScope(user, 'sourceControl:pull')) {
 			// A pull is only allowed by global admins or owners
-			return [];
+			return new ForbiddenError('You do not have permission to pull from source control');
 		}
 
 		const sourceControlledFiles: SourceControlledFile[] = [];
@@ -579,7 +581,7 @@ export class SourceControlService {
 
 		let outOfScopeWF: SourceControlWorkflowVersionId[] = [];
 
-		if (!context.accessToAllProjects()) {
+		if (!context.hasAccessToAllProjects()) {
 			// we need to query for all wf in the DB to hide possible deletions,
 			// when a wf went out of scope locally
 			outOfScopeWF = await this.sourceControlImportService.getAllLocalVersionIdsFromDb();
