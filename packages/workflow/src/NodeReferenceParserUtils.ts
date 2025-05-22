@@ -304,7 +304,11 @@ function parseCandidateMatch(
 
 // Handle matches of form `$json.path.to.value`, which is necessary for the selection input node
 function parse$jsonMatch(match: RegExpExecArray, expression: string, startNodeName: string) {
-	const candidate = extractExpressionCandidate(expression, match.index, match[0].length);
+	const candidate = extractExpressionCandidate(
+		expression,
+		match.index,
+		match.index + match[0].length + 1,
+	);
 	if (candidate === null) return;
 	return parseExpressionMapping(candidate, null, null, startNodeName);
 }
@@ -330,6 +334,7 @@ function parseReferencingExpressions(
 		);
 	}
 
+	debugger;
 	if (parse$json && expression.includes('$json')) {
 		for (const match of expression.matchAll(/\$json/gi)) {
 			const res = parse$jsonMatch(match, expression, startNodeName);

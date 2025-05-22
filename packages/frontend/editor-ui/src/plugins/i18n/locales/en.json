@@ -2366,6 +2366,8 @@
 	"workflowExtraction.error.outputNodeHasMultipleOutputBranches": "Last node '{node}' has multiple output branches, which sub-workflows do not support.",
 	"workflowExtraction.error.triggerSelected": "Triggers cannot be extracted into a Sub-workflow. Please unselect {nodes}.",
 	"workflowExtraction.error.subworkflowCreationFailed": "Sub-workflow creation failed, aborting conversion.",
+	"workflowExtraction.success.title": "Created sub-workflow",
+	"workflowExtraction.success.message": "<a href=\"{url}\" target=\"_blank\">Open in new Tab</a>",
 	"workflowExtraction.modal.title": "Move to sub-workflow",
 	"workflowExtraction.modal.description": "Extract {nodeCount} node into a new sub-workflow | Extract {nodeCount} nodes into a new sub-workflow",
 	"workflowHelpers.showMessage.title": "Problem saving workflow",

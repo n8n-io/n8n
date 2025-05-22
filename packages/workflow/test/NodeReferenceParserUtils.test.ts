@@ -245,6 +245,7 @@ describe('NodeReferenceParserUtils', () => {
 				},
 			]);
 		});
+		//https://raw.githubusercontent.com/{{ $json.org }}/{{ $json.repo }}/refs/heads/master/package.json
 		it('should handle $json in graphInputNodeName only', () => {
 			nodes = [makeNode('B', ['$json.a.b.c_d["e"]["f"]']), makeNode('C', ['$json.x.y.z'])];
 			nodeNames = ['A', 'B', 'C'];
@@ -259,6 +260,31 @@ describe('NodeReferenceParserUtils', () => {
 				{
 					name: 'C',
 					parameters: { p0: '={{ $json.x.y.z }}' },
+				},
+			]);
+		});
+		it('should handle complex $json case for first node', () => {
+			nodes = [
+				{
+					parameters: {
+						p0: '=https://raw.githubusercontent.com/{{ $json.org }}/{{ $json.repo }}/refs/heads/master/package.json',
+					},
+					name: 'A',
+				} as unknown as INode,
+			];
+			nodeNames = ['A', 'B'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'A');
+			expect([...result.variables.entries()]).toEqual([
+				['repo', '$json.repo'],
+				['org', '$json.org'],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'A',
+					parameters: {
+						p0: '=https://raw.githubusercontent.com/{{ $json.org }}/{{ $json.repo }}/refs/heads/master/package.json',
+					},
 				},
 			]);
 		});

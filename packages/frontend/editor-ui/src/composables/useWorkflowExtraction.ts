@@ -286,8 +286,13 @@ export function useWorkflowExtraction() {
 				},
 			});
 
-			window.open(href, '_blank');
-			// window.open(href);
+			toast.showMessage({
+				title: i18n.baseText('workflowExtraction.success.title'),
+				message: i18n.baseText('workflowExtraction.success.message', {
+					interpolate: { url: href },
+				}),
+				type: 'success',
+			});
 		} catch (e) {
 			toast.showError(e, i18n.baseText('workflowExtraction.error.subworkflowCreationFailed'));
 			return false;
@@ -301,23 +306,8 @@ export function useWorkflowExtraction() {
 					[0, 0, 0],
 				),
 			);
-		const startAvg = avgPosition(beforeStartNodes);
 
-		const endAvg = avgPosition(afterEndNodes);
-
-		const executeWorkflowPosition: [number, number] =
-			subGraph.length === 1
-				? subGraph[0].position
-				: beforeStartNodes.length && afterEndNodes.length
-					? [
-							startAvg[0] + (endAvg[0] - startAvg[0]) / 2,
-							startAvg[1] + (endAvg[1] - startAvg[1]) / 2,
-						]
-					: beforeStartNodes.length
-						? [startAvg[0] + PUSH_NODES_OFFSET, startAvg[1]]
-						: afterEndNodes.length
-							? [endAvg[0] - PUSH_NODES_OFFSET, endAvg[0]]
-							: avgPosition(nodes);
+		const executeWorkflowPosition = avgPosition(subGraph);
 
 		historyStore.startRecordingUndo();
 		// In most cases we're about to move the selection anyway
