@@ -85,9 +85,6 @@ describe('TestDefinitionEditView', () => {
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					completedAt: '2023-01-01',
-					failedCases: 0,
-					passedCases: 1,
-					totalCases: 1,
 				},
 			};
 
