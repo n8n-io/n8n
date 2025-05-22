@@ -172,10 +172,7 @@ function parseExpressionMapping(
 	// The calling code is expected to only handle $json expressions for the root node
 	// As these are invalid conversions for inner nodes
 	if (exprStart === '$json') {
-		let partsIdx = 0;
-		for (; partsIdx < parts.length; ++partsIdx) {
-			if (!DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx])) break;
-		}
+		const partsIdx = parts.findIndex(() => !DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx]));
 
 		return {
 			nodeNameInExpression: null,
@@ -210,10 +207,11 @@ function parseExpressionMapping(
 			};
 		} else {
 			if (DATA_ACCESSORS.some((x) => parts[1] === x)) {
-				let partsIdx = 2;
-				for (; partsIdx < parts.length; ++partsIdx) {
-					if (!DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx])) break;
-				}
+				// This should always be at least 2
+				const partsIdx = parts.findIndex(
+					() => !DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx]),
+				);
+
 				// Use a separate name for anything except item to avoid users confusing their e.g. first() variables
 				const replacementPostfix =
 					parts[0] === 'item' ? '' : `_${convertDataAccessorName(parts[0])}`;
@@ -309,7 +307,7 @@ function parse$jsonMatch(match: RegExpExecArray, expression: string, startNodeNa
 		match.index,
 		match.index + match[0].length + 1,
 	);
-	if (candidate === null) return;
+	if (candidate === null) return null;
 	return parseExpressionMapping(candidate, null, null, startNodeName);
 }
 
@@ -523,7 +521,8 @@ export function extractReferencesInNodeExpressions(
 	////
 
 	// This map is used to change the actual expressions once resolved
-	const recMapByNode = new Map<string, ParameterExtractMapping>();
+	// The value represents fields in the actual parameters object which require change
+	const parameterTreeMappingByNode = new Map<string, ParameterExtractMapping>();
 	// This is used to track all candidates for change, necessary for deduplication
 	const allData = [];
 
@@ -537,7 +536,7 @@ export function extractReferencesInNodeExpressions(
 				graphInputNodeNames?.includes(node.name) ?? false,
 			),
 		);
-		recMapByNode.set(node.name, parameterMapping);
+		parameterTreeMappingByNode.set(node.name, parameterMapping);
 		allData.push(...allMappings);
 	}
 
@@ -567,8 +566,8 @@ export function extractReferencesInNodeExpressions(
 		return triggerArgumentMap.get(key);
 	};
 
-	for (const [key, value] of recMapByNode.entries()) {
-		recMapByNode.set(key, applyCanonicalMapping(value, getCanonicalData));
+	for (const [key, value] of parameterTreeMappingByNode.entries()) {
+		parameterTreeMappingByNode.set(key, applyCanonicalMapping(value, getCanonicalData));
 	}
 
 	const allUsedMappings = [];
@@ -576,7 +575,7 @@ export function extractReferencesInNodeExpressions(
 	for (const node of subGraph) {
 		const { result, usedMappings } = applyExtractMappingToNode(
 			cloneDeep(node),
-			recMapByNode.get(node.name),
+			parameterTreeMappingByNode.get(node.name),
 		);
 		allUsedMappings.push(...usedMappings);
 		output.push(result);
