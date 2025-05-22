@@ -4,8 +4,8 @@ import {
 	AI_CATEGORY_TOOLS,
 	AI_SUBCATEGORY,
 	CUSTOM_API_CALL_KEY,
-	EVALUATION_TRIGGER,
 	HTTP_REQUEST_NODE_TYPE,
+	WORKFLOW_EVALUATION_EXPERIMENT,
 } from '@/constants';
 import { memoize, startCase } from 'lodash-es';
 import type {
@@ -334,13 +334,12 @@ export function useActionsGenerator() {
 	) {
 		const posthogStore = usePostHog();
 
-		const isEvaluationVariantEnabled = posthogStore.isVariantEnabled(
-			EVALUATION_TRIGGER.name,
-			EVALUATION_TRIGGER.variant,
+		const isEvaluationFeatureEnabled = posthogStore.isFeatureEnabled(
+			WORKFLOW_EVALUATION_EXPERIMENT,
 		);
 
 		const visibleNodeTypes = nodeTypes.filter((node) => {
-			if (isEvaluationVariantEnabled) {
+			if (isEvaluationFeatureEnabled) {
 				return true;
 			}
 			return (
