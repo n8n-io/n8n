@@ -6,7 +6,7 @@ import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
-import type { IRun } from 'n8n-workflow';
+import type { IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -164,6 +164,7 @@ describe('TestRunnerService', () => {
 									data: {
 										main: [mockOutputItems],
 									},
+									error: undefined,
 								},
 							],
 						},
@@ -217,6 +218,51 @@ describe('TestRunnerService', () => {
 			}
 		});
 
+		test('should throw an error if evaluation trigger could not fetch data', () => {
+			// Create workflow with a trigger node
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'triggerNodeId',
+						name: 'TriggerNode',
+						type: EVALUATION_DATASET_TRIGGER_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Create execution data with missing output
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							TriggerNode: [
+								{
+									error: mock<ExecutionError>(),
+								},
+							],
+						},
+					},
+				},
+			});
+
+			// Expect the method to throw an error
+			expect(() => {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			}).toThrow(TestRunError);
+
+			// Verify the error has the correct code
+			try {
+				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('CANT_FETCH_TEST_CASES');
+			}
+		});
+
 		test('should throw an error if trigger node output is empty list', () => {
 			// Create workflow with a trigger node
 			const workflow = mock<IWorkflowBase>({
@@ -243,6 +289,7 @@ describe('TestRunnerService', () => {
 									data: {
 										main: [[]], // Empty list
 									},
+									error: undefined,
 								},
 							],
 						},
@@ -297,6 +344,7 @@ describe('TestRunnerService', () => {
 									data: {
 										main: [expectedItems],
 									},
+									error: undefined,
 								},
 							],
 						},
