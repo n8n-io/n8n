@@ -1923,6 +1923,7 @@ onBeforeUnmount(() => {
 		@update:logs-open="logsStore.toggleOpen($event)"
 		@update:logs:input-open="logsStore.toggleInputOpen"
 		@update:logs:output-open="logsStore.toggleOutputOpen"
+		@update:has-range-selection="canvasStore.setHasRangeSelection"
 		@open:sub-workflow="onOpenSubWorkflow"
 		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"

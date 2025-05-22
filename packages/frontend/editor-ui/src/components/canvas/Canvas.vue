@@ -72,6 +72,7 @@ const emit = defineEmits<{
 	'update:logs-open': [open?: boolean];
 	'update:logs:input-open': [open?: boolean];
 	'update:logs:output-open': [open?: boolean];
+	'update:has-range-selection': [isActive: boolean];
 	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
@@ -153,6 +154,7 @@ const {
 	viewport,
 	dimensions,
 	nodesSelectionActive,
+	userSelectionRect,
 	setViewport,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
@@ -809,6 +811,10 @@ onNodesInitialized(() => {
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
+
+watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
+	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
+);
 
 /**
  * Provide
