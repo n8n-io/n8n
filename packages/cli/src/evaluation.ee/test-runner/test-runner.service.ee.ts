@@ -299,6 +299,12 @@ export class TestRunnerService {
 			// Update test run status
 			await this.testRunRepository.markAsRunning(testRun.id);
 
+			this.telemetry.track('User ran test', {
+				user_id: user.id,
+				run_id: testRun.id,
+				workflow_id: workflowId,
+			});
+
 			///
 			// 1. Make test cases list
 			///
@@ -314,21 +320,6 @@ export class TestRunnerService {
 			const testCases = datasetTriggerOutput.map((items) => ({ json: items.json }));
 
 			this.logger.debug('Found test cases', { count: testCases.length });
-
-			// Add all past executions mappings to the test run.
-			// This will be used to track the status of each test case and keep the connection between test run and all related executions (past, current, and evaluation).
-			// await this.testCaseExecutionRepository.createBatch(
-			// 	testRun.id,
-			// 	testCases.map((e) => e.id),
-			// );
-
-			// 2. Run over all the test cases
-
-			this.telemetry.track('User ran test', {
-				user_id: user.id,
-				run_id: testRun.id,
-				workflow_id: workflowId,
-			});
 
 			// Initialize object to collect the results of the evaluation workflow executions
 			const metrics = new EvaluationMetrics();
@@ -352,6 +343,7 @@ export class TestRunnerService {
 					const testCaseMetadata = {
 						...testRunMetadata,
 					};
+
 					// Run the test case and wait for it to finish
 					const testCaseResult = await this.runTestCase(
 						workflow,
@@ -391,6 +383,7 @@ export class TestRunnerService {
 					);
 
 					this.logger.debug('Test case metrics extracted', addedMetrics);
+
 					// Create a new test case execution in DB
 					await this.testCaseExecutionRepository.createTestCaseExecution({
 						executionId: testCaseExecutionId,
