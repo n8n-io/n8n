@@ -12,7 +12,6 @@ import { useI18n } from './useI18n';
 import { usePinnedData } from './usePinnedData';
 import { isPresent } from '../utils/typesUtils';
 import { getResourcePermissions } from '@/permissions';
-import { useWorkflowExtraction } from './useWorkflowExtraction';
 
 export type ContextMenuTarget =
 	| { source: 'canvas'; nodeIds: string[]; nodeId?: string }
