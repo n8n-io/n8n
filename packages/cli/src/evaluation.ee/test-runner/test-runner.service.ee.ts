@@ -300,7 +300,7 @@ export class TestRunnerService {
 
 		const triggerOutputData = execution.data.resultData.runData[triggerNode.name][0];
 
-		if (triggerOutputData.error) {
+		if (triggerOutputData?.error) {
 			throw new TestRunError('CANT_FETCH_TEST_CASES', {
 				message: triggerOutputData.error.message,
 			});
