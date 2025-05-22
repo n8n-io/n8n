@@ -11,11 +11,11 @@ import { InstanceSettings } from 'n8n-core';
 
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { ExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 describe('SourceControlService', () => {
 	const preferencesService = new SourceControlPreferencesService(
