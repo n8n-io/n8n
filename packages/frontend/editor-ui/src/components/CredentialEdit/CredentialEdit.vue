@@ -22,7 +22,6 @@ import { NodeHelpers } from 'n8n-workflow';
 import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
 import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
 import CredentialSharing from '@/components/CredentialEdit/CredentialSharing.ee.vue';
-import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import Modal from '@/components/Modal.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import { useMessage } from '@/composables/useMessage';
@@ -37,7 +36,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Project, ProjectSharingData } from '@/types/projects.types';
-import type { IMenuItem } from '@n8n/design-system';
+import { N8nInlineRename, type IMenuItem } from '@n8n/design-system';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 
@@ -1083,14 +1082,9 @@ function resetCredentialData(): void {
 					<div :class="$style.credIcon">
 						<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
 					</div>
-					<InlineNameEdit
+					<N8nInlineRename
+						v-if="credentialName"
 						:model-value="credentialName"
-						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="
-							!credentialPermissions.update || !credentialType || isEditingManagedCredential
-						"
-						type="Credential"
-						data-test-id="credential-name"
 						@update:model-value="onNameEdit"
 					/>
 				</div>
