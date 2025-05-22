@@ -194,6 +194,10 @@ export interface ILicenseReadResponse {
 			value: number;
 			warningThreshold: number;
 		};
+		workflowsHavingEvaluations: {
+			limit: number;
+			value: number;
+		};
 	};
 	license: {
 		planId: string;
