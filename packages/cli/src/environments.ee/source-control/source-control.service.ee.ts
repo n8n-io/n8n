@@ -11,6 +11,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { writeFileSync } from 'fs';
 import { Logger } from 'n8n-core';
 import { UnexpectedError, UserError } from 'n8n-workflow';
@@ -18,6 +19,7 @@ import path from 'path';
 import type { PushResult } from 'simple-git';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import {
@@ -47,8 +49,6 @@ import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import { hasGlobalScope } from '@n8n/permissions';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @Service()
 export class SourceControlService {
