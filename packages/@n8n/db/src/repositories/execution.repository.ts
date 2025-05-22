@@ -984,15 +984,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (metadata?.length === 1) {
 			const [{ key, value }] = metadata;
+			// TODO: get from metadata
+			const exactMatch = false;
 
-			qb.innerJoin(
-				ExecutionMetadata,
-				'md',
-				'md.executionId = execution.id AND md.key = :key AND md.value = :value',
-			);
+			const executionIdMatch = 'md.executionId = execution.id';
+			const keyMatch = exactMatch ? 'md.key = :key' : 'LOWER(md.key) = LOWER(:key)';
+			const valueMatch = exactMatch ? 'md.value = :value' : 'LOWER(md.value) LIKE LOWER(:value)';
+
+			const matches = [executionIdMatch, keyMatch, valueMatch];
+
+			qb.innerJoin(ExecutionMetadata, 'md', matches.join(' AND '));
 
 			qb.setParameter('key', key);
-			qb.setParameter('value', value);
+			qb.setParameter('value', exactMatch ? value : `%${value}%`);
 		}
 
 		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
