@@ -63,7 +63,7 @@ const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 const EvaluationsView = async () => await import('./views/Evaluations/EvaluationsView.vue');
-const EvaluationRootView = async () => await import('./views/Evaluations/EvaluationsRootVIew.vue');
+const EvaluationRootView = async () => await import('./views/Evaluations/EvaluationsRootView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -258,12 +258,15 @@ export const routes: RouteRecordRaw[] = [
 	},
 	{
 		path: '/workflow/:name/evaluation',
+		name: VIEWS.EVALUATION,
 		components: {
 			default: EvaluationRootView,
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
-		props: true,
+		props: {
+			default: true,
+		},
 		meta: {
 			keepWorkflowAlive: true,
 			middleware: ['authenticated', 'custom'],
@@ -281,10 +284,8 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'test-runs/:runId',
 				name: VIEWS.EVALUATION_RUNS_DETAIL,
+				component: TestRunDetailView,
 				props: true,
-				components: {
-					default: TestRunDetailView,
-				},
 			},
 		],
 	},

@@ -1,0 +1,149 @@
+<script setup lang="ts">
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useAsyncState } from '@vueuse/core';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useToast } from '@/composables/useToast';
+import { useI18n } from '@/composables/useI18n';
+import { useRouter } from 'vue-router';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { computed } from 'vue';
+import { N8nLink, N8nText } from '@n8n/design-system';
+import EvaluationsPaywall from '@/components/Evaluations/Paywall/EvaluationsPaywall.vue';
+import SetupWizard from '@/components/Evaluations/SetupWizard/SetupWizard.vue';
+
+const props = defineProps<{
+	name: string;
+}>();
+
+const workflowsStore = useWorkflowsStore();
+const usageStore = useUsageStore();
+const evaluationStore = useEvaluationStore();
+const router = useRouter();
+const toast = useToast();
+const locale = useI18n();
+
+const { initializeWorkspace } = useCanvasOperations({ router });
+
+const evaluationsLicensed = computed(() => {
+	return usageStore.workflowsWithEvaluationsLimit !== 0;
+});
+
+const showWizard = computed(() => {
+	const runs = Object.values(evaluationStore.testRunsById ?? {}).filter(
+		({ workflowId }) => workflowId === props.name,
+	);
+	return runs.length === 0;
+});
+
+// Method to run a test - will be used by the SetupWizard component
+async function runTest() {
+	await evaluationStore.startTestRun(props.name);
+	await evaluationStore.fetchTestRuns(props.name);
+}
+
+const { isReady } = useAsyncState(async () => {
+	await usageStore.getLicenseInfo();
+	await evaluationStore.fetchTestRuns(props.name);
+
+	const workflowId = props.name;
+	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
+
+	if (isAlreadyInitialized) return;
+
+	if (workflowId && workflowId !== 'new') {
+		// Check if we are loading the Evaluation tab directly, without having loaded the workflow
+		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			try {
+				const data = await workflowsStore.fetchWorkflow(workflowId);
+				initializeWorkspace(data);
+			} catch (error) {
+				toast.showError(error, locale.baseText('nodeView.showError.openWorkflow.title'));
+			}
+		}
+	}
+}, undefined);
+</script>
+
+<template>
+	<div :class="$style.evaluationsView">
+		<!-- If showWizard is true and we're at the root path, show the wizard -->
+		<template v-if="isReady && showWizard">
+			<div :class="$style.setupContent">
+				<div :class="$style.setupHeader">
+					<N8nText size="large" color="text-dark" tag="h3" bold>
+						{{ locale.baseText('evaluations.setupWizard.title') }}
+					</N8nText>
+					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
+						{{ locale.baseText('evaluations.setupWizard.description') }}
+						<N8nLink size="small" href="https://docs.n8n.io/advanced-ai/evaluations/overview">{{
+							locale.baseText('evaluations.setupWizard.moreInfo')
+						}}</N8nLink>
+					</N8nText>
+				</div>
+
+				<div :class="$style.config">
+					<iframe
+						style="min-width: 500px"
+						width="500"
+						height="280"
+						src="https://www.youtube.com/embed/5LlF196PKaE"
+						title="n8n Evaluation quickstart"
+						frameborder="0"
+						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+						referrerpolicy="strict-origin-when-cross-origin"
+						allowfullscreen
+					></iframe>
+					<SetupWizard v-if="evaluationsLicensed" @run-test="runTest" />
+					<EvaluationsPaywall v-else />
+				</div>
+			</div>
+		</template>
+		<!-- Otherwise, render the child route (EvaluationsView or TestRunDetailView) -->
+		<router-view v-else-if="isReady" :key="$route.path" />
+	</div>
+</template>
+
+<style module lang="scss">
+.evaluationsView {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+}
+
+.setupContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-l);
+	max-width: 1024px;
+	margin-top: var(--spacing-2xl);
+	padding: 0;
+}
+
+.setupHeader {
+	// margin-bottom: var(--spacing-l);
+}
+
+.description {
+	max-width: 600px;
+	margin-bottom: 20px;
+}
+
+.config {
+	display: flex;
+	flex-direction: row;
+	gap: var(--spacing-l);
+}
+
+.setupDescription {
+	margin-top: var(--spacing-2xs);
+
+	ul {
+		li {
+			margin-top: var(--spacing-2xs);
+		}
+	}
+}
+</style>

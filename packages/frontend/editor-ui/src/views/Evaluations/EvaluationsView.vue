@@ -5,12 +5,9 @@ import { computed, ref } from 'vue';
 
 import RunsSection from '@/components/Evaluations/EditDefinition/sections/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
-import { N8nButton, N8nText } from '@n8n/design-system';
-import { useAsyncState } from '@vueuse/core';
+import { N8nButton } from '@n8n/design-system';
 import { orderBy } from 'lodash-es';
-import N8nLink from '@n8n/design-system/components/N8nLink';
-import { useUsageStore } from '@/stores/usage.store';
-import EvaluationsPaywall from '@/components/Evaluations/Paywall/EvaluationsPaywall.vue';
+import { useRouter } from 'vue-router';
 
 const props = defineProps<{
 	name: string;
@@ -19,22 +16,7 @@ const props = defineProps<{
 const locale = useI18n();
 const toast = useToast();
 const evaluationsStore = useEvaluationStore();
-const usageStore = useUsageStore();
-
-const { isReady } = useAsyncState(
-	async () => {
-		await evaluationsStore.fetchTestRuns(props.name);
-
-		return [];
-	},
-	[],
-	{
-		onError: (error) => toast.showError(error, locale.baseText('evaluation.list.loadError')),
-		shallow: false,
-	},
-);
-
-const hasRuns = computed(() => runs.value.length > 0);
+const router = useRouter();
 
 const selectedMetric = ref<string>('');
 
@@ -55,24 +37,12 @@ const runs = computed(() => {
 
 const isRunning = computed(() => runs.value.some((run) => run.status === 'running'));
 const isRunTestEnabled = computed(() => !isRunning.value);
-
-const showWizard = computed(() => {
-	return !hasRuns.value;
-});
-
-const evaluationsLicensed = computed(() => {
-	return usageStore.workflowsWithEvaluationsLimit !== 0;
-});
-
-// const canUserRegisterCommunityPlus = computed(
-// 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
-// );
 </script>
 
 <template>
-	<div v-if="isReady" :class="{ [$style.topWrapperWizard]: showWizard }">
-		<div v-if="!showWizard" :class="$style.header">
-			<N8nTooltip v-if="!showWizard" :disabled="isRunTestEnabled" :placement="'left'">
+	<div :class="$style.evaluationsView">
+		<div :class="$style.header">
+			<N8nTooltip :disabled="isRunTestEnabled" :placement="'left'">
 				<N8nButton
 					:disabled="!isRunTestEnabled"
 					:class="$style.runTestButton"
@@ -89,62 +59,29 @@ const evaluationsLicensed = computed(() => {
 				</template>
 			</N8nTooltip>
 		</div>
-		<div :class="{ [$style.wrapper]: true, [$style.setupWrapper]: showWizard }">
+		<div :class="$style.wrapper">
 			<div :class="$style.content">
 				<RunsSection
-					v-if="!showWizard"
 					v-model:selectedMetric="selectedMetric"
 					:class="$style.runs"
 					:runs="runs"
 					:workflow-id="props.name"
 				/>
-
-				<div v-if="showWizard" :class="$style.setupContent">
-					<div :class="$style.setupHeader">
-						<N8nText size="large" color="text-dark" tag="h3" bold>
-							{{ locale.baseText('evaluations.setupWizard.title') }}
-						</N8nText>
-						<N8nText tag="p" size="small" color="text-base" :class="$style.description">
-							{{ locale.baseText('evaluations.setupWizard.description') }}
-							<N8nLink size="small" href="https://docs.n8n.io/advanced-ai/evaluations/overview">{{
-								locale.baseText('evaluations.setupWizard.moreInfo')
-							}}</N8nLink>
-						</N8nText>
-					</div>
-
-					<div :class="$style.config">
-						<iframe
-							style="min-width: 500px"
-							width="500"
-							height="280"
-							src="https://www.youtube.com/embed/5LlF196PKaE"
-							title="n8n Evaluation quickstart"
-							frameborder="0"
-							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-							referrerpolicy="strict-origin-when-cross-origin"
-							allowfullscreen
-						></iframe>
-						<SetupWizard v-if="evaluationsLicensed" @run-test="runTest" />
-						<EvaluationsPaywall v-else />
-					</div>
-				</div>
 			</div>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
+.evaluationsView {
+	width: 100%;
+}
+
 .content {
 	display: flex;
 	justify-content: center;
 	gap: var(--spacing-m);
 	padding-bottom: var(--spacing-m);
-}
-
-.config {
-	display: flex;
-	flex-direction: row;
-	gap: var(--spacing-l);
 }
 
 .header {
@@ -161,53 +98,17 @@ const evaluationsLicensed = computed(() => {
 	z-index: 2;
 }
 
-.setupHeader {
-	//margin-bottom: var(--spacing-l);
-}
-
-.setupDescription {
-	margin-top: var(--spacing-2xs);
-
-	ul {
-		li {
-			margin-top: var(--spacing-2xs);
-		}
-	}
-}
-
 .wrapper {
 	padding: 0 var(--spacing-l);
 	padding-left: 58px;
 }
 
-.setupWrapper {
-	display: flex;
+.runTestButton {
+	white-space: nowrap;
+}
+
+.runs {
+	width: 100%;
 	max-width: 1024px;
-	margin-top: var(--spacing-2xl);
-	padding: 0;
-	flex-grow: 1;
-}
-
-.setupContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-l);
-}
-
-.description {
-	max-width: 600px;
-	margin-bottom: 20px;
-}
-
-.arrowBack {
-	--button-hover-background-color: transparent;
-	border: 0;
-}
-
-.topWrapperWizard {
-	padding: 0;
-	display: flex;
-	justify-content: center;
-	flex-grow: 1;
 }
 </style>
