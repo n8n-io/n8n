@@ -51,6 +51,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		const client =
 			this.clusterNodes().length > 0
 				? this.createClusterClient(arg)
+				: this.sentinelNodes().length > 0
+				? this.createSentinelClient(arg)
 				: this.createRegularClient(arg);
 
 		client.on('error', (error) => {
@@ -130,8 +132,29 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		return clusterClient;
 	}
 
+	private createSentinelClient({
+		type,
+		extraOptions,
+	}: {
+		type: string;
+		extraOptions?: RedisOptions;
+	}) {
+		const options = this.getOptions({ extraOptions });
+
+		const clusterNodes = this.sentinelNodes();
+
+		const clusterClient = new ioRedis({
+			sentinels: clusterNodes,
+			...options,
+		});
+
+		this.logger.debug(`Started Redis Sentinel client ${type}`, { type, clusterNodes });
+
+		return clusterClient;
+	}
+
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls, dualStack } = this.globalConfig.queue.bull.redis;
+		const { username, password, db, tls, dualStack, name } = this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -144,6 +167,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		 * - https://github.com/OptimalBits/bull/pull/2185
 		 */
 		const options: RedisOptions = {
+			name,
 			username,
 			password,
 			db,
@@ -196,6 +220,16 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 	private clusterNodes() {
 		return this.globalConfig.queue.bull.redis.clusterNodes
+			.split(',')
+			.filter((pair) => pair.trim().length > 0)
+			.map((pair) => {
+				const [host, port] = pair.split(':');
+				return { host, port: parseInt(port) };
+			});
+	}
+
+	private sentinelNodes() {
+		return this.globalConfig.queue.bull.redis.sentinelNodes
 			.split(',')
 			.filter((pair) => pair.trim().length > 0)
 			.map((pair) => {
