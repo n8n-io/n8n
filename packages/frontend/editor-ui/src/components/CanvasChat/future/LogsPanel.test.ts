@@ -234,7 +234,7 @@ describe('LogsPanel', () => {
 
 		await fireEvent.click(rendered.getByText('Overview'));
 
-		expect(rendered.getByText('Running')).toBeInTheDocument();
+		expect(rendered.getByText(/Running/)).toBeInTheDocument();
 		expect(rendered.queryByText('AI Agent')).not.toBeInTheDocument();
 
 		workflowsStore.addNodeExecutionStartedData({
@@ -251,7 +251,7 @@ describe('LogsPanel', () => {
 		});
 
 		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
-		expect(lastTreeItem.getByText('Running')).toBeInTheDocument();
+		expect(lastTreeItem.getByText(/Running/)).toBeInTheDocument();
 
 		workflowsStore.updateNodeExecutionData({
 			nodeName: 'AI Agent',

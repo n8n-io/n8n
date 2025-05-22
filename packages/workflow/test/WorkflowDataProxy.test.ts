@@ -324,7 +324,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Invalid expression');
+				expect(exprError.message).toEqual('Multiple matches found');
 				expect(exprError.context.type).toEqual('paired_item_multiple_matches');
 				done();
 			}
