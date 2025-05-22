@@ -214,8 +214,26 @@ describe('Push', () => {
 						xForwardedHost: 'example.com',
 					},
 					{
-						name: 'origin matches host',
+						name: 'origin matches forward headers but has different case',
 						origin: 'https://example.com',
+						xForwardedProto: 'https',
+						xForwardedHost: 'EXAMPLE.com',
+					},
+					{
+						name: 'origin matches forward headers but protocol has different case',
+						origin: 'HTTPS://example.com',
+						xForwardedProto: undefined,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin matches host (https)',
+						origin: 'https://example.com',
+						xForwardedProto: undefined,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin matches host (http)',
+						origin: 'http://example.com',
 						xForwardedProto: undefined,
 						xForwardedHost: undefined,
 					},

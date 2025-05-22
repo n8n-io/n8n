@@ -118,7 +118,7 @@ export class Push extends TypedEmitter<PushEvents> {
 			const host = allForwardHeadersAreDefined ? forwardedHost : headers.host;
 			const proto = allForwardHeadersAreDefined
 				? forwardedProto
-				: headers.origin?.startsWith('https://')
+				: headers.origin?.toLowerCase().startsWith('https://')
 					? 'https'
 					: 'http';
 
@@ -146,7 +146,10 @@ export class Push extends TypedEmitter<PushEvents> {
 			this.logger.warn('Origin header is missing');
 
 			connectionError = 'Invalid origin!';
-		} else if (inProduction && headers.origin !== expectedOriginResult.expectedOrigin) {
+		} else if (
+			inProduction &&
+			headers.origin?.toLowerCase() !== expectedOriginResult.expectedOrigin.toLowerCase()
+		) {
 			this.logger.warn(
 				`Origin header does NOT match the expected origin. (Origin: "${headers.origin}", Expected: "${expectedOriginResult.expectedOrigin}")`,
 				{
