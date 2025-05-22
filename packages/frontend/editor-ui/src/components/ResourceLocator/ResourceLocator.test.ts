@@ -9,6 +9,7 @@ import {
 	TEST_MODEL_VALUE,
 	TEST_NODE_MULTI_MODE,
 	TEST_NODE_SINGLE_MODE,
+	TEST_PARAMETER_ADD_RESOURCE,
 	TEST_PARAMETER_MULTI_MODE,
 	TEST_PARAMETER_SINGLE_MODE,
 } from './ResourceLocator.test.constants';
@@ -130,6 +131,69 @@ describe('ResourceLocator', () => {
 		// We should be getting one item for each result
 		TEST_ITEMS.forEach((item) => {
 			expect(getByText(item.name)).toBeInTheDocument();
+		});
+	});
+
+	it('renders add resource button', async () => {
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+			paginationToken: null,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_ADD_RESOURCE,
+				path: `parameters.${TEST_PARAMETER_ADD_RESOURCE.name}`,
+				node: TEST_NODE_SINGLE_MODE,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+		});
+
+		expect(getByTestId(`resource-locator-${TEST_PARAMETER_ADD_RESOURCE.name}`)).toBeInTheDocument();
+		// Click on the input to open it
+		await userEvent.click(getByTestId('rlc-input'));
+		// Expect the button to create a new resource to be rendered
+		expect(getByTestId('rlc-item-add-resource')).toBeInTheDocument();
+	});
+
+	it('creates new resource passing search filter as name', async () => {
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+			paginationToken: null,
+		});
+		nodeTypesStore.getNodeParameterActionResult.mockResolvedValue('new-resource');
+
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: TEST_MODEL_VALUE,
+				parameter: TEST_PARAMETER_ADD_RESOURCE,
+				path: `parameters.${TEST_PARAMETER_ADD_RESOURCE.name}`,
+				node: TEST_NODE_SINGLE_MODE,
+				displayTitle: 'Test Resource Locator',
+				expressionComputedValue: '',
+			},
+		});
+
+		// Click on the input to open it
+		await userEvent.click(getByTestId('rlc-input'));
+		// Type in the input to name the resource
+		await userEvent.type(getByTestId('rlc-search'), 'Test Resource');
+		// Click on the add resource button
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+
+		expect(nodeTypesStore.getNodeParameterActionResult).toHaveBeenCalledWith({
+			nodeTypeAndVersion: {
+				name: TEST_NODE_SINGLE_MODE.type,
+				version: TEST_NODE_SINGLE_MODE.typeVersion,
+			},
+			path: `parameters.${TEST_PARAMETER_ADD_RESOURCE.name}`,
+			currentNodeParameters: expect.any(Object),
+			credentials: TEST_NODE_SINGLE_MODE.credentials,
+			handler: 'testAddResource',
+			payload: {
+				name: 'Test Resource',
+			},
 		});
 	});
 
