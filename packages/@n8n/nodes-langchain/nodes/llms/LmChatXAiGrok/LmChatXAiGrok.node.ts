@@ -226,7 +226,11 @@ export class LmChatXAiGrok implements INodeType {
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
 		};
-
+		
+		if (options.presencePenalty === 0) {
+			delete options.presencePenalty;
+		}
+		
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			httpAgent: getHttpProxyAgent(),
