@@ -59,21 +59,6 @@ describe('TestRunnerService', () => {
 		jest.resetAllMocks();
 	});
 
-	test('should create an instance of TestRunnerService', async () => {
-		const testRunnerService = new TestRunnerService(
-			logger,
-			telemetry,
-			workflowRepository,
-			workflowRunner,
-			activeExecutions,
-			testRunRepository,
-			testCaseExecutionRepository,
-			errorReporter,
-		);
-
-		expect(testRunnerService).toBeInstanceOf(TestRunnerService);
-	});
-
 	describe('findTriggerNode', () => {
 		test('should find the trigger node in a workflow', () => {
 			// Setup a test workflow with a trigger node
