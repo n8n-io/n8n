@@ -17,7 +17,7 @@ import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { restoreChatHistory } from '@/components/CanvasChat/utils';
-import { useLogsStore } from '@/stores/logs.store';
+import { useLogsStore } from '@/features/logs/logs.store';
 
 interface ChatState {
 	currentSessionId: Ref<string>;

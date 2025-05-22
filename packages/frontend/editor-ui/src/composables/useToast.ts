@@ -12,7 +12,7 @@ import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useLogsStore } from '@/stores/logs.store';
+import { useLogsStore } from '@/features/logs/logs.store';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {

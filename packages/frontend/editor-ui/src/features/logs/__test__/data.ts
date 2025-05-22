@@ -1,5 +1,4 @@
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
-import type { LogTreeCreationContext } from '@/components/RunDataAi/utils';
 import {
 	AGENT_NODE_TYPE,
 	AI_CATEGORY_AGENTS,
@@ -9,6 +8,7 @@ import {
 } from '@/constants';
 import { type IExecutionResponse } from '@/Interface';
 import { WorkflowOperationError, type IRunData, type Workflow } from 'n8n-workflow';
+import type { LogTreeCreationContext } from '../logs.types';
 
 export function createTestLogTreeCreationContext(
 	workflow: Workflow,

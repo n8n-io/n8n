@@ -1,22 +1,21 @@
 <script setup lang="ts">
-import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
+import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, nextTick, toRef, watch } from 'vue';
-import LogsOverviewRow from '@/components/CanvasChat/future/components/LogsOverviewRow.vue';
+import LogsOverviewRow from '@/features/logs/components/LogsOverviewRow.vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
-import LogsViewExecutionSummary from '@/components/CanvasChat/future/components/LogsViewExecutionSummary.vue';
+import LogsViewExecutionSummary from '@/features/logs/components/LogsViewExecutionSummary.vue';
 import {
 	getSubtreeTotalConsumedTokens,
 	getTotalConsumedTokens,
 	hasSubExecution,
-	type LatestNodeInfo,
-	type LogEntry,
-} from '@/components/RunDataAi/utils';
+} from '@/features/logs/logs.utils';
 import { useVirtualList } from '@vueuse/core';
 import { type IExecutionResponse } from '@/Interface';
+import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 
 const {
 	isOpen,

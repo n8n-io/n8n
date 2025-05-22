@@ -1,24 +1,22 @@
 <script setup lang="ts">
-import LogsViewExecutionSummary from '@/components/CanvasChat/future/components/LogsViewExecutionSummary.vue';
-import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
-import LogsViewRunData from '@/components/CanvasChat/future/components/LogsViewRunData.vue';
+import LogsViewExecutionSummary from '@/features/logs/components/LogsViewExecutionSummary.vue';
+import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
+import LogsViewRunData from '@/features/logs/components/LogsViewRunData.vue';
 import { useResizablePanel } from '@/composables/useResizablePanel';
 import {
+	type LatestNodeInfo,
 	LOG_DETAILS_PANEL_STATE,
+	type LogEntry,
 	type LogDetailsPanelState,
-} from '@/components/CanvasChat/types/logs';
+} from '@/features/logs/logs.types';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import LogsViewNodeName from '@/components/CanvasChat/future/components/LogsViewNodeName.vue';
-import {
-	getSubtreeTotalConsumedTokens,
-	type LogEntry,
-	type LatestNodeInfo,
-} from '@/components/RunDataAi/utils';
+import LogsViewNodeName from '@/features/logs/components/LogsViewNodeName.vue';
 import { N8nButton, N8nResizeWrapper } from '@n8n/design-system';
 import { computed, useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { getSubtreeTotalConsumedTokens } from '@/features/logs/logs.utils';
 
 const MIN_IO_PANEL_WIDTH = 200;
 

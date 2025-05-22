@@ -2,7 +2,7 @@ import {
 	LOG_DETAILS_PANEL_STATE,
 	LOGS_PANEL_STATE,
 	type LogDetailsPanelState,
-} from '@/components/CanvasChat/types/logs';
+} from '@/features/logs/logs.types';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL,

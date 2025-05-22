@@ -1,15 +1,15 @@
 import { computed, type ShallowRef } from 'vue';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { watch } from 'vue';
+import { useLogsStore } from '@/features/logs/logs.store';
+import { useResizablePanel } from '@/composables/useResizablePanel';
 import {
 	LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
 	LOCAL_STORAGE_PANEL_HEIGHT,
 	LOCAL_STORAGE_PANEL_WIDTH,
-} from '../../composables/useResize';
-import { LOGS_PANEL_STATE } from '../../types/logs';
-import { usePiPWindow } from '../../composables/usePiPWindow';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { watch } from 'vue';
-import { useResizablePanel } from '../../../../composables/useResizablePanel';
-import { useLogsStore } from '@/stores/logs.store';
+} from '@/components/CanvasChat/composables/useResize';
+import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
+import { LOGS_PANEL_STATE } from '../logs.types';
 
 export function useLogsPanelLayout(
 	pipContainer: Readonly<ShallowRef<HTMLElement | null>>,

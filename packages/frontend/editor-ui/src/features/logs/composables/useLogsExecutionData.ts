@@ -1,19 +1,14 @@
 import { watch, computed, ref } from 'vue';
-import { isChatNode } from '../../utils';
 import { type IExecutionResponse } from '@/Interface';
 import { Workflow, type IRunExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useThrottleFn } from '@vueuse/core';
-import {
-	createLogTree,
-	deepToRaw,
-	mergeStartData,
-	type LatestNodeInfo,
-	type LogEntry,
-} from '@/components/RunDataAi/utils';
+import { createLogTree, deepToRaw, mergeStartData } from '@/features/logs/logs.utils';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
+import { isChatNode } from '@/components/CanvasChat/utils';
+import type { LatestNodeInfo, LogEntry } from '../logs.types';
 
 export function useLogsExecutionData() {
 	const nodeHelpers = useNodeHelpers();

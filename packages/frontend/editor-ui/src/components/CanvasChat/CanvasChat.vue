@@ -14,8 +14,8 @@ import { usePiPWindow } from '@/components/CanvasChat/composables/usePiPWindow';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
-import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
-import { useLogsStore } from '@/stores/logs.store';
+import { LOGS_PANEL_STATE } from '@/features/logs/logs.types';
+import { useLogsStore } from '@/features/logs/logs.store';
 
 const workflowsStore = useWorkflowsStore();
 const logsStore = useLogsStore();

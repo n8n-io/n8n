@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import LogsPanel from '@/components/CanvasChat/future/LogsPanel.vue';
+import LogsPanel from '@/features/logs/components/LogsPanel.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';

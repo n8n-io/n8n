@@ -1,16 +1,15 @@
-import type { LogEntrySelection } from '@/components/CanvasChat/types/logs';
+import type { LogEntry, LogEntrySelection } from '@/features/logs/logs.types';
 import {
 	findLogEntryRec,
 	findSelectedLogEntry,
 	getDepth,
 	getEntryAtRelativeIndex,
-	type LogEntry,
-} from '@/components/RunDataAi/utils';
+} from '@/features/logs/logs.utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { canvasEventBus } from '@/event-bus/canvas';
 import type { IExecutionResponse } from '@/Interface';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useLogsStore } from '@/stores/logs.store';
+import { useLogsStore } from '@/features/logs/logs.store';
 import { useUIStore } from '@/stores/ui.store';
 import { watch } from 'vue';
 import { computed, ref, type ComputedRef } from 'vue';

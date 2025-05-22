@@ -5,7 +5,6 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { h } from 'vue';
 import {
-	createTestLogEntry,
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
@@ -14,8 +13,9 @@ import {
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { type FrontendSettings } from '@n8n/api-types';
-import { LOG_DETAILS_PANEL_STATE } from '../../types/logs';
-import type { LogEntry } from '@/components/RunDataAi/utils';
+import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.types';
+import type { LogEntry } from '../logs.types';
+import { createTestLogEntry } from '../__test__/mocks';
 
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;

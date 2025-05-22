@@ -1,7 +1,7 @@
 import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { mockedStore } from '@/__tests__/utils';
-import LogsPanel from '@/components/CanvasChat/future/LogsPanel.vue';
+import LogsPanel from '@/features/logs/components/LogsPanel.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -16,14 +16,14 @@ import {
 	nodeTypes,
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { LOGS_PANEL_STATE } from '../types/logs';
 import { IN_PROGRESS_EXECUTION_ID } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useNDVStore } from '@/stores/ndv.store';
 import { deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
-import { useLogsStore } from '@/stores/logs.store';
+import { useLogsStore } from '@/features/logs/logs.store';
 import { useUIStore } from '@/stores/ui.store';
+import { LOGS_PANEL_STATE } from '../logs.types';
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;

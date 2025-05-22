@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { nodeTypes } from '../../__test__/data';
+import { nodeTypes } from '../__test__/data';
 import {
 	createTestNode,
 	createTestTaskData,

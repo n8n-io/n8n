@@ -120,7 +120,7 @@ import { useFoldersStore } from '@/stores/folders.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
-import { useLogsStore } from '@/stores/logs.store';
+import { useLogsStore } from '@/features/logs/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
 
 defineOptions({

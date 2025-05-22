@@ -12,10 +12,10 @@ import {
 	aiChatWorkflow,
 	aiManualExecutionResponse,
 	aiManualWorkflow,
-} from '../../__test__/data';
+} from '../__test__/data';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
-import { createLogTree, flattenLogEntries } from '@/components/RunDataAi/utils';
+import { createLogTree, flattenLogEntries } from '../logs.utils';
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;

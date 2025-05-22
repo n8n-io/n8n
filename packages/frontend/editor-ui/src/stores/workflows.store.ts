@@ -93,7 +93,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { updateCurrentUserSettings } from '@/api/users';
 import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
-import { useLogsStore } from './logs.store';
+import { useLogsStore } from '../features/logs/logs.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',

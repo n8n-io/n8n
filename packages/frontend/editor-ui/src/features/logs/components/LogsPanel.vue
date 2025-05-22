@@ -2,18 +2,18 @@
 import { nextTick, computed, useTemplateRef } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/components/CanvasChat/composables/useChatState';
-import LogsOverviewPanel from '@/components/CanvasChat/future/components/LogsOverviewPanel.vue';
+import LogsOverviewPanel from '@/features/logs/components/LogsOverviewPanel.vue';
 import ChatMessagesPanel from '@/components/CanvasChat/components/ChatMessagesPanel.vue';
-import LogsDetailsPanel from '@/components/CanvasChat/future/components/LogDetailsPanel.vue';
-import LogsPanelActions from '@/components/CanvasChat/future/components/LogsPanelActions.vue';
-import { useLogsPanelLayout } from '@/components/CanvasChat/future/composables/useLogsPanelLayout';
-import { useLogsExecutionData } from '@/components/CanvasChat/future/composables/useLogsExecutionData';
-import { type LogEntry } from '@/components/RunDataAi/utils';
+import LogsDetailsPanel from '@/features/logs/components/LogDetailsPanel.vue';
+import LogsPanelActions from '@/features/logs/components/LogsPanelActions.vue';
+import { useLogsPanelLayout } from '@/features/logs/composables/useLogsPanelLayout';
+import { useLogsExecutionData } from '@/features/logs/composables/useLogsExecutionData';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
-import { useLogsSelection } from '@/components/CanvasChat/future/composables/useLogsSelection';
-import { useLogsTreeExpand } from '@/components/CanvasChat/future/composables/useLogsTreeExpand';
-import { useLogsStore } from '@/stores/logs.store';
+import { useLogsSelection } from '@/features/logs/composables/useLogsSelection';
+import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand';
+import { type LogEntry } from '@/features/logs/logs.types';
+import { useLogsStore } from '@/features/logs/logs.store';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 

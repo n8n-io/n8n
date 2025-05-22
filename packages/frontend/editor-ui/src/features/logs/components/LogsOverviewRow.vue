@@ -4,16 +4,13 @@ import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { upperFirst } from 'lodash-es';
 import { useI18n } from '@/composables/useI18n';
-import LogsViewConsumedTokenCountText from '@/components/CanvasChat/future/components/LogsViewConsumedTokenCountText.vue';
+import LogsViewConsumedTokenCountText from '@/features/logs/components/LogsViewConsumedTokenCountText.vue';
 import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/utils/formatters/dateFormatter';
-import LogsViewNodeName from '@/components/CanvasChat/future/components/LogsViewNodeName.vue';
-import {
-	getSubtreeTotalConsumedTokens,
-	type LatestNodeInfo,
-	type LogEntry,
-} from '@/components/RunDataAi/utils';
+import LogsViewNodeName from '@/features/logs/components/LogsViewNodeName.vue';
+import { getSubtreeTotalConsumedTokens } from '@/features/logs/logs.utils';
 import { useTimestamp } from '@vueuse/core';
+import type { LatestNodeInfo, LogEntry } from '@/features/logs/logs.types';
 
 const props = defineProps<{
 	data: LogEntry;

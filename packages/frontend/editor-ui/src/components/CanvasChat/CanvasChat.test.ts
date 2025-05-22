@@ -23,8 +23,8 @@ import { useToast } from '@/composables/useToast';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ChatMessage } from '@n8n/chat/types';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { LOGS_PANEL_STATE } from './types/logs';
-import { useLogsStore } from '@/stores/logs.store';
+import { LOGS_PANEL_STATE } from '../../features/logs/logs.types';
+import { useLogsStore } from '@/features/logs/logs.store';
 
 vi.mock('@/composables/useToast', () => {
 	const showMessage = vi.fn();

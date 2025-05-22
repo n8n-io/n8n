@@ -10,7 +10,7 @@ import ChatInput from '@n8n/chat/components/Input.vue';
 import { watch, computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
-import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
+import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useSettingsStore } from '@/stores/settings.store';
 
