@@ -49,7 +49,6 @@ const { isReady } = useAsyncState(async () => {
 
 	const workflowId = props.name;
 	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
-
 	if (isAlreadyInitialized) return;
 
 	if (workflowId && workflowId !== 'new') {
@@ -68,7 +67,6 @@ const { isReady } = useAsyncState(async () => {
 
 <template>
 	<div :class="$style.evaluationsView">
-		<!-- If showWizard is true and we're at the root path, show the wizard -->
 		<template v-if="isReady && showWizard">
 			<div :class="$style.setupContent">
 				<div :class="$style.setupHeader">
@@ -100,8 +98,7 @@ const { isReady } = useAsyncState(async () => {
 				</div>
 			</div>
 		</template>
-		<!-- Otherwise, render the child route (EvaluationsView or TestRunDetailView) -->
-		<router-view v-else-if="isReady" :key="$route.path" />
+		<router-view v-else-if="isReady" />
 	</div>
 </template>
 
