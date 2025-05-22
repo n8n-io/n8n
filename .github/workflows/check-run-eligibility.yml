@@ -1,0 +1,116 @@
+# Determines if conditions are met for running gated jobs on a Pull Request.
+#
+# This workflow checks for:
+# 1. Relevant file changes (based on the `paths_filter_patterns` input).
+# 2. The PR does NOT target an excluded branch (based on the `excluded_target_branch_patterns` input).
+# 3. The PR has been approved by a maintainer (based on the `is_pr_approved_by_maintainer` input).
+#
+# If all these conditions are met, it sets the `conditions_met_for_gated_jobs` output to true.
+# This applies to ALL Pull Requests (internal or from community forks) that are approved
+# and meet the file/branch criteria.
+# It also outputs `is_community_pr` (true if the PR is from a fork) for informational purposes.
+
+name: Check Run Eligibility
+
+on:
+  workflow_call:
+    inputs:
+      pr_base_ref:
+        required: true
+        type: string
+      pr_head_sha:
+        required: true
+        type: string
+      pr_head_repo_full_name:
+        required: true
+        type: string
+      is_pr_approved_by_maintainer:
+        required: true
+        type: boolean
+      paths_filter_patterns:
+        required: false
+        type: string
+        default: |
+          not_ignored:
+            - '!.devcontainer/**'
+            - '!.github/*'
+            - '!.github/scripts/*'
+            - '!.github/workflows/benchmark-*'
+            - '!.github/workflows/check-*'
+            - '!.vscode/**'
+            - '!docker/**'
+            - '!packages/@n8n/benchmark/**'
+            - '!**/*.md'
+      excluded_target_branch_patterns:
+        description: "Newline-separated list of glob patterns for PR target branches on which gated jobs should be SKIPPED. e.g. release/*"
+        required: false
+        type: string
+        default: |
+          release/*
+          master
+
+    outputs:
+      conditions_met_for_gated_jobs:
+        description: "Indicates if pre-conditions are met for running gated jobs."
+        value: ${{ jobs.evaluate_conditions.outputs.run_gated_jobs_decision }}
+      is_community_pr:
+        description: "Boolean indicating if this is a community PR (from a fork)."
+        value: ${{ jobs.evaluate_conditions.outputs.is_community_pr_val }}
+
+jobs:
+  evaluate_conditions:
+    runs-on: ubuntu-latest
+    outputs:
+      run_gated_jobs_decision: ${{ steps.determine_gated_run_logic.outputs.should_run_gated }}
+      is_community_pr_val: ${{ steps.determine_pr_type.outputs.is_community_pr }}
+    steps:
+      - name: Determine PR Type (Fork vs. Internal)
+        id: determine_pr_type
+        run: |
+          if [[ "${{ inputs.pr_head_repo_full_name }}" == "${{ github.repository }}" ]]; then
+            echo "is_community_pr=false" >> $GITHUB_OUTPUT
+          else
+            echo "is_community_pr=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check out current commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          ref: ${{ inputs.pr_head_sha }}
+          fetch-depth: 2
+
+      - name: Determine changed files
+        uses: tomi/paths-filter-action@32c62f5ca100c1110406e3477d5b3ecef4666fec # v3.0.2
+        id: changed
+        with:
+          filters: ${{ inputs.paths_filter_patterns }}
+          predicate-quantifier: 'every'
+
+      - name: Determine Gated Jobs Run Logic
+        id: determine_gated_run_logic
+        env:
+          IS_APPROVED_BY_MAINTAINER: ${{ inputs.is_pr_approved_by_maintainer }}
+          RELEVANT_FILES_CHANGED: ${{ steps.changed.outputs.not_ignored == 'true' }}
+          BASE_REF: ${{ inputs.pr_base_ref }}
+          EXCLUDED_PATTERNS: ${{ inputs.excluded_target_branch_patterns }}
+        run: |
+          run_gated="false"
+          target_branch_ok="true"
+
+          if [[ -n "$EXCLUDED_PATTERNS" ]]; then
+            while IFS= read -r pattern; do
+              if [[ -n "$pattern" ]]; then
+                if [[ "$BASE_REF" == $pattern ]]; then
+                  target_branch_ok="false"
+                  break
+                fi
+              fi
+            done <<< "$EXCLUDED_PATTERNS"
+          fi
+
+          if [[ "$RELEVANT_FILES_CHANGED" == "true" && \
+                "$target_branch_ok" == "true" && \
+                "$IS_APPROVED_BY_MAINTAINER" == "true" ]]; then
+            run_gated="true"
+          fi
+          echo "should_run_gated=$run_gated" >> $GITHUB_OUTPUT

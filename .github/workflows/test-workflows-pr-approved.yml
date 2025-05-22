@@ -6,12 +6,25 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
-  run_workflow_tests_after_approval:
-    name: Run Tests on Approved PR
+  eligibility_check:
+    name: Check Eligibility for Test Run
     if: github.event.review.state == 'approved'
+    uses: ./.github/workflows/check-run-eligibility.yml
+    with:
+      pr_base_ref: ${{ github.event.pull_request.base.ref }}
+      pr_head_sha: ${{ github.event.pull_request.head.sha }}
+      pr_head_repo_full_name: ${{ github.event.pull_request.head.repo.full_name }}
+      is_pr_approved_by_maintainer: ${{ github.event.review.state == 'approved' }}
+
+  run_workflow_tests:
+    name: Run Tests on Approved Internal PR
+    needs: [eligibility_check]
+    if: >
+      needs.eligibility_check.result != 'skipped' &&
+      needs.eligibility_check.outputs.conditions_met_for_gated_jobs == 'true' &&
+      needs.eligibility_check.outputs.is_community_pr == 'false'
     uses: ./.github/workflows/test-workflows-callable.yml
     with:
       git_ref: ${{ github.event.pull_request.head.sha }}
