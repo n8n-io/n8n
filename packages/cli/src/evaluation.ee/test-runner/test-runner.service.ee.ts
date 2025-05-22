@@ -254,7 +254,7 @@ export class TestRunnerService {
 			(node) => execution.data.resultData.runData[node.name],
 		);
 		const metricsData = metricsRunData.reverse().map((data) => data.data?.main?.[0]?.[0]?.json);
-		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {}) ?? {};
+		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {});
 
 		return metricsResult;
 	}
