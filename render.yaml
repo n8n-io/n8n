@@ -1,11 +1,10 @@
 services:
   - type: web
-    name: n8n-node
-    env: node
+    name: n8n-node18
+    env: docker
     plan: free
     region: oregon
-    buildCommand: npm install
-    startCommand: npx n8n
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: N8N_BASIC_AUTH_ACTIVE
         value: "true"
