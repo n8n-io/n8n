@@ -15,19 +15,21 @@ import { computed, ref, watch } from 'vue';
  */
 
 type Props = {
+	selectedLocation: ChangeLocationSearchResult | null;
 	currentProjectId: string;
 	currentFolderId?: string;
 	parentFolderId?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	currentFolderId: '',
-	parentFolderId: '',
+	selectedLocation: null,
+	currentFolderId: undefined,
+	parentFolderId: undefined,
 	onOpen: () => {},
 });
 
 const emit = defineEmits<{
-	'location:selected': [value: { id: string; name: string; type: 'folder' | 'project' }];
+	'location:selected': [value: ChangeLocationSearchResult];
 }>();
 
 const i18n = useI18n();
@@ -35,9 +37,20 @@ const i18n = useI18n();
 const foldersStore = useFoldersStore();
 const projectsStore = useProjectsStore();
 
-const moveFolderDropdown = ref<InstanceType<typeof N8nSelect>>();
-const selectedFolderId = ref<string | null>(null);
 const availableLocations = ref<ChangeLocationSearchResult[]>([]);
+const moveFolderDropdown = ref<InstanceType<typeof N8nSelect>>();
+const selectedLocationId = computed<string | null>({
+	get: () => props.selectedLocation?.id ?? null,
+	set: (id) => {
+		const location = availableLocations.value.find((f) => f.id === id);
+		if (!location) {
+			return;
+		}
+
+		emit('location:selected', location);
+	},
+});
+
 const loading = ref(false);
 
 const currentProject = computed(() => {
@@ -93,18 +106,6 @@ watch(
 	{ immediate: true },
 );
 
-const onFolderSelected = (folderId: string) => {
-	const selectedFolder = availableLocations.value.find((folder) => folder.id === folderId);
-	if (!selectedFolder) {
-		return;
-	}
-	emit('location:selected', {
-		id: folderId,
-		name: selectedFolder.name,
-		type: selectedFolder.resource,
-	});
-};
-
 function focusOnInput() {
 	// To make the dropdown automatically open focused and positioned correctly
 	// we must wait till the modal opening animation is done. ElModal triggers an 'opened' event
@@ -125,7 +126,7 @@ const separator = computed(() => {
 	<div :class="$style['move-folder-dropdown']" data-test-id="move-to-folder-dropdown">
 		<N8nSelect
 			ref="moveFolderDropdown"
-			v-model="selectedFolderId"
+			v-model="selectedLocationId"
 			:filterable="true"
 			:remote="true"
 			:remote-method="fetchAvailableLocations"
@@ -134,7 +135,6 @@ const separator = computed(() => {
 			:no-data-text="i18n.baseText('folders.move.modal.folder.noData.label')"
 			option-label="name"
 			option-value="id"
-			@update:model-value="onFolderSelected"
 		>
 			<template #prefix>
 				<N8nIcon icon="search" />

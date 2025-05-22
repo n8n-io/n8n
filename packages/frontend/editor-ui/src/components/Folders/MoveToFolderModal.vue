@@ -12,7 +12,11 @@ import {
 	type ProjectListItem,
 	type ProjectSharingData,
 } from '@/types/projects.types';
-import type { ICredentialsResponse, IUsedCredential } from '@/Interface';
+import type {
+	ChangeLocationSearchResult,
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/Interface';
 import { getResourcePermissions } from '@/permissions';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import { ResourceType } from '@/utils/projects.utils';
@@ -36,6 +40,12 @@ type Props = {
 	};
 };
 
+export interface SimpleFolder {
+	id: string;
+	name: string;
+	type: string;
+}
+
 const props = defineProps<Props>();
 
 const i18n = useI18n();
@@ -48,7 +58,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const workflowsStore = useWorkflowsStore();
 
-const selectedFolder = ref<{ id: string; name: string } | null>(null);
+const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
 const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject ?? null);
 const isPersonalProject = computed(() => {
 	return selectedProject.value?.type === ProjectTypes.Personal;
@@ -133,21 +143,27 @@ const fetchCurrentFolderContents = async () => {
 };
 
 watch(
-	() => [currentFolder, selectedProject],
+	() => [selectedProject.value],
+	() => {
+		selectedFolder.value = null;
+	},
+);
+
+watch(
+	() => [currentFolder.value, selectedProject.value],
 	() => {
 		void fetchCurrentFolderContents();
 	},
 	{ immediate: true },
 );
 
-const onFolderSelected = (payload: { id: string; name: string; type: string }) => {
+const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 	selectedFolder.value = payload;
 };
 
 const onSubmit = () => {
 	if (props.data.resourceType === 'folder') {
 		if (selectedProject.value && selectedProject.value?.id !== projectsStore.currentProject?.id) {
-			console.log('Moving folder to another project');
 			props.data.workflowListEventBus.emit('folder-transferred', {
 				folder: { id: props.data.resource.id, name: props.data.resource.name },
 				projectId: projectsStore.currentProject?.id,
@@ -231,6 +247,10 @@ const descriptionMessage = computed(() => {
 
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 
+const isFolderSelectable = computed(() => {
+	return isOwnPersonalProject.value || !isPersonalProject.value;
+});
+
 onMounted(async () => {
 	if (isResourceWorkflow.value) {
 		const [workflow, credentials] = await Promise.all([
@@ -273,13 +293,14 @@ onMounted(async () => {
 					/>
 				</div>
 			</enterprise-edition>
-			<template v-if="selectedProject && (!isPersonalProject || isOwnPersonalProject)">
+			<template v-if="selectedProject && isFolderSelectable">
 				<div :class="$style.block">
 					<n8n-text color="text-dark">
 						{{ i18n.baseText('folders.move.modal.folder.label') }}
 					</n8n-text>
 					<MoveToFolderDropdown
 						ref="moveToFolderDropdown"
+						:selected-location="selectedFolder"
 						:current-folder-id="currentFolder?.id"
 						:current-project-id="selectedProject.id"
 						:parent-folder-id="props.data.resource.parentFolderId"
@@ -368,7 +389,7 @@ onMounted(async () => {
 					@click="close"
 				/>
 				<n8n-button
-					:disabled="!selectedFolder"
+					:disabled="!selectedFolder && isFolderSelectable"
 					:label="
 						i18n.baseText('folders.move.modal.confirm', {
 							interpolate: {
