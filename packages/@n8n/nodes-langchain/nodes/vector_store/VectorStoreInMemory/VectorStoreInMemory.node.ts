@@ -14,14 +14,15 @@ import {
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
 
+const warningBanner: INodeProperties = {
+	displayName:
+		'<strong>For experimental use only</strong>: Data is stored in memory and will be lost if n8n restarts. Data may also be cleared if available memory gets low, and is accessible to all users of this instance. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/">More info</a>',
+	name: 'notice',
+	type: 'notice',
+	default: '',
+};
+
 const insertFields: INodeProperties[] = [
-	{
-		displayName:
-			'<strong>For experimental use only</strong>: Data is stored in memory and will be lost if n8n restarts. Data may also be cleared if available memory gets low. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/">More info</a>',
-		name: 'notice',
-		type: 'notice',
-		default: '',
-	},
 	{
 		displayName: 'Clear Store',
 		name: 'clearStore',
@@ -29,6 +30,7 @@ const insertFields: INodeProperties[] = [
 		default: false,
 		description: 'Whether to clear the store before inserting new data',
 	},
+	warningBanner,
 ];
 
 const DEFAULT_MEMORY_KEY = 'vector_store_key';
@@ -166,8 +168,8 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 		},
 	},
 	insertFields,
-	loadFields: [],
-	retrieveFields: [],
+	loadFields: [warningBanner],
+	retrieveFields: [warningBanner],
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const memoryKey = getMemoryKey(context, itemIndex);
 		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
