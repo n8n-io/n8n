@@ -119,6 +119,10 @@ const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 				limit: -1,
 				warningThreshold: 0.8,
 			},
+			workflowsHavingEvaluations: {
+				value: 0,
+				limit: -1,
+			},
 		},
 		license: {
 			planId: '',
