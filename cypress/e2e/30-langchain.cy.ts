@@ -41,8 +41,8 @@ import {
 	getNodes,
 	openNode,
 	getConnectionBySourceAndTarget,
-    disableNode,
-    getExecuteWorkflowButton,
+	disableNode,
+	getExecuteWorkflowButton,
 } from '../composables/workflow';
 import { NDV, WorkflowPage } from '../pages';
 import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
@@ -89,8 +89,7 @@ describe('Langchain Integration', () => {
 		clickGetBackToCanvas();
 
 		disableNode('Schedule Trigger');
-
-		getExecuteWorkflowButton().should('not.exist')
+		getExecuteWorkflowButton().should('not.exist');
 	});
 
 	it('should add nodes to all Agent node input types', () => {
