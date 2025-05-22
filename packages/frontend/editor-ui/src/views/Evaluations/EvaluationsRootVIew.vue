@@ -7,20 +7,25 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 
 const props = defineProps<{
 	name: string;
 }>();
 
 const workflowsStore = useWorkflowsStore();
+const evaluationsStore = useEvaluationStore();
 const usageStore = useUsageStore();
 const router = useRouter();
 const toast = useToast();
 const i18n = useI18n();
+const nodeTypesStore = useNodeTypesStore();
 
 const { initializeWorkspace } = useCanvasOperations({ router });
 
 const { isReady } = useAsyncState(async () => {
+	await evaluationsStore.fetchTestRuns(props.name);
 	await usageStore.getLicenseInfo();
 	const workflowId = props.name;
 	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
@@ -32,6 +37,12 @@ const { isReady } = useAsyncState(async () => {
 		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			try {
 				const data = await workflowsStore.fetchWorkflow(workflowId);
+
+				// We need to check for the evaluation node with setMetrics operation, so we need to initialize the nodeTypesStore to have node properties initialized
+				if (nodeTypesStore.allNodeTypes.length === 0) {
+					await nodeTypesStore.getNodeTypes();
+				}
+
 				initializeWorkspace(data);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));

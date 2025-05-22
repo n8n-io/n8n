@@ -11,6 +11,7 @@ import type {
 	IExecuteData,
 	INodeExecutionData,
 	AssignmentCollectionValue,
+	GenericValue,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -343,6 +344,20 @@ export class TestRunnerService {
 		const testRun = await this.testRunRepository.createTestRun(workflowId);
 		assert(testRun, 'Unable to create a test run');
 
+		// Initialize telemetry metadata
+		const telemetryMeta = {
+			workflow_id: workflowId,
+			test_type: 'evaluation',
+			run_id: testRun.id,
+			start: Date.now(),
+			status: 'success' as 'success' | 'fail' | 'cancelled',
+			test_case_count: 0,
+			errored_test_case_count: 0,
+			metric_count: 0,
+			error_message: '',
+			duration: 0,
+		};
+
 		// 0.1 Initialize AbortController
 		const abortController = new AbortController();
 		this.abortControllers.set(testRun.id, abortController);
@@ -353,8 +368,6 @@ export class TestRunnerService {
 			testRunId: testRun.id,
 			userId: user.id,
 		};
-
-		let testRunEndStatusForTelemetry;
 
 		const abortSignal = abortController.signal;
 		const { manager: dbManager } = this.testRunRepository;
@@ -385,6 +398,7 @@ export class TestRunnerService {
 			);
 
 			const testCases = datasetTriggerOutput.map((items) => ({ json: items.json }));
+			telemetryMeta.test_case_count = testCases.length;
 
 			this.logger.debug('Found test cases', { count: testCases.length });
 
@@ -397,6 +411,7 @@ export class TestRunnerService {
 
 			for (const testCase of testCases) {
 				if (abortSignal.aborted) {
+					telemetryMeta.status = 'cancelled';
 					this.logger.debug('Test run was cancelled', {
 						workflowId,
 					});
@@ -441,6 +456,7 @@ export class TestRunnerService {
 							errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
 							metrics: {},
 						});
+						telemetryMeta.errored_test_case_count++;
 						continue;
 					}
 					const completedAt = new Date();
@@ -460,6 +476,7 @@ export class TestRunnerService {
 							status: 'error',
 							errorCode: 'NO_METRICS_COLLECTED',
 						});
+						telemetryMeta.errored_test_case_count++;
 					} else {
 						this.logger.debug('Test case metrics extracted', addedMetrics);
 						// Create a new test case execution in DB
@@ -482,6 +499,8 @@ export class TestRunnerService {
 						testRunId: testRun.id,
 						error: e,
 					});
+
+					telemetryMeta.errored_test_case_count++;
 
 					// In case of an unexpected error save it as failed test case execution and continue with the next test case
 					if (e instanceof TestCaseExecutionError) {
@@ -517,21 +536,21 @@ export class TestRunnerService {
 				await dbManager.transaction(async (trx) => {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
-
-					testRunEndStatusForTelemetry = 'cancelled';
 				});
+				telemetryMeta.status = 'cancelled';
 			} else {
 				const aggregatedMetrics = metrics.getAggregatedMetrics();
+				telemetryMeta.metric_count = Object.keys(aggregatedMetrics).length;
 
 				this.logger.debug('Aggregated metrics', aggregatedMetrics);
 
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 
 				this.logger.debug('Test run finished', { workflowId, testRunId: testRun.id });
-
-				testRunEndStatusForTelemetry = 'completed';
 			}
 		} catch (e) {
+			telemetryMeta.status = 'fail';
+
 			if (e instanceof ExecutionCancelledError) {
 				this.logger.debug('Evaluation execution was cancelled. Cancelling test run', {
 					testRunId: testRun.id,
@@ -543,25 +562,43 @@ export class TestRunnerService {
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
 				});
 
-				testRunEndStatusForTelemetry = 'cancelled';
+				telemetryMeta.status = 'cancelled';
 			} else if (e instanceof TestRunError) {
 				await this.testRunRepository.markAsError(testRun.id, e.code, e.extra as IDataObject);
-				testRunEndStatusForTelemetry = 'error';
+				telemetryMeta.error_message = e.code;
+				if (e.extra && typeof e.extra === 'object' && 'message' in e.extra) {
+					telemetryMeta.error_message += `: ${String(e.extra.message)}`;
+				}
 			} else {
 				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
-				testRunEndStatusForTelemetry = 'error';
+				telemetryMeta.error_message = e instanceof Error ? e.message : 'UNKNOWN_ERROR';
 				throw e;
 			}
 		} finally {
+			// Calculate duration
+			telemetryMeta.duration = Date.now() - telemetryMeta.start;
+
 			// Clean up abort controller
 			this.abortControllers.delete(testRun.id);
 
-			// Send telemetry event
-			this.telemetry.track('Test run finished', {
-				workflow_id: workflowId,
-				run_id: testRun.id,
-				status: testRunEndStatusForTelemetry,
-			});
+			// Send telemetry event with complete metadata
+			const telemetryPayload: Record<string, GenericValue> = {
+				...telemetryMeta,
+			};
+
+			// Add success-specific fields
+			if (telemetryMeta.status === 'success') {
+				telemetryPayload.test_case_count = telemetryMeta.test_case_count;
+				telemetryPayload.errored_test_case_count = telemetryMeta.errored_test_case_count;
+				telemetryPayload.metric_count = telemetryMeta.metric_count;
+			}
+
+			// Add fail-specific fields
+			if (telemetryMeta.status === 'fail') {
+				telemetryPayload.error_message = telemetryMeta.error_message;
+			}
+
+			this.telemetry.track('Test run finished', telemetryPayload);
 		}
 	}
 
