@@ -72,7 +72,15 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
-import type { NodeConnectionType, IDataObject, ExecutionSummary, IConnection } from 'n8n-workflow';
+import type {
+	NodeConnectionType,
+	IDataObject,
+	ExecutionSummary,
+	IConnection,
+	INodeParameters,
+	INodeProperties,
+	INode,
+} from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -193,6 +201,7 @@ const {
 	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
+	revertReplaceNodeProperties,
 	setNodeActive,
 	setNodeSelected,
 	toggleNodesDisabled,
@@ -878,6 +887,18 @@ async function onRevertRenameNode({
 	await revertRenameNode(currentName, newName);
 }
 
+async function onRevertReplaceNodeProperties({
+	nodeId,
+	currentProperties,
+	newProperties,
+}: {
+	nodeId: string;
+	currentProperties: Partial<INode>;
+	newProperties: Partial<INode>;
+}) {
+	await revertReplaceNodeProperties(nodeId, currentProperties, newProperties);
+}
+
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
 	setNodeParameters(id, parameters);
 }
@@ -1380,6 +1401,7 @@ function addUndoRedoEventBindings() {
 	historyBus.on('revertAddConnection', onRevertCreateConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.on('revertRenameNode', onRevertRenameNode);
+	historyBus.on('revertReplaceNodeProperties', onRevertReplaceNodeProperties);
 	historyBus.on('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
@@ -1390,6 +1412,7 @@ function removeUndoRedoEventBindings() {
 	historyBus.off('revertAddConnection', onRevertCreateConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.off('revertRenameNode', onRevertRenameNode);
+	historyBus.off('revertReplaceNodeProperties', onRevertReplaceNodeProperties);
 	historyBus.off('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 

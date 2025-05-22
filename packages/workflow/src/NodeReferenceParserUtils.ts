@@ -1,7 +1,7 @@
 import { escapeRegExp, mapValues, isEqual, cloneDeep } from 'lodash';
 
 import { OperationalError } from './errors';
-import type { INode, NodeParameterValueType } from './Interfaces';
+import type { INode, INodeParameters, NodeParameterValueType } from './Interfaces';
 
 class LazyRegExp {
 	private regExp?: RegExp;
@@ -334,7 +334,6 @@ function parseReferencingExpressions(
 		);
 	}
 
-	debugger;
 	if (parse$json && expression.includes('$json')) {
 		for (const match of expression.matchAll(/\$json/gi)) {
 			const res = parse$jsonMatch(match, expression, startNodeName);
@@ -444,6 +443,11 @@ function applyExtractMappingToNode(node: INode, parameterExtractMapping: Paramet
 			return parameters;
 		}
 
+		// TODO Add test case for this
+		if (Array.isArray(parameters) && typeof mapping === 'object' && !Array.isArray(mapping)) {
+			return parameters.map((x, i) => applyMapping(x, mapping[i]) as INodeParameters);
+		}
+
 		return mapValues(parameters, (v, k) => applyMapping(v, mapping[k])) as NodeParameterValueType;
 	};
 
@@ -482,17 +486,16 @@ export function extractReferencesInNodeExpressions(
 	subGraph: INode[],
 	nodeNames: string[],
 	insertedStartName: string,
-	graphInputNodeName?: string,
+	graphInputNodeNames?: string[],
 ) {
 	////
 	// STEP 1 - Validate input invariants
 	////
-	if (nodeNames.includes(insertedStartName))
-		throw new OperationalError(
-			`StartNodeName ${insertedStartName} already exists in nodeNames: ${JSON.stringify(nodeNames)}`,
-		);
-
 	const subGraphNames = subGraph.map((x) => x.name);
+	if (subGraphNames.includes(insertedStartName))
+		throw new OperationalError(
+			`StartNodeName ${insertedStartName} already exists in nodeNames: ${JSON.stringify(subGraphNames)}`,
+		);
 
 	if (subGraphNames.some((x) => !nodeNames.includes(x))) {
 		throw new OperationalError(
@@ -532,7 +535,7 @@ export function extractReferencesInNodeExpressions(
 				nodeRegexps,
 				nodeNames,
 				insertedStartName,
-				node.name === graphInputNodeName,
+				graphInputNodeNames?.includes(node.name) ?? false,
 			),
 		);
 		recMapByNode.set(node.name, parameterMapping);

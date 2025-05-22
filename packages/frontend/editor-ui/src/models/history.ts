@@ -1,5 +1,5 @@
 import type { INodeUi, XYPosition } from '@/Interface';
-import type { IConnection } from 'n8n-workflow';
+import type { IConnection, INode, INodeParameters, INodeProperties } from 'n8n-workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 // Command names don't serve any particular purpose in the app
@@ -13,6 +13,7 @@ export const enum COMMANDS {
 	REMOVE_CONNECTION = 'removeConnection',
 	ENABLE_NODE_TOGGLE = 'enableNodeToggle',
 	RENAME_NODE = 'renameNode',
+	REPLACE_NODE_PROPERTIES = 'replaceNodeProperties',
 }
 
 // Triggering multiple canvas actions in sequence leaves
@@ -276,6 +277,46 @@ export class RenameNodeCommand extends Command {
 			historyBus.emit('revertRenameNode', {
 				currentName: this.currentName,
 				newName: this.newName,
+			});
+			resolve();
+		});
+	}
+}
+
+export class ReplaceNodePropertiesCommand extends Command {
+	constructor(
+		private nodeId: string,
+		private currentProperties: Partial<INode>,
+		private newProperties: Partial<INode>,
+		timestamp: number,
+	) {
+		super(COMMANDS.REPLACE_NODE_PROPERTIES, timestamp);
+	}
+
+	getReverseCommand(timestamp: number): Command {
+		return new ReplaceNodePropertiesCommand(
+			this.nodeId,
+			this.newProperties,
+			this.currentProperties,
+			timestamp,
+		);
+	}
+
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof ReplaceNodePropertiesCommand &&
+			anotherCommand.nodeId === this.nodeId &&
+			anotherCommand.currentProperties === this.currentProperties &&
+			anotherCommand.newProperties === this.newProperties
+		);
+	}
+
+	async revert(): Promise<void> {
+		return await new Promise<void>((resolve) => {
+			historyBus.emit('revertReplaceNodeProperties', {
+				nodeId: this.nodeId,
+				currentProperties: this.currentProperties,
+				newProperties: this.newProperties,
 			});
 			resolve();
 		});

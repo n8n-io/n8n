@@ -40,6 +40,7 @@ import {
 	RemoveConnectionCommand,
 	RemoveNodeCommand,
 	RenameNodeCommand,
+	ReplaceNodePropertiesCommand,
 } from '@/models/history';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -243,6 +244,48 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		updateNodePosition(node.id, position);
+	}
+
+	function replaceNodeProperties(
+		nodeId: string,
+		currentProperties: Partial<INode>,
+		newProperties: Partial<INode>,
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
+		const node = workflowsStore.getNodeById(nodeId);
+		if (!node) return;
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		for (const k of Object.keys(currentProperties)) {
+			if (!(k in newProperties)) {
+				// @ts-expect-error invariant
+				delete node[k];
+			}
+		}
+		for (const [k, v] of Object.entries(newProperties)) {
+			// @ts-expect-error invariant
+			node[k] = v;
+		}
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(
+				new ReplaceNodePropertiesCommand(nodeId, currentProperties, newProperties, Date.now()),
+			);
+		}
+
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
+	async function revertReplaceNodeProperties(
+		nodeId: string,
+		currentProperties: Partial<INode>,
+		newProperties: Partial<INode>,
+	) {
+		replaceNodeProperties(nodeId, newProperties, currentProperties);
 	}
 
 	async function renameNode(
@@ -2169,6 +2212,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		setNodeParameters,
 		renameNode,
 		revertRenameNode,
+		replaceNodeProperties,
+		revertReplaceNodeProperties,
 		deleteNode,
 		deleteNodes,
 		copyNodes,

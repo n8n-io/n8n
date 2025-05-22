@@ -23,6 +23,7 @@ import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTelemetry } from './useTelemetry';
+import { isEqual, uniqueId } from 'lodash-es';
 
 export const SUBWORKFLOW_TRIGGER_ID = 'c155762a-8fe7-4141-a639-df2372f30060';
 const CANVAS_HISTORY_OPTIONS = {
@@ -184,17 +185,22 @@ export function useWorkflowExtraction() {
 		const currentWorkflow = workflowsStore.getCurrentWorkflow();
 		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
 		let startNodeName = 'Start';
-		while (allNodeNames.includes(startNodeName)) startNodeName += '_1';
+		const subGraphNames = subGraph.map((x) => x.name);
+		while (subGraphNames.includes(startNodeName)) startNodeName += '_1';
 
-		const beforeStartNodes = start
+		let returnNodeName = 'Return';
+		while (subGraphNames.includes(returnNodeName)) returnNodeName += '_1';
+
+		const directAfterEndNodes = end
 			? currentWorkflow
-					.getParentNodes(start, 'main', 1)
+					.getChildNodes(end, 'main', 1)
 					.map((x) => currentWorkflow.getNode(x))
 					.filter((x) => x !== null)
 			: [];
-		const afterEndNodes = end
+
+		const allAfterEndNodes = end
 			? currentWorkflow
-					.getChildNodes(end, 'main', 1)
+					.getChildNodes(end, 'ALL')
 					.map((x) => currentWorkflow.getNode(x))
 					.filter((x) => x !== null)
 			: [];
@@ -203,7 +209,7 @@ export function useWorkflowExtraction() {
 			subGraph,
 			allNodeNames,
 			startNodeName,
-			start,
+			start ? [start] : undefined,
 		);
 
 		let executeWorkflowNodeName = `Call ${newWorkflowName}`;
@@ -225,6 +231,8 @@ export function useWorkflowExtraction() {
 			startNodeTarget.position[1],
 		];
 
+		const endNodeTarget = nodes.find((x) => x.name === end);
+
 		const startNodeConnection = startNodeTarget
 			? ({
 					[startNodeName]: {
@@ -240,6 +248,59 @@ export function useWorkflowExtraction() {
 					},
 				} as IConnections)
 			: {};
+
+		const endNodeConnection = endNodeTarget
+			? ({
+					[endNodeTarget.name]: {
+						main: [
+							[
+								{
+									node: returnNodeName,
+									type: 'main', // todo check if this is valid
+									index: 0,
+								},
+							],
+						],
+					},
+				} as IConnections)
+			: {};
+
+		const { nodes: afterNodes, variables: afterVariables } = extractReferencesInNodeExpressions(
+			allAfterEndNodes,
+			allAfterEndNodes
+				.map((x) => x.name)
+				.concat(subGraphNames), // this excludes nodes that will remain in the parent workflow
+			executeWorkflowNodeName,
+			directAfterEndNodes.map((x) => x.name),
+		);
+
+		const returnNode =
+			afterVariables.size === 0
+				? []
+				: [
+						{
+							parameters: {
+								assignments: {
+									assignments: [
+										...afterVariables.entries().map((x) => ({
+											id: Math.random().toString().slice(2),
+											name: x[0],
+											value: `={{ ${x[1]} }}`,
+											type: 'string', // todo infer from execution data?
+										})),
+									],
+								},
+								options: {},
+							},
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3.4,
+							position: endNodeTarget
+								? [endNodeTarget.position[0] + PUSH_NODES_OFFSET, endNodeTarget.position[1]]
+								: undefined,
+							id: Math.random().toString().slice(2),
+							name: returnNodeName,
+						} as INode,
+					];
 
 		const triggerParameters =
 			variables.size > 0
@@ -264,10 +325,12 @@ export function useWorkflowExtraction() {
 					position: startNodePosition,
 					parameters: triggerParameters,
 				} as INode,
+				...returnNode,
 			],
 			connections: {
 				...newConnections,
 				...startNodeConnection,
+				...endNodeConnection,
 			},
 			settings: { executionOrder: 'v1' },
 			projectId: workflowsStore.workflow.homeProject?.id,
@@ -383,6 +446,19 @@ export function useWorkflowExtraction() {
 			await nextTick();
 			canvasOperations.deleteNode(node.id, CANVAS_HISTORY_OPTIONS);
 		}
+
+		for (const node of afterNodes) {
+			await nextTick();
+			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
+			if (isEqual(node, currentNode)) continue;
+			canvasOperations.replaceNodeProperties(
+				node.id,
+				{ ...currentNode },
+				{ ...currentNode, parameters: { ...node.parameters } },
+				CANVAS_HISTORY_OPTIONS,
+			);
+		}
+
 		uiStore.stateIsDirty = true;
 		historyStore.stopRecordingUndo();
 
