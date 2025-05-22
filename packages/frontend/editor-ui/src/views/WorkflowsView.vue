@@ -1175,7 +1175,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 
 const moveFolder = async (payload: {
 	folder: { id: string; name: string };
-	newParent: { id: string; name: string; type: 'folder' | 'project' } | null;
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
 	options?: {
 		skipFetch?: boolean;
 		skipNavigation?: boolean;
@@ -1186,7 +1186,7 @@ const moveFolder = async (payload: {
 		await foldersStore.moveFolder(
 			route.params.projectId as string,
 			payload.folder.id,
-			payload.newParent?.type === 'folder' ? payload.newParent.id : '0',
+			payload.newParent.type === 'folder' ? payload.newParent.id : '0',
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
 
@@ -1194,7 +1194,7 @@ const moveFolder = async (payload: {
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
 				projectId: route.params.projectId,
-				folderId: payload.newParent?.type === 'folder' ? payload.newParent.id : undefined,
+				folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 			},
 		}).href;
 		if (isCurrentFolder && !payload.options?.skipNavigation) {
@@ -1207,7 +1207,7 @@ const moveFolder = async (payload: {
 				message: i18n.baseText('folders.move.success.message', {
 					interpolate: {
 						folderName: payload.folder.name,
-						newFolderName: payload.newParent?.name ?? i18n.baseText('folders.move.project.root'),
+						newFolderName: payload.newParent.name,
 					},
 				}),
 				onClick: (event: MouseEvent | undefined) => {
@@ -1231,11 +1231,11 @@ const onFolderTransferred = async (payload: {
 	folder: { id: string; name: string };
 	projectId: string;
 	destinationProjectId: string;
-	newParent: { id: string; name: string; type: 'folder' | 'project' } | null;
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
 	shareCredentials?: string[];
 }) => {
 	const destinationParentFolderId =
-		payload.newParent?.type === 'folder' ? payload.newParent.id : undefined;
+		payload.newParent.type === 'folder' ? payload.newParent.id : undefined;
 
 	await foldersStore.moveFolderToProject(
 		payload.projectId,
@@ -1264,7 +1264,7 @@ const onFolderTransferred = async (payload: {
 			message: i18n.baseText('folders.move.success.message', {
 				interpolate: {
 					folderName: payload.folder.name,
-					newFolderName: payload.newParent?.name ?? i18n.baseText('folders.move.project.root'),
+					newFolderName: payload.newParent.name,
 				},
 			}),
 			onClick: (event: MouseEvent | undefined) => {
@@ -1308,10 +1308,10 @@ const moveWorkflowToFolder = async (payload: {
 const onWorkflowTransferred = async (payload: {
 	projectId: string;
 	workflow: { id: string; name: string; oldParentId: string };
-	newParent: { id: string; name: string; type: 'folder' | 'project' } | null;
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
 	shareCredentials?: string[];
 }) => {
-	const parentFolderId = payload.newParent?.type === 'folder' ? payload.newParent.id : undefined;
+	const parentFolderId = payload.newParent.type === 'folder' ? payload.newParent.id : undefined;
 
 	await projectsStore.moveResourceToProject(
 		'workflow',
@@ -1329,7 +1329,7 @@ const onWorkflowTransferred = async (payload: {
 			message: i18n.baseText('folders.move.workflow.success.message', {
 				interpolate: {
 					workflowName: payload.workflow.name,
-					newFolderName: payload.newParent?.name ?? i18n.baseText('folders.move.project.root'),
+					newFolderName: payload.newParent.name,
 				},
 			}),
 			onClick: (event: MouseEvent | undefined) => {
@@ -1339,7 +1339,7 @@ const onWorkflowTransferred = async (payload: {
 						name: VIEWS.PROJECTS_FOLDERS,
 						params: {
 							projectId: route.params.projectId,
-							folderId: payload.newParent?.type === 'folder' ? payload.newParent.id : undefined,
+							folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 						},
 					});
 				}
@@ -1353,7 +1353,7 @@ const onWorkflowTransferred = async (payload: {
 
 const onWorkflowMoved = async (payload: {
 	workflow: { id: string; name: string; oldParentId: string };
-	newParent: { id: string; name: string; type: 'folder' | 'project' } | null;
+	newParent: { id: string; name: string; type: 'folder' | 'project' };
 	options?: {
 		skipFetch?: boolean;
 	};
@@ -1364,14 +1364,14 @@ const onWorkflowMoved = async (payload: {
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
 				projectId: route.params.projectId,
-				folderId: payload.newParent?.type === 'folder' ? payload.newParent.id : undefined,
+				folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 			},
 		}).href;
 		const workflowResource = workflowsAndFolders.value.find(
 			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
 		);
 		await workflowsStore.updateWorkflow(payload.workflow.id, {
-			parentFolderId: payload.newParent?.type === 'folder' ? payload.newParent.id : '0',
+			parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
 			versionId: workflowResource?.versionId,
 		});
 		if (!payload.options?.skipFetch) {
@@ -1382,7 +1382,7 @@ const onWorkflowMoved = async (payload: {
 			message: i18n.baseText('folders.move.workflow.success.message', {
 				interpolate: {
 					workflowName: payload.workflow.name,
-					newFolderName: payload.newParent?.name ?? i18n.baseText('folders.move.project.root'),
+					newFolderName: payload.newParent.name,
 				},
 			}),
 			onClick: (event: MouseEvent | undefined) => {
@@ -1396,7 +1396,7 @@ const onWorkflowMoved = async (payload: {
 		telemetry.track('User moved content', {
 			workflow_id: payload.workflow.id,
 			source_folder_id: payload.workflow.oldParentId,
-			destination_folder_id: payload.newParent?.id ?? '0',
+			destination_folder_id: payload.newParent.id,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));

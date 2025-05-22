@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import { truncate } from '@n8n/utils/string/truncate';
+import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
 import { EnterpriseEditionFeature, MOVE_FOLDER_MODAL_KEY } from '@/constants';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -19,7 +21,7 @@ import type {
 } from '@/Interface';
 import { getResourcePermissions } from '@/permissions';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
-import { ResourceType } from '@/utils/projects.utils';
+import { ResourceType, splitName } from '@/utils/projects.utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 /**
@@ -101,9 +103,14 @@ const unShareableCredentials = computed(() =>
 	),
 );
 
-const projects = computed<ProjectListItem[]>(() => {
-	return projectsStore.projects;
-});
+const availableProjects = computed<ProjectListItem[]>(() =>
+	sortByProperty(
+		'name',
+		projectsStore.availableProjects.filter(
+			(p) => !p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create,
+		),
+	),
+);
 
 const resourceTypeLabel = computed(() => {
 	return i18n.baseText(`generic.${props.data.resourceType}`).toLowerCase();
@@ -161,29 +168,53 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 	selectedFolder.value = payload;
 };
 
+const targetProjectName = computed(() => {
+	const { name, email } = splitName(selectedProject.value?.name ?? '');
+	return truncate(name ?? email ?? '', 25);
+});
+
 const onSubmit = () => {
+	if (!selectedProject.value) {
+		return;
+	}
+
+	const newParent = selectedFolder.value
+		? {
+				id: selectedFolder.value.id,
+				name: selectedFolder.value.name,
+				type: selectedFolder.value.resource,
+			}
+		: {
+				// When transferring resource to another user the folder selection is empty,
+				// as we can't select a folder in another user's personal project.
+				// Use project name as the fallback display name.
+				id: selectedProject.value.id,
+				name: targetProjectName.value,
+				type: 'project',
+			};
+
 	if (props.data.resourceType === 'folder') {
-		if (selectedProject.value && selectedProject.value?.id !== projectsStore.currentProject?.id) {
+		if (selectedProject.value?.id !== projectsStore.currentProject?.id) {
 			props.data.workflowListEventBus.emit('folder-transferred', {
+				newParent,
 				folder: { id: props.data.resource.id, name: props.data.resource.name },
 				projectId: projectsStore.currentProject?.id,
 				destinationProjectId: selectedProject.value.id,
-				newParent: selectedFolder.value,
 				shareCredentials: shareUsedCredentials.value
 					? shareableCredentials.value.map((c) => c.id)
 					: undefined,
 			});
 		} else {
 			props.data.workflowListEventBus.emit('folder-moved', {
-				newParent: selectedFolder.value,
+				newParent,
 				folder: { id: props.data.resource.id, name: props.data.resource.name },
 			});
 		}
 	} else {
-		if (selectedProject.value && selectedProject.value?.id !== projectsStore.currentProject?.id) {
+		if (selectedProject.value?.id !== projectsStore.currentProject?.id) {
 			props.data.workflowListEventBus.emit('workflow-transferred', {
+				newParent,
 				projectId: selectedProject.value.id,
-				newParent: selectedFolder.value,
 				workflow: {
 					id: props.data.resource.id,
 					name: props.data.resource.name,
@@ -195,7 +226,7 @@ const onSubmit = () => {
 			});
 		} else {
 			props.data.workflowListEventBus.emit('workflow-moved', {
-				newParent: selectedFolder.value,
+				newParent,
 				workflow: {
 					id: props.data.resource.id,
 					name: props.data.resource.name,
@@ -288,7 +319,7 @@ onMounted(async () => {
 					<ProjectSharing
 						v-model="selectedProject"
 						class="pt-2xs"
-						:projects="projects"
+						:projects="availableProjects"
 						:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
 					/>
 				</div>
