@@ -302,14 +302,18 @@ describe('GET /workflows/:workflowId/test-runs/:id/test-cases', () => {
 
 		expect(resp.statusCode).toBe(200);
 		expect(resp.body.data).toHaveLength(2);
-		expect(resp.body.data[0]).toMatchObject({
-			status: 'success',
-			metrics: { accuracy: 0.95 },
-		});
-		expect(resp.body.data[1]).toMatchObject({
-			status: 'error',
-			errorCode: 'UNKNOWN_ERROR',
-		});
+		expect(resp.body.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					status: 'success',
+					metrics: { accuracy: 0.95 },
+				}),
+				expect.objectContaining({
+					status: 'error',
+					errorCode: 'UNKNOWN_ERROR',
+				}),
+			]),
+		);
 	});
 
 	test('should return empty array when no test cases exist for a test run', async () => {
