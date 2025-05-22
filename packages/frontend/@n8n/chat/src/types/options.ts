@@ -33,4 +33,6 @@ export interface ChatOptions {
 	disabled?: Ref<boolean>;
 	allowFileUploads?: Ref<boolean> | boolean;
 	allowedFilesMimeTypes?: Ref<string> | string;
+	sessionKeySouce?: () => string;
+	onSessionKeyLoaded?: (sessionKey: string) => void;
 }
