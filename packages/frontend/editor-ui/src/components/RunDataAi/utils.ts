@@ -488,13 +488,16 @@ function createLogTreeRec(context: LogTreeCreationContext) {
 	);
 }
 
-export function findLogEntryRec(id: string, entries: LogEntry[]): LogEntry | undefined {
+export function findLogEntryRec(
+	isMatched: (entry: LogEntry) => boolean,
+	entries: LogEntry[],
+): LogEntry | undefined {
 	for (const entry of entries) {
-		if (entry.id === id) {
+		if (isMatched(entry)) {
 			return entry;
 		}
 
-		const child = findLogEntryRec(id, entry.children);
+		const child = findLogEntryRec(isMatched, entry.children);
 
 		if (child) {
 			return child;
@@ -514,7 +517,7 @@ export function findSelectedLogEntry(
 		case 'none':
 			return undefined;
 		case 'selected': {
-			const entry = findLogEntryRec(selection.id, entries);
+			const entry = findLogEntryRec((e) => e.id === selection.id, entries);
 
 			if (entry) {
 				return entry;

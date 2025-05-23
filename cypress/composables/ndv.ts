@@ -208,6 +208,21 @@ export function typeIntoFixedCollectionItem(collectionName: string, index: numbe
 	);
 }
 
+export function selectResourceLocatorAddResourceItem(
+	resourceLocator: string,
+	expectedText: string,
+) {
+	clickResourceLocatorInput(resourceLocator);
+
+	// getVisiblePopper().findChildByTestId('rlc-item-add-resource').eq(0).should('exist');
+	getVisiblePopper()
+		.findChildByTestId('rlc-item-add-resource')
+		.eq(0)
+		.find('span')
+		.should('contain.text', expectedText)
+		.click();
+}
+
 export function selectResourceLocatorItem(
 	resourceLocator: string,
 	index: number,
