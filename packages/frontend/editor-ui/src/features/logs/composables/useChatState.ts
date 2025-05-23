@@ -1,11 +1,9 @@
 import type { RunWorkflowChatPayload } from '@/features/logs/composables/useChatMessaging';
 import { useChatMessaging } from '@/features/logs/composables/useChatMessaging';
-import { useChatTrigger } from '@/features/logs/composables/useChatTrigger';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { VIEWS } from '@/constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -15,7 +13,8 @@ import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/features/logs/logs.store';
-import { restoreChatHistory } from '@/features/logs/logs.utils';
+import { isChatNode, restoreChatHistory } from '@/features/logs/logs.utils';
+import type { INodeParameters } from 'n8n-workflow';
 
 interface ChatState {
 	currentSessionId: Ref<string>;
@@ -29,7 +28,6 @@ interface ChatState {
 export function useChatState(isReadOnly: boolean): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
-	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();
 	const router = useRouter();
 	const nodeHelpers = useNodeHelpers();
@@ -39,14 +37,19 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
-	const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-
-	// Initialize features with injected dependencies
-	const { chatTriggerNode, allowFileUploads, allowedFilesMimeTypes } = useChatTrigger({
-		workflow,
-		getNodeByName: workflowsStore.getNodeByName,
-		getNodeType: nodeTypesStore.getNodeType,
-	});
+	const chatTriggerNode = computed(
+		() => Object.values(workflowsStore.allNodes).find(isChatNode) ?? null,
+	);
+	const allowFileUploads = computed(
+		() =>
+			(chatTriggerNode.value?.parameters?.options as INodeParameters)?.allowFileUploads === true,
+	);
+	const allowedFilesMimeTypes = computed(
+		() =>
+			(
+				chatTriggerNode.value?.parameters?.options as INodeParameters
+			)?.allowedFilesMimeTypes?.toString() ?? '',
+	);
 
 	const { sendMessage, isLoading } = useChatMessaging({
 		chatTrigger: chatTriggerNode,
@@ -171,7 +174,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	function displayExecution(executionId: string) {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: workflow.value.id, executionId },
+			params: { name: workflowsStore.workflowId, executionId },
 		});
 		window.open(route.href, '_blank');
 	}

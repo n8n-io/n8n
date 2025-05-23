@@ -12,6 +12,7 @@ import {
 	aiChatExecutionResponse,
 	aiChatWorkflow,
 	aiManualWorkflow,
+	chatTriggerNode,
 	nodeTypes,
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -27,7 +28,6 @@ import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { userEvent } from '@testing-library/user-event';
 import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/logs/composables/useChatMessaging';
-import * as useChatTrigger from '@/features/logs/composables/useChatTrigger';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useToast } from '@/composables/useToast';
 
@@ -628,24 +628,24 @@ describe('LogsPanel', () => {
 			});
 
 			it('should enable file uploads when allowed by chat trigger node', async () => {
-				const allowFileUploads = ref(true);
-				const original = useChatTrigger.useChatTrigger;
-				vi.spyOn(useChatTrigger, 'useChatTrigger').mockImplementation((...args) => ({
-					...original(...args),
-					allowFileUploads: computed(() => allowFileUploads.value),
-				}));
-				const { getByTestId } = render();
-
-				const chatPanel = getByTestId('canvas-chat');
-				expect(chatPanel).toBeInTheDocument();
-
-				const fileInput = getByTestId('chat-attach-file-button');
-				expect(fileInput).toBeInTheDocument();
-
-				allowFileUploads.value = false;
-				await waitFor(() => {
-					expect(fileInput).not.toBeInTheDocument();
+				workflowsStore.setNodes(aiChatWorkflow.nodes);
+				workflowsStore.setNodeParameters({
+					name: chatTriggerNode.name,
+					value: { options: { allowFileUploads: true } },
 				});
+
+				const { getByTestId, queryByTestId } = render();
+
+				expect(getByTestId('canvas-chat')).toBeInTheDocument();
+				expect(getByTestId('chat-attach-file-button')).toBeInTheDocument();
+
+				workflowsStore.setNodeParameters({
+					name: chatTriggerNode.name,
+					value: { options: { allowFileUploads: false } },
+				});
+				await waitFor(() =>
+					expect(queryByTestId('chat-attach-file-button')).not.toBeInTheDocument(),
+				);
 			});
 		});
 
