@@ -9,9 +9,6 @@ const uiStore = useUIStore();
 const goToUpgrade = async () => {
 	uiStore.openModalWithData({
 		name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
-		data: {
-			customHeading: undefined,
-		},
 	});
 };
 </script>
