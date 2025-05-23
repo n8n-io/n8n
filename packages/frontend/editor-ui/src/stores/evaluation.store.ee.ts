@@ -11,7 +11,7 @@ export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,
 	() => {
 		// State
-		const loading = ref(false);
+		const loadingTestRuns = ref(false);
 		const fetchedAll = ref(false);
 		const testRunsById = ref<Record<string, TestRunRecord>>({});
 		const testCaseExecutionsById = ref<Record<string, TestCaseExecutionRecord>>({});
@@ -28,7 +28,7 @@ export const useEvaluationStore = defineStore(
 			posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT),
 		);
 
-		const isLoading = computed(() => loading.value);
+		const isLoading = computed(() => loadingTestRuns.value);
 
 		const testRunsByWorkflowId = computed(() => {
 			return Object.values(testRunsById.value).reduce(
@@ -61,7 +61,7 @@ export const useEvaluationStore = defineStore(
 
 		// Test Runs Methods
 		const fetchTestRuns = async (workflowId: string) => {
-			loading.value = true;
+			loadingTestRuns.value = true;
 			try {
 				const runs = await evaluationsApi.getTestRuns(rootStore.restApiContext, workflowId);
 				runs.forEach((run) => {
@@ -72,7 +72,7 @@ export const useEvaluationStore = defineStore(
 				});
 				return runs;
 			} finally {
-				loading.value = false;
+				loadingTestRuns.value = false;
 			}
 		};
 
