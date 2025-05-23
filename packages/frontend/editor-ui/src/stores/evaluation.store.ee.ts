@@ -117,11 +117,16 @@ export const useEvaluationStore = defineStore(
 		// We should use a more efficient polling mechanism in the future.
 		const startPollingTestRun = (workflowId: string, runId: string) => {
 			const poll = async () => {
-				const run = await getTestRun({ workflowId, runId });
-				if (['running', 'new'].includes(run.status)) {
+				try {
+					const run = await getTestRun({ workflowId, runId });
+					if (['running', 'new'].includes(run.status)) {
+						pollingTimeouts.value[runId] = setTimeout(poll, 1000);
+					} else {
+						delete pollingTimeouts.value[runId];
+					}
+				} catch (error) {
+					// If the API call fails, continue polling
 					pollingTimeouts.value[runId] = setTimeout(poll, 1000);
-				} else {
-					delete pollingTimeouts.value[runId];
 				}
 			};
 			void poll();
