@@ -7,13 +7,12 @@ import MessageOptionAction from './MessageOptionAction.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ArrowKeyDownPayload } from '@n8n/chat/components/Input.vue';
 import ChatInput from '@n8n/chat/components/Input.vue';
-import { watch, computed, ref, inject } from 'vue';
+import { watch, computed, ref } from 'vue';
 import { useClipboard } from '@/composables/useClipboard';
 import { useToast } from '@/composables/useToast';
 import LogsPanelHeader from '@/components/CanvasChat/future/components/LogsPanelHeader.vue';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useSettingsStore } from '@/stores/settings.store';
-import { PiPWindowSymbol } from '@/constants';
 
 interface Props {
 	pastChatMessages: string[];
@@ -39,10 +38,7 @@ const emit = defineEmits<{
 	clickHeader: [];
 }>();
 
-const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
-const clipboard = useClipboard({
-	navigator: pipWindow.value?.navigator ?? window.navigator,
-});
+const clipboard = useClipboard();
 
 const locale = useI18n();
 const toast = useToast();
@@ -171,7 +167,7 @@ watch(
 			@click="emit('clickHeader')"
 		>
 			<template #actions>
-				<N8nTooltip v-if="!isReadOnly">
+				<N8nTooltip v-if="clipboard.isSupported && !isReadOnly">
 					<template #content>
 						{{ sessionId }}
 						<br />

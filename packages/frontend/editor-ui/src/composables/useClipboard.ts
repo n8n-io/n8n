@@ -1,17 +1,17 @@
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { inject, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useClipboard as useClipboardCore, useThrottleFn } from '@vueuse/core';
+import { PiPWindowSymbol } from '@/constants';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
 
 export function useClipboard({
-	navigator = window.navigator,
 	onPaste: onPasteFn = () => {},
 }: {
-	navigator?: Navigator;
 	onPaste?: ClipboardEventFn;
 } = {}) {
+	const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
 	const { copy, copied, isSupported, text } = useClipboardCore({
-		navigator,
+		navigator: pipWindow.value?.navigator ?? window.navigator,
 		legacy: true,
 	});
 

@@ -9,10 +9,10 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
-import { nonExistingJsonPath, PiPWindowSymbol } from '@/constants';
+import { nonExistingJsonPath } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
-import { computed, inject, ref } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -39,10 +39,7 @@ const props = withDefaults(
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
-const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
-const clipboard = useClipboard({
-	navigator: pipWindow.value?.navigator ?? window.navigator,
-});
+const clipboard = useClipboard();
 
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
