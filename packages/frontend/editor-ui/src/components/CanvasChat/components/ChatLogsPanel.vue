@@ -2,6 +2,8 @@
 import type { INode, Workflow } from 'n8n-workflow';
 import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 import { useI18n } from '@/composables/useI18n';
+import { inject, ref } from 'vue';
+import { PiPWindowSymbol } from '@/constants';
 
 defineProps<{
 	node: INode | null;
@@ -12,6 +14,8 @@ defineProps<{
 defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
+
+const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
 </script>
 
 <template>
@@ -32,6 +36,7 @@ const locale = useI18n();
 		<div :class="$style.logs">
 			<RunDataAi
 				v-if="node"
+				:key="`run-data-ai${pipWindow ? '-pip' : ''}`"
 				:class="$style.runData"
 				:node="node"
 				:workflow="workflow"

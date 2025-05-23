@@ -1,4 +1,4 @@
-import { IsInPiPWindowSymbol } from '@/constants';
+import { PiPWindowSymbol } from '@/constants';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
@@ -49,7 +49,7 @@ export function usePiPWindow({
 		isPoppedOut.value ? (content.value ?? undefined) : undefined,
 	);
 
-	provide(IsInPiPWindowSymbol, isPoppedOut);
+	provide(PiPWindowSymbol, pipWindow);
 	useProvideTooltipAppendTo(tooltipContainer);
 
 	async function showPip() {
