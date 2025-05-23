@@ -148,9 +148,10 @@ describe('useToast', () => {
 
 		it('does apply logsStore offset if closed', () => {
 			logsStore.state = 'closed';
+			logsStore.height = 32;
 			settingsStore.isAiAssistantEnabled = true;
 			const offset = toast.determineToastOffset();
-			expect(offset).toBe(100 + 64);
+			expect(offset).toBe(32 + 64);
 		});
 	});
 });
