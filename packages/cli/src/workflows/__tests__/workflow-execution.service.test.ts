@@ -433,7 +433,7 @@ describe('WorkflowExecutionService', () => {
 			expect(node).toEqual(webhookNode);
 		});
 
-		it('should favor first webhook node over second webhook node', () => {
+		it('should favor webhook node connected to the destination node', () => {
 			workflow.nodes.push(webhookNode, secondWebhookNode, hackerNewsNode, secondHackerNewsNode);
 			workflow.connections = {
 				...createMainConnection(webhookNode.name, hackerNewsNode.name),
