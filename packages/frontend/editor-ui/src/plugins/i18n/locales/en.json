@@ -3088,6 +3088,8 @@
 	"evaluation.listRuns.error.testCasesNotFound.description": "Check any filters or limits set in the evaluation trigger",
 	"evaluation.listRuns.error.executionInterrupted": "Test run was interrupted",
 	"evaluation.listRuns.error.unknownError": "Execution error{description}",
+	"evaluation.listRuns.error.cantFetchTestRuns": "Couldn’t fetch test runs",
+	"evaluation.listRuns.error.cantStartTestRun": "Couldn’t start test run",
 	"evaluation.listRuns.error.unknownError.description": "Click for more details",
 	"evaluation.listRuns.error.evaluationTriggerNotFound": "Evaluation trigger missing",
 	"evaluation.listRuns.error.evaluationTriggerNotConfigured": "Evaluation trigger is not configured",

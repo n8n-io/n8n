@@ -39,14 +39,26 @@ const showWizard = computed(() => {
 
 // Method to run a test - will be used by the SetupWizard component
 async function runTest() {
-	await evaluationStore.startTestRun(props.name);
-	await evaluationStore.fetchTestRuns(props.name);
+	try {
+		await evaluationStore.startTestRun(props.name);
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
+		return;
+	}
+	try {
+		await evaluationStore.fetchTestRuns(props.name);
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
+	}
 }
 
 const { isReady } = useAsyncState(async () => {
-	await usageStore.getLicenseInfo();
-	await evaluationStore.fetchTestRuns(props.name);
-
+	try {
+		await usageStore.getLicenseInfo();
+		await evaluationStore.fetchTestRuns(props.name);
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
+	}
 	const workflowId = props.name;
 	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
 	if (isAlreadyInitialized) return;
