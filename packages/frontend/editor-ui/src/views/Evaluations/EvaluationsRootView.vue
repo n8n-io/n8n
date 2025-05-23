@@ -7,6 +7,7 @@ import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { computed } from 'vue';
 import { N8nLink, N8nText } from '@n8n/design-system';
@@ -23,6 +24,7 @@ const evaluationStore = useEvaluationStore();
 const router = useRouter();
 const toast = useToast();
 const locale = useI18n();
+const nodeTypesStore = useNodeTypesStore();
 
 const { initializeWorkspace } = useCanvasOperations({ router });
 
@@ -68,6 +70,12 @@ const { isReady } = useAsyncState(async () => {
 		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			try {
 				const data = await workflowsStore.fetchWorkflow(workflowId);
+
+				// We need to check for the evaluation node with setMetrics operation, so we need to initialize the nodeTypesStore to have node properties initialized
+				if (nodeTypesStore.allNodeTypes.length === 0) {
+					await nodeTypesStore.getNodeTypes();
+				}
+
 				initializeWorkspace(data);
 			} catch (error) {
 				toast.showError(error, locale.baseText('nodeView.showError.openWorkflow.title'));
