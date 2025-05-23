@@ -64,7 +64,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
 				(SELECT SUM(${this.toColumnName('rootCount')}) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_root_executions_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count,
-				(SELECT COUNT(distinct ${this.toColumnName('workflowId')} FROM ${testRunTable}) AS evaluations_count;
+				(SELECT COUNT(distinct ${this.toColumnName('workflowId')}) FROM ${testRunTable}) AS evaluations_count;
 		`)) as Row[];
 
 		const toNumber = (value: string | number) =>
