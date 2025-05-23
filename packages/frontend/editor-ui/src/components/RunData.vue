@@ -1165,6 +1165,7 @@ function getPinDataOrLiveData(data: INodeExecutionData[]): INodeExecutionData[] 
 }
 
 function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
+	// problem: this is called both from input and output pane
 	if (!search.value || isSchemaView.value) {
 		ndvStore.searchToInputIndexMap = null;
 		return data;
@@ -1178,6 +1179,7 @@ function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
 		if (searchInObject(item.json, search.value)) {
 			const searchItemIndex = result.length;
 			result.push(item);
+			// TODO: update this only for input pane search
 			searchToInputIndexMap[searchItemIndex] = index;
 		}
 	}

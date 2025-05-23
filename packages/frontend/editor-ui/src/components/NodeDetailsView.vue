@@ -613,8 +613,9 @@ const activateOutputPane = () => {
 	isOutputPaneActive.value = true;
 };
 
-const onSearch = (search: string) => {
-	isPairedItemHoveringEnabled.value = !search;
+const onSearch = () => {
+	// TODO: fix this for output panel and refactor
+	isPairedItemHoveringEnabled.value = true;
 };
 
 const registerKeyboardListener = () => {
