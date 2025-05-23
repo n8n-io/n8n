@@ -1,6 +1,7 @@
 import type { User } from '@n8n/db';
 import type { Application } from 'express';
 import { captor, mock } from 'jest-mock-extended';
+import type { Logger } from 'n8n-core';
 import type { Server, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
 import { type WebSocket, Server as WSServer } from 'ws';
@@ -30,12 +31,16 @@ describe('Push', () => {
 	const host = 'example.com';
 	const user = mock<User>({ id: 'user-id' });
 	const config = mock<PushConfig>();
+	const logger = mock<Logger>();
 
 	let push: Push;
 	const sseBackend = mockInstance(SSEPush);
 	const wsBackend = mockInstance(WebSocketPush);
 
-	beforeEach(() => jest.resetAllMocks());
+	beforeEach(() => {
+		jest.resetAllMocks();
+		logger.scoped.mockReturnValue(logger);
+	});
 
 	describe('setupPushServer', () => {
 		const restEndpoint = 'rest';
@@ -47,7 +52,7 @@ describe('Push', () => {
 		describe('sse backend', () => {
 			test('should not create a WebSocket server', () => {
 				config.backend = 'sse';
-				push = new Push(config, mock(), mock(), mock(), mock());
+				push = new Push(config, mock(), logger, mock(), mock());
 
 				push.setupPushServer(restEndpoint, server, app);
 
@@ -64,7 +69,7 @@ describe('Push', () => {
 
 			beforeEach(() => {
 				config.backend = 'websocket';
-				push = new Push(config, mock(), mock(), mock(), mock());
+				push = new Push(config, mock(), logger, mock(), mock());
 				wssSpy.mockReturnValue(wsServer);
 
 				push.setupPushServer(restEndpoint, server, app);
@@ -133,15 +138,61 @@ describe('Push', () => {
 
 			beforeEach(() => {
 				config.backend = backendName;
-				push = new Push(config, mock(), mock(), mock(), mock());
+				push = new Push(config, mock(), logger, mock(), mock());
 				req.ws = backendName === 'sse' ? undefined : ws;
 			});
 
 			describe('should throw on invalid origin', () => {
-				test.each(['https://subdomain.example.com', 'https://123example.com', undefined])(
-					'%s',
-					(origin) => {
+				test.each([
+					{
+						name: 'origin does not match host',
+						origin: 'https://subdomain.example.com',
+						xForwardedProto: undefined,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin does not match host (subdomain)',
+						origin: 'https://123example.com',
+						xForwardedProto: undefined,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin is not defined',
+						origin: undefined,
+						xForwardedProto: undefined,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'only one of the forward headers is defined',
+						origin: 'https://123example.com',
+						xForwardedProto: 'https',
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'only one of the forward headers is defined',
+						origin: 'https://123example.com',
+						xForwardedProto: undefined,
+						xForwardedHost: '123example.com',
+					},
+					{
+						name: 'protocol mismatch',
+						// correct origin, but forward headers take precedence
+						origin: 'https://example.com',
+						xForwardedProto: 'http',
+						xForwardedHost: host,
+					},
+					{
+						name: 'origin is undefined',
+						origin: undefined,
+						xForwardedProto: undefined,
+						xForwardedHost: undefined,
+					},
+				])(
+					'$name (origin: $origin, x-forwarded-proto: $xForwardedProto, x-forwarded-host: $xForwardedHost)',
+					({ origin, xForwardedProto, xForwardedHost }) => {
 						req.headers.origin = origin;
+						req.headers['x-forwarded-proto'] = xForwardedProto;
+						req.headers['x-forwarded-host'] = xForwardedHost;
 
 						if (backendName === 'sse') {
 							expect(() => push.handleRequest(req, res)).toThrow(
@@ -153,6 +204,59 @@ describe('Push', () => {
 							expect(ws.close).toHaveBeenCalledWith(1008);
 						}
 						expect(backend.add).not.toHaveBeenCalled();
+					},
+				);
+			});
+
+			describe('should not throw on invalid origin if `X-Forwarded-Host` and `X-Forwarded-Proto` are set correctly', () => {
+				test.each([
+					{
+						name: 'origin matches forward headers',
+						origin: 'https://example.com',
+						xForwardedProto: 'https',
+						xForwardedHost: 'example.com',
+					},
+					{
+						name: 'origin matches forward headers but has different case',
+						origin: 'https://example.com',
+						xForwardedProto: 'https',
+						xForwardedHost: 'EXAMPLE.com',
+					},
+					{
+						name: 'origin matches forward headers but protocol has different case',
+						origin: 'HTTPS://example.com',
+						xForwardedProto: undefined,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin matches host (https)',
+						origin: 'https://example.com',
+						xForwardedProto: undefined,
+						xForwardedHost: undefined,
+					},
+					{
+						name: 'origin matches host (http)',
+						origin: 'http://example.com',
+						xForwardedProto: undefined,
+						xForwardedHost: undefined,
+					},
+				])(
+					'$name (origin: $origin, x-forwarded-proto: $xForwardedProto, x-forwarded-host: $xForwardedHost)',
+					({ origin, xForwardedProto, xForwardedHost }) => {
+						// ARRANGE
+						req.headers.origin = origin;
+						req.headers['x-forwarded-proto'] = xForwardedProto;
+						req.headers['x-forwarded-host'] = xForwardedHost;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						// ACT
+						push.handleRequest(req, res);
+
+						// ASSERT
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
 					},
 				);
 			});

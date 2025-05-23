@@ -8,6 +8,7 @@ import {
 	getGenericHints,
 	getNewNodePosition,
 	NODE_SIZE,
+	updateViewportToContainNodes,
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
@@ -17,6 +18,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import { SET_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { createTestNode } from '@/__tests__/mocks';
+import type { GraphNode } from '@vue-flow/core';
+import { v4 as uuid } from 'uuid';
 
 describe('getGenericHints', () => {
 	let mockWorkflowNode: MockProxy<INode>;
@@ -397,3 +400,66 @@ describe('getNodesGroupSize', () => {
 		expect(he).toBe(NODE_SIZE);
 	});
 });
+
+describe(updateViewportToContainNodes, () => {
+	it('should return the same viewport if given node is already in the viewport', () => {
+		const result = updateViewportToContainNodes(
+			{ x: 0, y: 0, zoom: 2 },
+			{ width: 1000, height: 800 },
+			[createTestGraphNode({ position: { x: 0, y: 0 }, dimensions: { width: 36, height: 36 } })],
+			0,
+		);
+
+		expect(result).toEqual({ x: 0, y: 0, zoom: 2 });
+	});
+
+	it('should return updated viewport with minimal position change to include node outside northwest edge', () => {
+		const result = updateViewportToContainNodes(
+			{ x: 0, y: 0, zoom: 2 },
+			{ width: 1000, height: 800 },
+			[
+				createTestGraphNode({
+					position: { x: -10, y: -20 },
+					dimensions: { width: 36, height: 36 },
+				}),
+			],
+			0,
+		);
+
+		expect(result).toEqual({ x: 20, y: 40, zoom: 2 });
+	});
+
+	it('should return updated viewport with minimal position change to include node outside southeast edge', () => {
+		const result = updateViewportToContainNodes(
+			{ x: 0, y: 0, zoom: 2 },
+			{ width: 1000, height: 800 },
+			[
+				createTestGraphNode({
+					position: { x: 500, y: 400 },
+					dimensions: { width: 36, height: 36 },
+				}),
+			],
+			0,
+		);
+
+		expect(result).toEqual({ x: -72, y: -72, zoom: 2 });
+	});
+});
+
+function createTestGraphNode(data: Partial<GraphNode> = {}): GraphNode {
+	return {
+		computedPosition: { z: 0, ...(data.position ?? { x: 0, y: 0 }) },
+		handleBounds: {},
+		dimensions: { width: 0, height: 0 },
+		isParent: true,
+		selected: false,
+		resizing: false,
+		dragging: false,
+		data: undefined,
+		events: {},
+		type: '',
+		id: uuid(),
+		position: { x: 0, y: 0 },
+		...data,
+	};
+}
