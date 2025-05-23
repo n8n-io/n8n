@@ -91,6 +91,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const isAutocompleteOnboarded = ref(localStorageAutoCompleteIsOnboarded.value === 'true');
 
 	const highlightDraggables = ref(false);
+	const searchToInputIndexMap = ref<Record<number, number> | null>(null);
 
 	const workflowsStore = useWorkflowsStore();
 
@@ -434,5 +435,6 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		setHighlightDraggables,
 		updateNodeParameterIssues,
 		setFocusedInputPath,
+		searchToInputIndexMap,
 	};
 });
