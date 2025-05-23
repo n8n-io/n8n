@@ -291,6 +291,8 @@ onMounted(async () => {
 
 		usedCredentials.value = workflow?.usedCredentials ?? [];
 		allCredentials.value = credentials ?? [];
+	} else {
+		// TODO: Somehow find all credentials used in folder and subfolders
 	}
 });
 </script>
