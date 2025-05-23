@@ -21,6 +21,7 @@ describe('InsightsDashboard', () => {
 	it('should render without error', () => {
 		mockedStore(useInsightsStore);
 		expect(() => renderComponent()).not.toThrow();
+		expect(document.title).toBe('Insights - n8n');
 	});
 
 	it('should update the selected time range', async () => {
