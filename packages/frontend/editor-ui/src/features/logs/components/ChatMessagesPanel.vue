@@ -182,7 +182,7 @@ async function copySessionId() {
 				</N8nTooltip>
 			</template>
 		</LogsPanelHeader>
-		<main v-if="isOpen" :class="$style.chatBody">
+		<main v-if="isOpen" :class="$style.chatBody" data-test-id="canvas-chat-body">
 			<MessagesList
 				:messages="messages"
 				:class="$style.messages"

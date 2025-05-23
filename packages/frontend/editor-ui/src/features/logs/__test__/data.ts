@@ -87,6 +87,7 @@ export const aiChatExecutionResponse: IExecutionResponse = {
 	status: 'success',
 	data: {
 		resultData: {
+			lastNodeExecuted: 'AI Agent',
 			runData: {
 				'AI Agent': [
 					{
@@ -95,7 +96,9 @@ export const aiChatExecutionResponse: IExecutionResponse = {
 						executionIndex: 0,
 						executionTime: 1778,
 						source: [],
-						data: {},
+						data: {
+							main: [[{ json: { output: 'AI response message' } }]],
+						},
 					},
 				],
 				'AI Model': [
