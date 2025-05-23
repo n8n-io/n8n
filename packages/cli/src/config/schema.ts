@@ -285,13 +285,4 @@ export const schema = {
 		env: 'N8N_PROXY_HOPS',
 		doc: 'Number of reverse-proxies n8n is running behind',
 	},
-
-	logs_view: {
-		enabled: {
-			format: Boolean,
-			default: true,
-			env: 'N8N_ENABLE_LOGS_VIEW',
-			doc: 'Temporary env variable to enable logs view',
-		},
-	},
 };

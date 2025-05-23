@@ -1,4 +1,3 @@
-import { useSettingsStore } from '@/stores/settings.store';
 import type { Rect, SetViewport, ViewportTransform } from '@vue-flow/core';
 import { type Ref, ref, watch } from 'vue';
 
@@ -10,48 +9,44 @@ export function useViewportAutoAdjust(
 	viewport: Ref<ViewportTransform>,
 	setViewport: SetViewport,
 ) {
-	const settingsStore = useSettingsStore();
+	const canvasRect = ref<Rect>();
 
-	if (settingsStore.isNewLogsEnabled) {
-		const canvasRect = ref<Rect>();
-
-		watch(
-			viewportRef,
-			(vp, _, onCleanUp) => {
-				if (!vp) {
-					return;
-				}
-
-				const resizeObserver = new ResizeObserver((entries) => {
-					const entry = entries[0];
-
-					if (entry) {
-						canvasRect.value = entry.contentRect;
-					}
-				});
-
-				canvasRect.value = {
-					x: vp.offsetLeft,
-					y: vp.offsetTop,
-					width: vp.offsetWidth,
-					height: vp.offsetHeight,
-				};
-				resizeObserver.observe(vp);
-				onCleanUp(() => resizeObserver.disconnect());
-			},
-			{ immediate: true },
-		);
-
-		watch(canvasRect, async (newRect, oldRect) => {
-			if (!newRect || !oldRect) {
+	watch(
+		viewportRef,
+		(vp, _, onCleanUp) => {
+			if (!vp) {
 				return;
 			}
 
-			await setViewport({
-				x: viewport.value.x + (newRect.width - oldRect.width) / 2,
-				y: viewport.value.y + (newRect.height - oldRect.height) / 2,
-				zoom: viewport.value.zoom,
+			const resizeObserver = new ResizeObserver((entries) => {
+				const entry = entries[0];
+
+				if (entry) {
+					canvasRect.value = entry.contentRect;
+				}
 			});
+
+			canvasRect.value = {
+				x: vp.offsetLeft,
+				y: vp.offsetTop,
+				width: vp.offsetWidth,
+				height: vp.offsetHeight,
+			};
+			resizeObserver.observe(vp);
+			onCleanUp(() => resizeObserver.disconnect());
+		},
+		{ immediate: true },
+	);
+
+	watch(canvasRect, async (newRect, oldRect) => {
+		if (!newRect || !oldRect) {
+			return;
+		}
+
+		await setViewport({
+			x: viewport.value.x + (newRect.width - oldRect.width) / 2,
+			y: viewport.value.y + (newRect.height - oldRect.height) / 2,
+			zoom: viewport.value.zoom,
 		});
-	}
+	});
 }
