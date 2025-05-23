@@ -147,7 +147,7 @@ describe('useToast', () => {
 		});
 
 		it('does apply logsStore offset if closed', () => {
-			logsStore.state = 'floating';
+			logsStore.state = 'closed';
 			settingsStore.isAiAssistantEnabled = true;
 			const offset = toast.determineToastOffset();
 			expect(offset).toBe(100 + 64);
