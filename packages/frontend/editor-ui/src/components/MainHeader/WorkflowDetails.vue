@@ -98,7 +98,6 @@ const workflowHelpers = useWorkflowHelpers({ router });
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const isTagsEditEnabled = ref(false);
-const isNameEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
 const tagsSaving = ref(false);
 const importFileRef = ref<HTMLInputElement | undefined>();
@@ -255,7 +254,7 @@ watch(
 	() => props.id,
 	() => {
 		isTagsEditEnabled.value = false;
-		isNameEditEnabled.value = false;
+		renameInput.value?.forceCancel();
 	},
 );
 
@@ -320,7 +319,7 @@ function onTagsEditEnable() {
 
 	setTimeout(() => {
 		// allow name update to occur before disabling name edit
-		isNameEditEnabled.value = false;
+		renameInput.value?.forceCancel();
 		tagsEventBus.emit('focus');
 	}, 0);
 }
@@ -361,13 +360,7 @@ function onNameToggle() {
 	}
 }
 
-async function onNameSubmit({
-	name,
-	onSubmit,
-}: {
-	name: string;
-	onSubmit: (saved: boolean) => void;
-}) {
+async function onNameSubmit(name: string) {
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
@@ -376,14 +369,12 @@ async function onNameSubmit({
 			type: 'error',
 		});
 
-		onSubmit(false);
+		renameInput.value?.forceCancel();
 		return;
 	}
 
 	if (newName === props.name) {
-		isNameEditEnabled.value = false;
-
-		onSubmit(true);
+		renameInput.value?.forceCancel();
 		return;
 	}
 
@@ -391,12 +382,11 @@ async function onNameSubmit({
 	const id = getWorkflowId();
 	const saved = await workflowHelpers.saveCurrentWorkflow({ name });
 	if (saved) {
-		isNameEditEnabled.value = false;
 		showCreateWorkflowSuccessToast(id);
 		workflowHelpers.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
-	onSubmit(saved);
+	renameInput.value?.forceCancel();
 }
 
 async function handleFileImport(): Promise<void> {
@@ -681,11 +671,12 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 						>
 						<N8nInlineTextEdit
 							ref="renameInput"
+							:key="id"
 							class="name"
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
-							@update:model-value="(value) => onNameSubmit({ name: value, onSubmit: () => {} })"
+							@update:model-value="onNameSubmit"
 						/>
 					</template>
 				</FolderBreadcrumbs>

@@ -28,7 +28,14 @@ function forceFocus() {
 	}
 }
 
-defineExpose({ forceFocus });
+function forceCancel() {
+	if (editableRoot.value) {
+		newValue.value = props.modelValue;
+		editableRoot.value.cancel();
+	}
+}
+
+defineExpose({ forceFocus, forceCancel });
 
 function onSubmit() {
 	if (newValue.value === '') {

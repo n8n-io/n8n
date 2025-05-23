@@ -141,8 +141,6 @@ const currentFolderId = ref<string | null>(null);
 
 const showCardsBadge = ref(false);
 
-const isNameEditEnabled = ref(false);
-
 /**
  * Folder actions
  * These can appear on the list header, and then they are applied to current folder
@@ -1308,13 +1306,7 @@ function onNameToggle() {
 	}
 }
 
-const onNameSubmit = async ({
-	name,
-	onSubmit,
-}: {
-	name: string;
-	onSubmit: (saved: boolean) => void;
-}) => {
+const onNameSubmit = async (name: string) => {
 	if (!currentFolder.value || !currentProject.value) return;
 
 	const newName = name.trim();
@@ -1325,14 +1317,11 @@ const onNameSubmit = async ({
 			type: 'error',
 		});
 
-		onSubmit(false);
 		return;
 	}
 
 	if (newName === currentFolder.value.name) {
-		isNameEditEnabled.value = false;
-
-		onSubmit(true);
+		renameInput.value?.forceCancel();
 		return;
 	}
 
@@ -1343,7 +1332,7 @@ const onNameSubmit = async ({
 			message: validationResult,
 			type: 'error',
 		});
-		onSubmit(false);
+		renameInput.value?.forceCancel();
 		return;
 	} else {
 		try {
@@ -1358,11 +1347,9 @@ const onNameSubmit = async ({
 			telemetry.track('User renamed folder', {
 				folder_id: currentFolder.value.id,
 			});
-			isNameEditEnabled.value = false;
-			onSubmit(true);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.rename.error.title'));
-			onSubmit(false);
+			renameInput.value?.forceCancel();
 		}
 	}
 };
@@ -1498,11 +1485,12 @@ const onNameSubmit = async ({
 						<span :class="$style['path-separator']">/</span>
 						<N8nInlineTextEdit
 							ref="renameInput"
+							:key="currentFolder?.id"
 							:model-value="currentFolder.name"
 							:max-length="30"
 							:read-only="readOnlyEnv || !hasPermissionToUpdateFolders"
 							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
-							@update:model-value="(value) => onNameSubmit({ name: value, onSubmit: () => {} })"
+							@update:model-value="onNameSubmit"
 						/>
 					</template>
 				</FolderBreadcrumbs>
