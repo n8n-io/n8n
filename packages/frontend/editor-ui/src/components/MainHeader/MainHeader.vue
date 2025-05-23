@@ -49,11 +49,7 @@ const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON
 // This is used to determine which tab to show when the route changes
 // TODO: It might be easier to manage this in the router config, by passing meta information to the routes
 // This would allow us to specify it just once on the root route, and then have the tabs be determined for children
-const testDefinitionRoutes: VIEWS[] = [
-	VIEWS.EVALUATION_EDIT,
-	VIEWS.EVALUATION_RUNS_DETAIL,
-	// VIEWS.EVALUATION_RUNS_COMPARE,
-];
+const testDefinitionRoutes: VIEWS[] = [VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL];
 
 const workflowRoutes: VIEWS[] = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
 

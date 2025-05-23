@@ -553,7 +553,6 @@ export const enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	EVALUATION = 'Evaluation',
 	EVALUATION_EDIT = 'EvaluationEdit',
-	EVALUATION_RUNS_COMPARE = 'EvaluationRunsCompare',
 	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
