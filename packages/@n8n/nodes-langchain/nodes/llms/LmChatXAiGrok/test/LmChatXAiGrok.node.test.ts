@@ -1,6 +1,7 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatXAI } from '@langchain/xai';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatXAiGrok } from '../LmChatXAiGrok.node';
 
@@ -29,9 +30,7 @@ describe('LmChatXAiGrok', () => {
 
 	const mockGetNodeParameter = jest.fn();
 
-	const mockNode = {
-		typeVersion: 1.0,
-	};
+	const mockNode = mock<INode>();
 
 	const mockContext = {
 		getCredentials: mockGetCredentials,
@@ -41,6 +40,7 @@ describe('LmChatXAiGrok', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockNode.typeVersion = 1.0;
 		mockGetNodeParameter.mockImplementation((param) => {
 			if (param === 'model') return 'grok-2-vision-1212';
 			if (param === 'options')
