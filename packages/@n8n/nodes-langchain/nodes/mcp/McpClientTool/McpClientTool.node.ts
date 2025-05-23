@@ -1,3 +1,4 @@
+import type { DynamicStructuredTool } from 'langchain/tools';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -6,6 +7,7 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+import type { ZodTypeAny } from 'zod';
 
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
@@ -238,20 +240,18 @@ export class McpClientTool implements INodeType {
 			);
 		}
 
-		const tools = mcpTools.map((tool) =>
-			logWrapper(
-				mcpToolToDynamicTool(
-					tool,
-					createCallTool(tool.name, client.result, (error) => {
-						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
-						throw new NodeOperationError(node, `Failed to execute tool "${tool.name}"`, {
-							description: error,
-						});
-					}),
-				),
-				this,
-			),
-		);
+		const tools = mcpTools.map((tool) => {
+			const dynamicTool = mcpToolToDynamicTool(
+				tool,
+				createCallTool(tool.name, client.result, (error) => {
+					this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
+					throw new NodeOperationError(node, `Failed to execute tool "${tool.name}"`, {
+						description: error,
+					});
+				}),
+			);
+			return logWrapper(dynamicTool as any, this) as DynamicStructuredTool<ZodTypeAny>;
+		});
 
 		this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
 

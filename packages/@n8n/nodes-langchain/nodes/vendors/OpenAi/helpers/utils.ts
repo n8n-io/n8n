@@ -1,5 +1,5 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import type { StructuredTool } from '@langchain/core/tools';
+import type { StructuredTool, Tool } from '@langchain/core/tools';
 import type { OpenAIClient } from '@langchain/openai';
 import type { BufferWindowMemory } from 'langchain/memory';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -35,13 +35,20 @@ export function formatToOpenAITool(tool: StructuredTool): OpenAIClient.Chat.Chat
 	};
 }
 
-export function formatToOpenAIAssistantTool(tool: StructuredTool): OpenAIClient.Beta.AssistantTool {
+export function formatToOpenAIAssistantTool(
+	tool: StructuredTool | Tool,
+): OpenAIClient.Beta.AssistantTool {
+	const parameters =
+		'schema' in tool && tool.schema
+			? zodToJsonSchema(tool.schema)
+			: { type: 'object', properties: {} };
+
 	return {
 		type: 'function',
 		function: {
 			name: tool.name,
 			description: tool.description,
-			parameters: zodToJsonSchema(tool.schema),
+			parameters,
 		},
 	};
 }
