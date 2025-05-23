@@ -7,12 +7,13 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
-import { EDITABLE_CANVAS_VIEWS, VIEWS } from '@/constants';
+import { VIEWS, VISIBLE_LOGS_VIEWS } from '@/constants';
 import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useLogsStore } from '@/stores/logs.store';
+import { LOGS_PANEL_STATE } from '@/components/CanvasChat/types/logs';
 
 export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
@@ -37,9 +38,9 @@ export function useToast() {
 	function determineToastOffset() {
 		const assistantOffset = settingsStore.isAiAssistantEnabled ? 64 : 0;
 		const logsOffset =
-			EDITABLE_CANVAS_VIEWS.includes(uiStore.currentView as VIEWS) &&
+			VISIBLE_LOGS_VIEWS.includes(uiStore.currentView as VIEWS) &&
 			ndvStore.activeNode === null &&
-			logsStore.state === 'attached'
+			logsStore.state !== LOGS_PANEL_STATE.FLOATING
 				? logsStore.height
 				: 0;
 

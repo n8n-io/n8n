@@ -137,7 +137,7 @@ describe('useToast', () => {
 		it('applies assistant offset with logsOffset', () => {
 			settingsStore.isAiAssistantEnabled = true;
 			const offset = toast.determineToastOffset();
-			expect(offset).toBe(164);
+			expect(offset).toBe(100 + 64);
 		});
 
 		it('does not apply logsStore offset if floating', () => {
@@ -146,11 +146,11 @@ describe('useToast', () => {
 			expect(offset).toBe(0);
 		});
 
-		it('does not apply logsStore offset if closed', () => {
+		it('does apply logsStore offset if closed', () => {
 			logsStore.state = 'floating';
 			settingsStore.isAiAssistantEnabled = true;
 			const offset = toast.determineToastOffset();
-			expect(offset).toBe(64);
+			expect(offset).toBe(100 + 64);
 		});
 	});
 });
