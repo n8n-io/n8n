@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import * as testDefinitionsApi from '@/api/evaluation.ee';
+import * as evaluationsApi from '@/api/evaluation.ee';
 import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import { usePostHog } from './posthog.store';
 import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
@@ -46,7 +46,7 @@ export const useEvaluationStore = defineStore(
 		// Methods
 
 		const fetchTestCaseExecutions = async (params: { workflowId: string; runId: string }) => {
-			const testCaseExecutions = await testDefinitionsApi.getTestCaseExecutions(
+			const testCaseExecutions = await evaluationsApi.getTestCaseExecutions(
 				rootStore.restApiContext,
 				params.workflowId,
 				params.runId,
@@ -63,7 +63,7 @@ export const useEvaluationStore = defineStore(
 		const fetchTestRuns = async (workflowId: string) => {
 			loading.value = true;
 			try {
-				const runs = await testDefinitionsApi.getTestRuns(rootStore.restApiContext, workflowId);
+				const runs = await evaluationsApi.getTestRuns(rootStore.restApiContext, workflowId);
 				runs.forEach((run) => {
 					testRunsById.value[run.id] = run;
 					if (['running', 'new'].includes(run.status)) {
@@ -77,18 +77,18 @@ export const useEvaluationStore = defineStore(
 		};
 
 		const getTestRun = async (params: { workflowId: string; runId: string }) => {
-			const run = await testDefinitionsApi.getTestRun(rootStore.restApiContext, params);
+			const run = await evaluationsApi.getTestRun(rootStore.restApiContext, params);
 			testRunsById.value[run.id] = run;
 			return run;
 		};
 
 		const startTestRun = async (workflowId: string) => {
-			const result = await testDefinitionsApi.startTestRun(rootStore.restApiContext, workflowId);
+			const result = await evaluationsApi.startTestRun(rootStore.restApiContext, workflowId);
 			return result;
 		};
 
 		const cancelTestRun = async (workflowId: string, testRunId: string) => {
-			const result = await testDefinitionsApi.cancelTestRun(
+			const result = await evaluationsApi.cancelTestRun(
 				rootStore.restApiContext,
 				workflowId,
 				testRunId,
@@ -97,7 +97,7 @@ export const useEvaluationStore = defineStore(
 		};
 
 		const deleteTestRun = async (params: { workflowId: string; runId: string }) => {
-			const result = await testDefinitionsApi.deleteTestRun(rootStore.restApiContext, params);
+			const result = await evaluationsApi.deleteTestRun(rootStore.restApiContext, params);
 			if (result.success) {
 				const { [params.runId]: deleted, ...rest } = testRunsById.value;
 				testRunsById.value = rest;

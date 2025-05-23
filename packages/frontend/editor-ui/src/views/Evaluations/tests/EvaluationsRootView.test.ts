@@ -12,7 +12,7 @@ import { waitFor } from '@testing-library/vue';
 import type { TestRunRecord } from '@/api/evaluation.ee';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 
-describe('TestDefinitionRootView', () => {
+describe('EvaluationsRootView', () => {
 	const renderComponent = createComponentRenderer(EvaluationRootView);
 
 	const mockWorkflow: IWorkflowDb = {
