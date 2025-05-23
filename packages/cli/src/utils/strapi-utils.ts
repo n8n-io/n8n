@@ -1,15 +1,19 @@
-import type { CommunityNodeData } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import { ErrorReporter, Logger } from 'n8n-core';
 
-interface ResponseData {
-	data: CommunityNodeData[];
+interface ResponseData<T> {
+	data: Array<Entity<T>>;
 	meta: Meta;
 }
 
 interface Meta {
 	pagination: Pagination;
+}
+
+export interface Entity<T> {
+	id: number;
+	attributes: T;
 }
 
 interface Pagination {
@@ -19,9 +23,9 @@ interface Pagination {
 	total: number;
 }
 
-export async function paginatedRequest(url: string): Promise<CommunityNodeData[]> {
-	let returnData: CommunityNodeData[] = [];
-	let responseData: CommunityNodeData[] | undefined = [];
+export async function paginatedRequest<T>(url: string): Promise<T[]> {
+	let returnData: T[] = [];
+	let responseData: T[] | undefined = [];
 
 	const params = {
 		pagination: {
@@ -33,7 +37,7 @@ export async function paginatedRequest(url: string): Promise<CommunityNodeData[]
 	do {
 		let response;
 		try {
-			response = await axios.get<ResponseData>(url, {
+			response = await axios.get<ResponseData<T>>(url, {
 				headers: { 'Content-Type': 'application/json' },
 				params,
 			});
@@ -47,7 +51,7 @@ export async function paginatedRequest(url: string): Promise<CommunityNodeData[]
 			break;
 		}
 
-		responseData = response?.data?.data;
+		responseData = response?.data?.data?.map((item) => item.attributes);
 
 		if (!responseData?.length) break;
 
