@@ -77,8 +77,6 @@ import type {
 	IDataObject,
 	ExecutionSummary,
 	IConnection,
-	INodeParameters,
-	INodeProperties,
 	INode,
 } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';

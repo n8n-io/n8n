@@ -1,5 +1,5 @@
 import type { INodeUi, XYPosition } from '@/Interface';
-import type { IConnection, INode, INodeParameters, INodeProperties } from 'n8n-workflow';
+import type { IConnection, INode } from 'n8n-workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 // Command names don't serve any particular purpose in the app

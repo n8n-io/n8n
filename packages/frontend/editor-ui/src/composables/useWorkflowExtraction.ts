@@ -23,7 +23,7 @@ import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTelemetry } from './useTelemetry';
-import { isEqual, uniqueId } from 'lodash-es';
+import { isEqual } from 'lodash-es';
 
 export const SUBWORKFLOW_TRIGGER_ID = 'c155762a-8fe7-4141-a639-df2372f30060';
 const CANVAS_HISTORY_OPTIONS = {
