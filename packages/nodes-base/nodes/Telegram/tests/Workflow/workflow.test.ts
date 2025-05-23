@@ -28,6 +28,7 @@ describe('Telegram', () => {
 			const mock = nock(credentials.telegramApi.baseUrl);
 
 			mock.post('/bottestToken/getChat').reply(200, getChatResponse);
+			mock.post('/bottestToken/getChat').reply(404, { error: 'Chat not found' });
 			mock.post('/bottestToken/sendMessage').reply(200, sendMessageResponse);
 			mock.post('/bottestToken/sendMediaGroup').reply(200, sendMediaGroupResponse);
 			mock.post('/bottestToken/sendLocation').reply(200, sendLocationMessageResponse);
