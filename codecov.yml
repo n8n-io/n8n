@@ -7,12 +7,7 @@ coverage:
     patch: false
     project:
       default:
-        threshold: 0.5%
-      nodes:
-        target: 80%
-        threshold: 0.5%
-        paths:
-          - packages/nodes-base/**
+        threshold: 0.5
 
 github_checks:
   annotations: false
@@ -61,6 +56,12 @@ component_management:
         - packages/nodes-base/**
         - packages/@n8n/json-schema-to-zod/**
         - packages/@n8n/nodes-langchain/**
+      statuses:
+        - type: project
+          target: auto
+          threshold: 0% # Enforce: Coverage must not decrease
+
+
 
 ignore:
   - (?s:.*/[^\/]*\.spec\.ts.*)\Z
