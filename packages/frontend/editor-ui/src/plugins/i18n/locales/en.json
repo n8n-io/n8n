@@ -3151,6 +3151,7 @@
 	"evaluations.setupWizard.title": "Test your workflow over multiple inputs",
 	"evaluations.setupWizard.description": "Evaluations measure performance against a test dataset.",
 	"evaluations.setupWizard.moreInfo": "More info",
+	"evaluations.setupWizard.stepHeader.optional": "Optional",
 	"evaluations.setupWizard.step1.title": "Wire up a test dataset",
 	"evaluations.setupWizard.step1.item1": "Set up a Google Sheet with one input per row",
 	"evaluations.setupWizard.step1.item2": "Add an evaluation trigger to your workflow and wire it up",

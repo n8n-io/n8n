@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nText, N8nBadge } from '@n8n/design-system';
 import StepIndicator from './StepIndicator.vue';
+import { useI18n } from '@/composables/useI18n';
 
 defineProps<{
 	stepNumber: number;
@@ -13,6 +14,8 @@ defineProps<{
 const emit = defineEmits<{
 	click: [];
 }>();
+
+const locale = useI18n();
 
 const handleClick = (event: Event) => {
 	// Only emit click event if the click isn't on a button or interactive element
@@ -47,7 +50,7 @@ const handleClick = (event: Event) => {
 			v-if="isOptional"
 			style="background-color: var(--color-background-base); border: none"
 		>
-			Optional
+			{{ locale.baseText('evaluations.setupWizard.stepHeader.optional') }}
 		</N8nBadge>
 	</div>
 </template>
