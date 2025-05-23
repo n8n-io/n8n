@@ -46,9 +46,8 @@ export class CommunityNodeTypesService {
 				this.globalConfig.nodes.communityPackages.enabled &&
 				this.globalConfig.nodes.communityPackages.verifiedEnabled
 			) {
-				// TODO: revert
-				// const environment = this.globalConfig.license.tenantId === 1 ? 'production' : 'staging';
-				data = await getCommunityNodeTypes('staging');
+				const environment = this.globalConfig.license.tenantId === 1 ? 'production' : 'staging';
+				data = await getCommunityNodeTypes(environment);
 			}
 
 			this.updateCommunityNodeTypes(data);
@@ -84,7 +83,7 @@ export class CommunityNodeTypesService {
 	}
 
 	async getCommunityNodeTypes(): Promise<CommunityNodeType[]> {
-		if (this.updateRequired() || !Object.keys(this.communityNodeTypes).length) {
+		if (this.updateRequired() || !this.communityNodeTypes.size) {
 			await this.fetchNodeTypes();
 		}
 
