@@ -2561,6 +2561,7 @@
 	"workflows.create.project.toast.title": "Workflow successfully created in {projectName}",
 	"workflows.create.folder.toast.title": "Workflow successfully created in \"{projectName}\", within \"{folderName}\"",
 	"workflows.create.project.toast.text": "All members from {projectName} will have access to this workflow.",
+	"workflows.deactivated": "Workflow deactivated",
 	"workflowSelectorParameterInput.createNewSubworkflow.name": "My Sub-Workflow",
 	"importCurlModal.title": "Import cURL command",
 	"importCurlModal.input.label": "cURL Command",

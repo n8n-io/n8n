@@ -12,10 +12,13 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { WEBHOOK_NODE_TYPE, type AssignmentCollectionValue } from 'n8n-workflow';
 import * as apiWebhooks from '../api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
+import { nodeTypes } from '@/components/CanvasChat/__test__/data';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 
 const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
@@ -68,6 +71,7 @@ describe('useWorkflowHelpers', () => {
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
@@ -460,6 +464,7 @@ describe('useWorkflowHelpers', () => {
 			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
 		});
 	});
+
 	describe('executeData', () => {
 		it('should return empty execute data if no parent nodes', () => {
 			const { executeData } = useWorkflowHelpers({ router });
@@ -828,6 +833,60 @@ describe('useWorkflowHelpers', () => {
 
 			expect(result.data).toEqual({});
 			expect(result.source).toBeNull();
+		});
+	});
+
+	describe('saveCurrentWorkflow', () => {
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+
+			workflowsStore = mockedStore(useWorkflowsStore);
+
+			nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes(nodeTypes);
+		});
+
+		it('should save the current workflow', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w0',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowHelpers({ router });
+			await saveCurrentWorkflow({ id: 'w0' });
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w0',
+				expect.objectContaining({ id: 'w0', active: true }),
+				false,
+			);
+		});
+
+		it('should include active=false in the request if the workflow has no activatable trigger node', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w1',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: true })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflow(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowHelpers({ router });
+			await saveCurrentWorkflow({ id: 'w1' });
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w1',
+				expect.objectContaining({ id: 'w1', active: false }),
+				false,
+			);
+			expect(workflowsStore.setWorkflowInactive).toHaveBeenCalled();
 		});
 	});
 });

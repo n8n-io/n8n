@@ -1,6 +1,7 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	MODAL_CONFIRM,
+	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	VIEWS,
@@ -36,6 +37,7 @@ import type {
 	IWorkflowDataCreate,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
+	NotificationOptions,
 	TargetItem,
 	WorkflowTitleStatus,
 	XYPosition,
@@ -812,6 +814,50 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
+	function isNodeActivatable(node: INode): boolean {
+		if (node.disabled) {
+			return false;
+		}
+
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+
+		return (
+			nodeType !== null &&
+			nodeType.group.includes('trigger') &&
+			!NON_ACTIVATABLE_TRIGGER_NODE_TYPES.includes(node.type)
+		);
+	}
+
+	async function getWorkflowDeactivationInfo(
+		workflowId: string,
+		request: IWorkflowDataUpdate,
+	): Promise<Partial<NotificationOptions> | undefined> {
+		const missingActivatableTriggerNode =
+			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
+
+		if (missingActivatableTriggerNode) {
+			// Automatically deactivate if all activatable triggers are removed
+			return {
+				title: i18n.baseText('workflows.deactivated'),
+				message: i18n.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes'),
+				type: 'info',
+			};
+		}
+
+		const conflictData = await checkConflictingWebhooks(workflowId);
+
+		if (conflictData) {
+			// Workflow should not be active if there is live webhook with the same path
+			return {
+				title: 'Conflicting Webhook Path',
+				message: `Workflow set to inactive: Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflictData.trigger.name}'.`,
+				type: 'error',
+			};
+		}
+
+		return undefined;
+	}
+
 	async function saveCurrentWorkflow(
 		{ id, name, tags }: { id?: string; name?: string; tags?: string[] } = {},
 		redirect = true,
@@ -855,17 +901,16 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 
-			// workflow should not be active if there is live webhook with the same path
-			const conflictData = await checkConflictingWebhooks(currentWorkflow);
-			if (conflictData) {
+			const deactivateReason = await getWorkflowDeactivationInfo(
+				currentWorkflow,
+				workflowDataRequest,
+			);
+
+			if (deactivateReason !== undefined) {
 				workflowDataRequest.active = false;
 
 				if (workflowsStore.isWorkflowActive) {
-					toast.showMessage({
-						title: 'Conflicting Webhook Path',
-						message: `Workflow set to inactive: Live webhook in another workflow uses same path as node '${conflictData.trigger.name}'.`,
-						type: 'error',
-					});
+					toast.showMessage(deactivateReason);
 
 					workflowsStore.setWorkflowInactive(currentWorkflow);
 				}
