@@ -1170,7 +1170,18 @@ function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
 	}
 
 	currentPage.value = 1;
-	return data.filter(({ json }) => searchInObject(json, search.value));
+	const result: INodeExecutionData[] = [];
+	const searchToInputMap: Record<number, number> = {};
+
+	for (const [index, item] of data.entries()) {
+		if (searchInObject(item.json, search.value)) {
+			const searchItemIndex = result.length;
+			result.push(item);
+			searchToInputMap[searchItemIndex] = index;
+		}
+	}
+
+	return result;
 }
 
 function getDataCount(
