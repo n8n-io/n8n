@@ -46,7 +46,7 @@ export class TestRunRepository extends Repository<TestRun> {
 
 	async markAsCancelled(id: string, trx?: EntityManager) {
 		trx = trx ?? this.manager;
-		return await trx.update(TestRun, id, { status: 'cancelled' });
+		return await trx.update(TestRun, id, { status: 'cancelled', completedAt: new Date() });
 	}
 
 	async markAsError(id: string, errorCode: TestRunErrorCode, errorDetails?: IDataObject) {
@@ -54,13 +54,14 @@ export class TestRunRepository extends Repository<TestRun> {
 			status: 'error',
 			errorCode,
 			errorDetails,
+			completedAt: new Date(),
 		});
 	}
 
 	async markAllIncompleteAsFailed() {
 		return await this.update(
 			{ status: In(['new', 'running']) },
-			{ status: 'error', errorCode: 'INTERRUPTED' },
+			{ status: 'error', errorCode: 'INTERRUPTED', completedAt: new Date() },
 		);
 	}
 
