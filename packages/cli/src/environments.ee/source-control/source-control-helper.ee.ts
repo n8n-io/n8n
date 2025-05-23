@@ -1,10 +1,12 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
-import { UserError } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
+import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
@@ -45,6 +47,16 @@ export function getTagsPath(gitFolder: string): string {
 
 export function getFoldersPath(gitFolder: string): string {
 	return path.join(gitFolder, SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
+}
+
+export async function readTagAndMappingsFromSourceControlFile(file: string): Promise<{
+	tags: TagEntity[];
+	mappings: WorkflowTagMapping[];
+}> {
+	return jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
+		await fsReadFile(file, { encoding: 'utf8' }),
+		{ fallbackValue: { tags: [], mappings: [] } },
+	);
 }
 
 export function sourceControlFoldersExistCheck(

@@ -233,6 +233,8 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 
+		const context = new SourceControlContext(user);
+
 		const filesToPush = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
 				this.gitFolder,
@@ -245,14 +247,30 @@ export class SourceControlService {
 			};
 		});
 
+		const allowedResources = (await this.getStatus(user, {
+			direction: 'push',
+			verbose: false,
+			preferLocalVersion: true,
+		})) as SourceControlledFile[];
+
 		// only determine file status if not provided by the frontend
 		let statusResult: SourceControlledFile[] = filesToPush;
 		if (statusResult.length === 0) {
-			statusResult = (await this.getStatus(user, {
-				direction: 'push',
-				verbose: false,
-				preferLocalVersion: true,
-			})) as SourceControlledFile[];
+			// In this case we already use the functionality in getStatus to receive
+			// all resources we are allowed to change
+			statusResult = allowedResources;
+		} else {
+			// In this case we need to make sure that each requested
+			// change is also in the allowed resources
+			if (
+				statusResult.some((requested) => {
+					return !allowedResources.some((allowed) => {
+						return allowed.id === requested.id && allowed.type === requested.id;
+					});
+				})
+			) {
+				throw new ForbiddenError('You are not allowed to push these changes');
+			}
 		}
 
 		if (!options.force) {
@@ -307,13 +325,17 @@ export class SourceControlService {
 		const tagChanges = filesToPush.find((e) => e.type === 'tags');
 		if (tagChanges) {
 			filesToBePushed.add(tagChanges.file);
-			await this.sourceControlExportService.exportTagsToWorkFolder();
+			// TODO: For tags we need to change the implementation to
+			// only update mappings, that are available to the user
+			await this.sourceControlExportService.exportTagsToWorkFolder(context);
 		}
 
 		const folderChanges = filesToPush.find((e) => e.type === 'folders');
 		if (folderChanges) {
 			filesToBePushed.add(folderChanges.file);
-			await this.sourceControlExportService.exportFoldersToWorkFolder();
+			// TODO: For folders we need to change the implementation to
+			// only update folders, that are available to the user
+			await this.sourceControlExportService.exportFoldersToWorkFolder(context);
 		}
 
 		const variablesChanges = filesToPush.find((e) => e.type === 'variables');
