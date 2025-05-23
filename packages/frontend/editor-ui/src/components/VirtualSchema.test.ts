@@ -97,13 +97,6 @@ const customerDatastoreNode = createTestNode({
 	disabled: false,
 });
 
-const processedNode = createTestNode({
-	name: 'Process Customer',
-	type: SET_NODE_TYPE,
-	typeVersion: 1,
-	disabled: false,
-});
-
 const defaultNodes = [
 	{ name: 'Manual Trigger', indicies: [], depth: 1 },
 	{ name: 'Set2', indicies: [], depth: 2 },
@@ -125,7 +118,6 @@ async function setupStore() {
 			nodeWithCredential,
 			splitInBatchesNode,
 			customerDatastoreNode,
-			processedNode,
 		],
 	};
 
