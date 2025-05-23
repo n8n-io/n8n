@@ -369,13 +369,6 @@ export async function execute(
 				}
 				// Setting empty values to empty string so that they are not ignored by the API
 				Object.keys(mappingValues).forEach((key) => {
-					// if (mappingValues[key] === undefined && nodeVersion >= 4.6) {
-					// 	throw new UserError(`${key} is undefined`, {
-					// 		description:
-					// 			"Since it's being used to determine the row to update, it cannot be undefined",
-					// 	});
-					// }
-
 					// null and undefined values are mapped to undefined
 					if (key === 'row_number' && mappingValues[key] === undefined && nodeVersion >= 4.6) {
 						throw new UserError('row_number is null or undefined', {
