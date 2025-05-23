@@ -17,12 +17,12 @@ defineEmits<{
 const router = useRouter();
 const locale = useI18n();
 const workflowsStore = useWorkflowsStore();
-const evaluationsStore = useEvaluationStore();
+const evaluationStore = useEvaluationStore();
 const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const hasRuns = computed(() => {
-	return evaluationsStore.testRunsByWorkflowId[workflowsStore.workflow.id]?.length > 0;
+	return evaluationStore.testRunsByWorkflowId[workflowsStore.workflow.id]?.length > 0;
 });
 
 const datasetTriggerExist = computed(() => {

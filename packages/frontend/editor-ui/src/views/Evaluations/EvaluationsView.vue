@@ -12,17 +12,17 @@ const props = defineProps<{
 }>();
 
 const locale = useI18n();
-const evaluationsStore = useEvaluationStore();
+const evaluationStore = useEvaluationStore();
 
 const selectedMetric = ref<string>('');
 
 async function runTest() {
-	await evaluationsStore.startTestRun(props.name);
-	await evaluationsStore.fetchTestRuns(props.name);
+	await evaluationStore.startTestRun(props.name);
+	await evaluationStore.fetchTestRuns(props.name);
 }
 
 const runs = computed(() => {
-	const testRuns = Object.values(evaluationsStore.testRunsById ?? {}).filter(
+	const testRuns = Object.values(evaluationStore.testRunsById ?? {}).filter(
 		({ workflowId }) => workflowId === props.name,
 	);
 
