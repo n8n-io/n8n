@@ -6,6 +6,7 @@ import type {
 	INodeProperties,
 	NodeConnectionType,
 	NodeParameterValue,
+	INodeCredentialDescription,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -204,7 +205,22 @@ const parameters = computed(() => {
 const parametersSetting = computed(() => parameters.value.filter((item) => item.isNodeSetting));
 
 const parametersNoneSetting = computed(() =>
+	// The connection hint notice is visually hidden via CSS in NodeDetails.vue when the node has output connections
 	parameters.value.filter((item) => !item.isNodeSetting),
+);
+
+const isDisplayingCredentials = computed(
+	() =>
+		credentialsStore
+			.getCredentialTypesNodeDescriptions('', props.nodeType)
+			.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription)).length >
+		0,
+);
+
+const showNoParametersNotice = computed(
+	() =>
+		!isDisplayingCredentials.value &&
+		parametersNoneSetting.value.filter((item) => item.type !== 'notice').length === 0,
 );
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
@@ -957,6 +973,18 @@ onBeforeUnmount(() => {
 	importCurlEventBus.off('setHttpNodeParameters', setHttpNodeParameters);
 	ndvEventBus.off('updateParameterValue', valueChanged);
 });
+
+function displayCredentials(credentialTypeDescription: INodeCredentialDescription): boolean {
+	if (credentialTypeDescription.displayOptions === undefined) {
+		// If it is not defined no need to do a proper check
+		return true;
+	}
+
+	return (
+		!!node.value &&
+		nodeHelpers.displayParameter(node.value.parameters, credentialTypeDescription, '', node.value)
+	);
+}
 </script>
 
 <template>
@@ -1077,7 +1105,7 @@ onBeforeUnmount(() => {
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
-				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+				<div v-if="showNoParametersNotice" class="no-parameters">
 					<n8n-text>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>

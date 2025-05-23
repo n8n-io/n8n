@@ -1,4 +1,4 @@
-import type { TagEntity } from '@n8n/db';
+import type { TagEntity, Variables } from '@n8n/db';
 import { ApiKeyRepository } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
@@ -22,7 +22,7 @@ import {
 	createUser,
 	getUserById,
 } from '@test-integration/db/users';
-import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
+import { createVariable, getVariableByIdOrFail } from '@test-integration/db/variables';
 import { createWorkflow } from '@test-integration/db/workflows';
 import { randomName } from '@test-integration/random';
 import type { CredentialPayload, SaveCredentialFunction } from '@test-integration/types';
@@ -57,6 +57,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 			'quota:maxTeamProjects': -1,
 		},
 	});
+
 	let apiKeyRepository: ApiKeyRepository;
 
 	beforeAll(async () => {
@@ -979,7 +980,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Assert
 					 */
 					expect(response.status).toBe(201);
-					await expect(getVariableOrFail(response.body.id)).resolves.toEqual(
+					await expect(getVariableByIdOrFail(response.body.id)).resolves.toEqual(
 						expect.objectContaining(variablePayload),
 					);
 				});
@@ -1003,6 +1004,36 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Assert
 					 */
 					expect(response.status).toBe(403);
+				});
+			});
+
+			describe('PUT /variables/:id', () => {
+				const variablePayload = { key: 'updatedKey', value: 'updatedValue' };
+				let variable: Variables;
+				beforeEach(async () => {
+					variable = await createVariable();
+				});
+
+				it('should update a variable if API key has scope "variable:update"', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['variable:update'] });
+
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.put(`/variables/${variable.id}`)
+						.send(variablePayload);
+
+					expect(response.status).toBe(204);
+					const updatedVariable = await getVariableByIdOrFail(variable.id);
+					expect(updatedVariable).toEqual(expect.objectContaining(variablePayload));
+				});
+
+				test('should fail to update variable when API key doesn\'t have "variable:update" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
+
+					await testServer
+						.publicApiAgentFor(owner)
+						.put(`/variables/${variable.id}`)
+						.send(variablePayload);
 				});
 			});
 		});

@@ -6,3 +6,4 @@ export * from './module';
 export * from './multi-main';
 export { Redactable } from './redactable';
 export * from './shutdown';
+export * from './module/module-metadata';

@@ -13,13 +13,20 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const aiNodes = computed<INodeUi[]>(() =>
 		nodes.value.filter((node) => node.type.includes('langchain')),
 	);
+	const hasRangeSelection = ref(false);
+
+	function setHasRangeSelection(value: boolean) {
+		hasRangeSelection.value = value;
+	}
 
 	return {
 		newNodeInsertPosition,
 		isLoading: loadingService.isLoading,
 		aiNodes,
+		hasRangeSelection: computed(() => hasRangeSelection.value),
 		startLoading: loadingService.startLoading,
 		setLoadingText: loadingService.setLoadingText,
 		stopLoading: loadingService.stopLoading,
+		setHasRangeSelection,
 	};
 });

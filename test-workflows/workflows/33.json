@@ -1,0 +1,190 @@
+{
+  "createdAt": "2021-02-17T13:25:16.665Z",
+  "updatedAt": "2021-02-17T13:25:16.665Z",
+  "id": "33",
+  "name": "Zoom:Meeting:create update getAll get delete",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "e177badc-c473-46ec-a4f7-6abe3cf18850"
+    },
+    {
+      "parameters": {
+        "topic": "test",
+        "additionalFields": {}
+      },
+      "name": "Zoom",
+      "type": "n8n-nodes-base.zoom",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "zoomApi": {
+          "id": "16",
+          "name": "Zoom JWT token"
+        }
+      },
+      "id": "52fd7dd2-0260-4e24-b2e7-2fb0e6e96757"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "meetingId": "={{$node[\"Zoom\"].json[\"id\"]}}",
+        "updateFields": {
+          "duration": 30
+        }
+      },
+      "name": "Zoom1",
+      "type": "n8n-nodes-base.zoom",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "zoomApi": {
+          "id": "16",
+          "name": "Zoom JWT token"
+        }
+      },
+      "id": "c2ccd698-377b-478e-ab75-dff35325ac93"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {}
+      },
+      "name": "Zoom2",
+      "type": "n8n-nodes-base.zoom",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "zoomApi": {
+          "id": "16",
+          "name": "Zoom JWT token"
+        }
+      },
+      "id": "5ca84447-9b5e-4679-b061-8b457ed1423a"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "meetingId": "={{$node[\"Zoom\"].json[\"id\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Zoom3",
+      "type": "n8n-nodes-base.zoom",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "zoomApi": {
+          "id": "16",
+          "name": "Zoom JWT token"
+        }
+      },
+      "id": "bc1c531c-ee12-4f4e-bbde-c2a6a950ab3e"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "meetingId": "={{$node[\"Zoom\"].json[\"id\"]}}",
+        "additionalFields": {}
+      },
+      "name": "Zoom4",
+      "type": "n8n-nodes-base.zoom",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "zoomApi": {
+          "id": "16",
+          "name": "Zoom JWT token"
+        }
+      },
+      "id": "05b90102-2196-41d0-ba64-42e8c45d2258"
+    }
+  ],
+  "connections": {
+    "Zoom": {
+      "main": [
+        [
+          {
+            "node": "Zoom1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zoom1": {
+      "main": [
+        [
+          {
+            "node": "Zoom2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zoom2": {
+      "main": [
+        [
+          {
+            "node": "Zoom3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zoom3": {
+      "main": [
+        [
+          {
+            "node": "Zoom4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Zoom",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": null,
+  "triggerCount": 0,
+  "tags": []
+}
