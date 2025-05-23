@@ -1,3 +1,4 @@
+import type { DynamicStructuredTool } from 'langchain/tools';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -6,7 +7,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { DynamicStructuredTool } from 'langchain/tools';
 import type { ZodTypeAny } from 'zod';
 
 import { logWrapper } from '@utils/logWrapper';
