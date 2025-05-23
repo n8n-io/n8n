@@ -11,20 +11,13 @@ concurrency:
 jobs:
   eligibility_check:
     name: Check Run Eligibility
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/check-run-eligibility.yml
     if: github.event.review.state == 'approved'
-    outputs:
-      should_run: ${{ steps.reusable_eligibility_check.outputs.conditions_met_for_gated_jobs }}
-      is_community_pr: ${{ steps.reusable_eligibility_check.outputs.is_community_pr }}
-    steps:
-      - name: Call Reusable Eligibility Check
-        id: reusable_eligibility_check
-        uses: ./.github/workflows/check-run-eligibility.yml
-        with:
-          pr_base_ref: ${{ github.event.pull_request.base.ref }}
-          pr_head_sha: ${{ github.event.pull_request.head.sha }}
-          pr_head_repo_full_name: ${{ github.event.pull_request.head.repo.full_name }}
-          is_pr_approved_by_maintainer: ${{ github.event.review.state == 'approved' }}
+    with:
+      pr_base_ref: ${{ github.event.pull_request.base.ref }}
+      pr_head_sha: ${{ github.event.pull_request.head.sha }}
+      pr_head_repo_full_name: ${{ github.event.pull_request.head.repo.full_name }}
+      is_pr_approved_by_maintainer: ${{ github.event.review.state == 'approved' }}
 
   run-e2e-tests:
     name: E2E [Electron/Node 18]

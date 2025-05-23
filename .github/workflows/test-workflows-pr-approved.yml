@@ -21,10 +21,7 @@ jobs:
   run_workflow_tests:
     name: Run Tests on Approved Internal PR
     needs: [eligibility_check]
-    if: >
-      needs.eligibility_check.result != 'skipped' &&
-      needs.eligibility_check.outputs.conditions_met_for_gated_jobs == 'true' &&
-      needs.eligibility_check.outputs.is_community_pr == 'false'
+    if: ${{ needs.eligibility_check.result != 'skipped' && needs.eligibility_check.outputs.conditions_met_for_gated_jobs == 'true' && needs.eligibility_check.outputs.is_community_pr == 'false' }}
     uses: ./.github/workflows/test-workflows-callable.yml
     with:
       git_ref: ${{ github.event.pull_request.head.sha }}
