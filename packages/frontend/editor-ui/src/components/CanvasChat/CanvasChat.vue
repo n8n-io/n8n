@@ -128,6 +128,7 @@ watch(
 						>
 							<div :class="$style.inner">
 								<ChatMessagesPanel
+									:key="`canvas-chat-${currentSessionId}${isPoppedOut ? '-pip' : ''}`"
 									data-test-id="canvas-chat"
 									:messages="messages"
 									:session-id="currentSessionId"
