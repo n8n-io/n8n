@@ -1166,21 +1166,23 @@ function getPinDataOrLiveData(data: INodeExecutionData[]): INodeExecutionData[] 
 
 function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
 	if (!search.value || isSchemaView.value) {
+		ndvStore.searchToInputIndexMap = null;
 		return data;
 	}
 
 	currentPage.value = 1;
 	const result: INodeExecutionData[] = [];
-	const searchToInputMap: Record<number, number> = {};
+	const searchToInputIndexMap: Record<number, number> = {};
 
 	for (const [index, item] of data.entries()) {
 		if (searchInObject(item.json, search.value)) {
 			const searchItemIndex = result.length;
 			result.push(item);
-			searchToInputMap[searchItemIndex] = index;
+			searchToInputIndexMap[searchItemIndex] = index;
 		}
 	}
 
+	ndvStore.searchToInputIndexMap = searchToInputIndexMap;
 	return result;
 }
 
