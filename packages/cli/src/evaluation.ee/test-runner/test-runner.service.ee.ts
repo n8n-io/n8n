@@ -89,7 +89,7 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Checks if the Set Metrics nodes are present in the workflow
+	 * Checks if the Evaluation Set Metrics nodes are present in the workflow
 	 * and are configured correctly.
 	 */
 	private validateSetMetricsNodes(workflow: IWorkflowBase) {
@@ -116,13 +116,40 @@ export class TestRunnerService {
 	}
 
 	/**
+	 * Checks if the Evaluation Set Outputs nodes are present in the workflow
+	 * and are configured correctly.
+	 */
+	private validateSetOutputsNodes(workflow: IWorkflowBase) {
+		const setOutputsNodes = TestRunnerService.getEvaluationSetOutputsNodes(workflow);
+		if (setOutputsNodes.length === 0) {
+			throw new TestRunError('SET_OUTPUTS_NODE_NOT_FOUND');
+		}
+
+		const unconfiguredSetOutputsNode = setOutputsNodes.find(
+			(node) =>
+				!node.parameters ||
+				!node.parameters.outputs ||
+				(node.parameters.outputs as AssignmentCollectionValue).assignments?.length === 0 ||
+				(node.parameters.outputs as AssignmentCollectionValue).assignments?.some(
+					(assignment) => !assignment.name || assignment.value === null,
+				),
+		);
+
+		if (unconfiguredSetOutputsNode) {
+			throw new TestRunError('SET_OUTPUTS_NODE_NOT_CONFIGURED', {
+				node_name: unconfiguredSetOutputsNode.name,
+			});
+		}
+	}
+
+	/**
 	 * Validates workflow configuration for evaluation
 	 * Throws appropriate TestRunError if validation fails
 	 */
 	private validateWorkflowConfiguration(workflow: IWorkflowBase): void {
 		this.validateEvaluationTriggerNode(workflow);
 
-		// TODO: validate Set Outputs node
+		this.validateSetOutputsNodes(workflow);
 
 		this.validateSetMetricsNodes(workflow);
 	}
@@ -283,11 +310,20 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Get the evaluation metrics nodes from a workflow.
+	 * Get the evaluation set metrics nodes from a workflow.
 	 */
 	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
 		return workflow.nodes.filter(
 			(node) => node.type === EVALUATION_NODE && node.parameters.operation === 'setMetrics',
+		);
+	}
+
+	/**
+	 * Get the evaluation set outputs nodes from a workflow.
+	 */
+	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
+		return workflow.nodes.filter(
+			(node) => node.type === EVALUATION_NODE && node.parameters.operation === 'setOutputs',
 		);
 	}
 
