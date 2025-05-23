@@ -196,7 +196,7 @@ describe('NodeReferenceParserUtils', () => {
 			nodes = [makeNode('B', ['$("D")'])];
 			nodeNames = ['B', 'D'];
 
-			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'B');
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['B']);
 			expect([...result.variables.entries()]).toEqual([]);
 			expect(result.nodes).toEqual([
 				{
@@ -210,7 +210,7 @@ describe('NodeReferenceParserUtils', () => {
 			nodes = [makeNode('B', ['$("E").item.json.x'])];
 			nodeNames = ['B'];
 
-			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'B');
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['B']);
 			expect([...result.variables.entries()]).toEqual([]);
 			expect(result.nodes).toEqual([
 				{
@@ -249,7 +249,7 @@ describe('NodeReferenceParserUtils', () => {
 			nodes = [makeNode('B', ['$json.a.b.c_d["e"]["f"]']), makeNode('C', ['$json.x.y.z'])];
 			nodeNames = ['A', 'B', 'C'];
 
-			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, 'B');
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['B']);
 			expect([...result.variables.entries()]).toEqual([['a_b_c_d', '$json.a.b.c_d']]);
 			expect(result.nodes).toEqual([
 				{
@@ -259,6 +259,31 @@ describe('NodeReferenceParserUtils', () => {
 				{
 					name: 'C',
 					parameters: { p0: '={{ $json.x.y.z }}' },
+				},
+			]);
+		});
+		it('should handle complex $json case for first node', () => {
+			nodes = [
+				{
+					parameters: {
+						p0: '=https://raw.githubusercontent.com/{{ $json.org }}/{{ $json.repo }}/refs/heads/master/package.json',
+					},
+					name: 'A',
+				} as unknown as INode,
+			];
+			nodeNames = ['A', 'B'];
+
+			const result = extractReferencesInNodeExpressions(nodes, nodeNames, startNodeName, ['A']);
+			expect([...result.variables.entries()]).toEqual([
+				['repo', '$json.repo'],
+				['org', '$json.org'],
+			]);
+			expect(result.nodes).toEqual([
+				{
+					name: 'A',
+					parameters: {
+						p0: '=https://raw.githubusercontent.com/{{ $json.org }}/{{ $json.repo }}/refs/heads/master/package.json',
+					},
 				},
 			]);
 		});
