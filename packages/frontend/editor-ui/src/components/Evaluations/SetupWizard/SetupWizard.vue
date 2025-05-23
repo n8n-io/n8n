@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { N8nText, N8nButton, N8nCallout } from '@n8n/design-system';
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
