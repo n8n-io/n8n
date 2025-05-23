@@ -44,7 +44,6 @@ import type {
 } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
-	CanvasEventBusEvents,
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
@@ -97,7 +96,7 @@ import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
+import { getBounds, getNodesWithNormalizedPosition, getNodeViewTab } from '@/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
@@ -105,7 +104,6 @@ import { nodeViewEventBus } from '@/event-bus';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { N8nCallout } from '@n8n/design-system';
-import { createEventBus } from '@n8n/utils/event-bus';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
@@ -123,6 +121,7 @@ import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
+import { canvasEventBus } from '@/event-bus/canvas';
 
 defineOptions({
 	name: 'NodeView',
@@ -177,8 +176,6 @@ const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
-
-const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -1584,17 +1581,9 @@ async function onSaveFromWithinExecutionDebug() {
 const viewportTransform = ref<ViewportTransform>({ x: 0, y: 0, zoom: 1 });
 const viewportDimensions = ref<Dimensions>({ width: 0, height: 0 });
 
-const viewportBoundaries = computed<ViewportBoundaries>(() => {
-	const { x, y, zoom } = viewportTransform.value;
-	const { width, height } = viewportDimensions.value;
-
-	const xMin = -x / zoom;
-	const yMin = -y / zoom;
-	const xMax = (width - x) / zoom;
-	const yMax = (height - y) / zoom;
-
-	return { xMin, yMin, xMax, yMax };
-});
+const viewportBoundaries = computed<ViewportBoundaries>(() =>
+	getBounds(viewportTransform.value, viewportDimensions.value),
+);
 
 function onViewportChange(viewport: ViewportTransform, dimensions: Dimensions) {
 	viewportTransform.value = viewport;
@@ -1934,6 +1923,7 @@ onBeforeUnmount(() => {
 		@update:logs-open="logsStore.toggleOpen($event)"
 		@update:logs:input-open="logsStore.toggleInputOpen"
 		@update:logs:output-open="logsStore.toggleOutputOpen"
+		@update:has-range-selection="canvasStore.setHasRangeSelection"
 		@open:sub-workflow="onOpenSubWorkflow"
 		@click:node="onClickNode"
 		@click:node:add="onClickNodeAdd"

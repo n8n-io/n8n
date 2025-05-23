@@ -89,7 +89,7 @@ const runSummaries = computed(() => {
 						class="mr-2xs"
 					/>
 					<template v-if="row.status === 'error'">
-						{{ row.failedCases }} {{ row.status }}
+						{{ row.status }}
 					</template>
 					<template v-else>
 						{{ row.status }}
