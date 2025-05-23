@@ -414,7 +414,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.4.0)
+        version: 1.8.3(debug@4.3.6)
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -439,7 +439,7 @@ importers:
     dependencies:
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.4.0)
+        version: 1.8.3(debug@4.3.6)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1148,14 +1148,14 @@ importers:
         specifier: 'catalog:'
         version: 1.14.0
       '@n8n_io/license-sdk':
-        specifier: 2.20.1
-        version: 2.20.1
+        specifier: 2.21.0
+        version: 2.21.0
       '@oclif/core':
         specifier: 4.0.7
         version: 4.0.7
       '@rudderstack/rudder-sdk-node':
         specifier: 2.1.4
-        version: 2.1.4(tslib@2.6.2)
+        version: 2.1.4(tslib@2.8.1)
       '@sentry/node':
         specifier: 'catalog:'
         version: 8.52.1
@@ -1164,7 +1164,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.4.0)
+        version: 1.8.3(debug@4.3.6)
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -1495,7 +1495,7 @@ importers:
         version: 8.52.1
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.4.0)
+        version: 1.8.3(debug@4.3.6)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -2025,7 +2025,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.4.0)
+        version: 1.8.3(debug@4.3.6)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -2571,7 +2571,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 'catalog:'
-        version: 1.8.3(debug@4.4.0)
+        version: 1.8.3(debug@4.3.6)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -5026,8 +5026,8 @@ packages:
     resolution: {integrity: sha512-apo1VXGmyUpwsBZ2dp9EyqZYR+FA3DzdD79MVzSMuknLIukhyZjvabBYRrjK5BJOU3vo5z9inaCm4UvenQ5Mgg==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@2.20.1':
-    resolution: {integrity: sha512-HrxdwlZw3MfYrfgvjxIGTyi3gJUCOFHtMcL5OpqpHhwfMGwuBauRgUOt63Twx4qs7f2bnz5yHV3jvuU3mF45UQ==}
+  '@n8n_io/license-sdk@2.21.0':
+    resolution: {integrity: sha512-xUqLf6ViWU4tn8PkODh7R8T4slqXLaWfFHHFKXHo71q8iZrU6m5T3aavFbJonqeC4ERu8vWYYdTqW8VGHq4fFw==}
     engines: {node: '>=18.12.1'}
 
   '@n8n_io/riot-tmpl@4.0.1':
@@ -7025,11 +7025,6 @@ packages:
 
   acorn@8.14.0:
     resolution: {integrity: sha512-cl669nCJTZBsL97OF4kUQm5g5hC2uihk0NxY3WENAC0TYdILVkAyHymAntgxGkl7K+t0cXIrH5siy5S4XkFycA==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
-  acorn@8.14.1:
-    resolution: {integrity: sha512-OvQ/2pUDKmgfCg++xsTX1wGxfTaszcHVcTctW4UJB4hibJx2HXxxO5UmVgyjMa+ZDsiaf5wWLXYpRWMmBI0QHg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -12076,9 +12071,6 @@ packages:
     resolution: {integrity: sha512-0VnamPPYHl4uaU/nSFeZZpR21QAWRz+sRv4iW9+v/GS/J5U5iZB5BNN6J0RMoOvdx2gWM2+ZFMIm58q24e4UYA==}
     engines: {node: '>= 0.10'}
     hasBin: true
-
-  psl@1.15.0:
-    resolution: {integrity: sha512-JZd3gMVBAVQkSs6HdNZo9Sdo0LNcQeMNP3CozBJb3JYC/QUYZTnKxP+f8oWRX4rHP5EurWxqAHTSwUCjlNKa1w==}
 
   psl@1.9.0:
     resolution: {integrity: sha512-E/ZsdU4HLs/68gYzgGTkMicWTLPdAftJLfJFlLUAAKZGkStNU72sZjT66SnMDVOfOWY/YAoiD7Jxa9iHvngcag==}
@@ -17599,7 +17591,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.14.0': {}
 
-  '@n8n_io/license-sdk@2.20.1':
+  '@n8n_io/license-sdk@2.21.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
@@ -18216,7 +18208,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.35.0':
     optional: true
 
-  '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.6.2)':
+  '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.8.1)':
     dependencies:
       axios: 1.8.3
       axios-retry: 4.5.0(axios@1.8.3)
@@ -18228,7 +18220,7 @@ snapshots:
       ms: 2.1.3
       remove-trailing-slash: 0.1.1
       serialize-javascript: 6.0.2
-      tslib: 2.6.2
+      tslib: 2.8.1
       uuid: 11.0.2
     optionalDependencies:
       bull: 4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)
@@ -20232,8 +20224,6 @@ snapshots:
 
   acorn@8.14.0: {}
 
-  acorn@8.14.1: {}
-
   adm-zip@0.5.10: {}
 
   agent-base@5.1.1: {}
@@ -20564,7 +20554,7 @@ snapshots:
 
   axios@1.8.3:
     dependencies:
-      follow-redirects: 1.15.6(debug@4.4.0)
+      follow-redirects: 1.15.6(debug@4.3.6)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -20589,7 +20579,7 @@ snapshots:
   axios@1.9.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.9(debug@4.4.1)
-      form-data: 4.0.0
+      form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
@@ -22220,7 +22210,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -22245,7 +22235,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.8.2)
       eslint: 8.57.0
@@ -22265,7 +22255,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -23099,7 +23089,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -25962,7 +25952,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -26333,10 +26323,6 @@ snapshots:
   ps-tree@1.2.0:
     dependencies:
       event-stream: 3.3.4
-
-  psl@1.15.0:
-    dependencies:
-      punycode: 2.3.1
 
   psl@1.9.0: {}
 
@@ -26805,7 +26791,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -27753,7 +27739,7 @@ snapshots:
   terser@5.16.1:
     dependencies:
       '@jridgewell/source-map': 0.3.6
-      acorn: 8.14.1
+      acorn: 8.14.0
       commander: 2.20.3
       source-map-support: 0.5.21
 
@@ -27860,7 +27846,7 @@ snapshots:
 
   tough-cookie@4.1.4:
     dependencies:
-      psl: 1.15.0
+      psl: 1.9.0
       punycode: 2.3.1
       universalify: 0.2.0
       url-parse: 1.5.10
@@ -27953,7 +27939,7 @@ snapshots:
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
       '@types/node': 18.16.16
-      acorn: 8.14.1
+      acorn: 8.14.0
       acorn-walk: 8.3.4
       arg: 4.1.3
       create-require: 1.1.1
@@ -27972,7 +27958,7 @@ snapshots:
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
       '@types/node': 18.19.103
-      acorn: 8.14.1
+      acorn: 8.14.0
       acorn-walk: 8.3.4
       arg: 4.1.3
       create-require: 1.1.1
@@ -28017,8 +28003,7 @@ snapshots:
 
   tslib@2.6.2: {}
 
-  tslib@2.8.1:
-    optional: true
+  tslib@2.8.1: {}
 
   tsscmp@1.0.6: {}
 
