@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsageStore } from '@/stores/usage.store';
 import * as evaluationsApi from '@/api/evaluation.ee';
 import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import { usePostHog } from './posthog.store';
@@ -20,12 +21,19 @@ export const useEvaluationStore = defineStore(
 		// Store instances
 		const posthogStore = usePostHog();
 		const rootStore = useRootStore();
+		const usageStore = useUsageStore();
 
 		// Computed
 
 		// Enable with `window.featureFlags.override('025_workflow_evaluation', true)`
 		const isFeatureEnabled = computed(() =>
 			posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT),
+		);
+
+		const isEvaluationEnabled = computed(
+			() =>
+				posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT) &&
+				usageStore.workflowsWithEvaluationsLimit !== 0,
 		);
 
 		const isLoading = computed(() => loadingTestRuns.value);
@@ -135,6 +143,7 @@ export const useEvaluationStore = defineStore(
 			// Computed
 			isLoading,
 			isFeatureEnabled,
+			isEvaluationEnabled,
 			testRunsByWorkflowId,
 
 			// Methods

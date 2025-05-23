@@ -57,21 +57,17 @@ import {
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
-	WORKFLOW_EVALUATION_EXPERIMENT,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
-import type { INodeTypeDescription, Themed } from 'n8n-workflow';
+import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
-import type { NodeConnectionType } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { camelCase } from 'lodash-es';
 import { useSettingsStore } from '@/stores/settings.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useUsageStore } from '@/stores/usage.store';
-
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 export interface NodeViewItemSection {
 	key: string;
 	title: string;
@@ -170,12 +166,8 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 	const templatesStore = useTemplatesStore();
-	const posthogStore = usePostHog();
-	const usageStore = useUsageStore();
-
-	const isEvaluationEnabled =
-		posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT) &&
-		usageStore.workflowsWithEvaluationsLimit !== 0;
+	const evaluationStore = useEvaluationStore();
+	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
 
 	const evaluationNode = getEvaluationNode(nodeTypesStore, isEvaluationEnabled);
 
@@ -369,11 +361,8 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 
 export function TriggerView() {
 	const i18n = useI18n();
-	const posthogStore = usePostHog();
-	const usageStore = useUsageStore();
-	const isEvaluationEnabled =
-		posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT) &&
-		usageStore.workflowsWithEvaluationsLimit !== 0;
+	const evaluationStore = useEvaluationStore();
+	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
 
 	const evaluationTriggerNode = isEvaluationEnabled
 		? {
