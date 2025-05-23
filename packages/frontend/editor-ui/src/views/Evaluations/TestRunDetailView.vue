@@ -228,9 +228,9 @@ onMounted(async () => {
 		<TestTableBase
 			v-else
 			:data="filteredTestCases"
-			@row-click="handleRowClick"
 			:columns="columns"
 			:default-sort="{ prop: 'id', order: 'descending' }"
+			@row-click="handleRowClick"
 		>
 			<template #id="{ row }">
 				<div style="display: flex; justify-content: space-between; gap: 10px">
@@ -400,6 +400,7 @@ onMounted(async () => {
 .alertText {
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
+	line-clamp: 2;
 	-webkit-box-orient: vertical;
 	max-width: 100%;
 	text-overflow: ellipsis;
