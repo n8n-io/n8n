@@ -301,12 +301,18 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			// This mock fails when running with `test:e2e:dev` but works with `test:e2e:ui`,
 			// at least on macOS at version 1.94.0. ¯\_(ツ)_/¯
-			cy.window().then((win) => cy.stub(win, 'open').callsFake((url) => cy.visit(url)));
+			let openedUrl = '';
+			cy.window().then((win) => cy.stub(win, 'open').callsFake((url) => (openedUrl = url)));
 
 			selectResourceLocatorAddResourceItem('workflowId', 'Create a');
-			// Need to wait for the trigger node to auto-open after a delay
-			getNdvContainer().should('be.visible');
-			cy.get('body').type('{esc}');
+			cy.then(() =>
+				cy.visit(openedUrl).then(() => {
+					// Need to wait for the trigger node to auto-open after a delay
+					cy.get('[data-test-id="ndv-modal"]', { timeout: 10000 }).should('be.visible');
+					cy.get('body').type('{esc}');
+					cy.get('[data-test-id="ndv-modal"]').should('not.exist');
+				}),
+			);
 			workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
 			clickCreateNewCredential();
 			setCredentialValues({
