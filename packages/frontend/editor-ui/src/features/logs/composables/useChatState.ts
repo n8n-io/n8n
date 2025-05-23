@@ -5,13 +5,11 @@ import { useI18n } from '@/composables/useI18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { VIEWS } from '@/constants';
-import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
-import { type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
@@ -23,8 +21,6 @@ interface ChatState {
 	currentSessionId: Ref<string>;
 	messages: Ref<ChatMessage[]>;
 	previousChatMessages: Ref<string[]>;
-	chatTriggerNode: Ref<INodeUi | null>;
-	connectedNode: Ref<INode | null>;
 	sendMessage: (message: string, files?: File[]) => Promise<void>;
 	refreshSession: () => void;
 	displayExecution: (executionId: string) => void;
@@ -46,12 +42,11 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	const workflow = computed(() => workflowsStore.getCurrentWorkflow());
 
 	// Initialize features with injected dependencies
-	const { chatTriggerNode, connectedNode, allowFileUploads, allowedFilesMimeTypes } =
-		useChatTrigger({
-			workflow,
-			getNodeByName: workflowsStore.getNodeByName,
-			getNodeType: nodeTypesStore.getNodeType,
-		});
+	const { chatTriggerNode, allowFileUploads, allowedFilesMimeTypes } = useChatTrigger({
+		workflow,
+		getNodeByName: workflowsStore.getNodeByName,
+		getNodeType: nodeTypesStore.getNodeType,
+	});
 
 	const { sendMessage, isLoading } = useChatMessaging({
 		chatTrigger: chatTriggerNode,
@@ -185,8 +180,6 @@ export function useChatState(isReadOnly: boolean): ChatState {
 		currentSessionId,
 		messages: computed(() => (isReadOnly ? restoredChatMessages.value : messages.value)),
 		previousChatMessages,
-		chatTriggerNode,
-		connectedNode,
 		sendMessage,
 		refreshSession,
 		displayExecution,

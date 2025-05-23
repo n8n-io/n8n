@@ -110,6 +110,5 @@ export function useChatTrigger({ getNodeByName, getNodeType, workflow }: ChatTri
 		allowFileUploads,
 		allowedFilesMimeTypes,
 		chatTriggerNode,
-		connectedNode,
 	};
 }

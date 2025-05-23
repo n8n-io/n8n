@@ -3,7 +3,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useCanvasOperations } from './useCanvasOperations';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export function useClearExecutionButtonVisible() {
@@ -29,6 +29,6 @@ export function useClearExecutionButtonVisible() {
 			!isReadOnlyEnvironment.value &&
 			!isWorkflowRunning.value &&
 			!allTriggerNodesDisabled.value &&
-			workflowExecutionData.value,
+			!!workflowExecutionData.value,
 	);
 }

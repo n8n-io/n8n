@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import LogsPanelHeader from '@/features/logs/components/LogsPanelHeader.vue';
-import { useClearExecutionButtonVisible } from '@/composables/useClearExecutionButtonVisible';
+import { useClearExecutionButtonVisible } from '@/features/logs/composables/useClearExecutionButtonVisible';
 import { useI18n } from '@/composables/useI18n';
 import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, nextTick, toRef, watch } from 'vue';

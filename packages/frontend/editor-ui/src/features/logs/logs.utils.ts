@@ -16,7 +16,7 @@ import { type ChatMessage } from '@n8n/chat/types';
 import { get, isEmpty } from 'lodash-es';
 import { v4 as uuid } from 'uuid';
 
-function getConsumedTokensV2(task: ITaskData): LlmTokenUsageData {
+function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
 	if (!task.data) {
 		return emptyTokenUsageData;
 	}
@@ -38,7 +38,7 @@ function getConsumedTokensV2(task: ITaskData): LlmTokenUsageData {
 	return tokenUsage;
 }
 
-function createNodeV2(
+function createNode(
 	node: INodeUi,
 	context: LogTreeCreationContext,
 	runIndex: number,
@@ -53,14 +53,14 @@ function createNodeV2(
 		runIndex,
 		runData,
 		children,
-		consumedTokens: getConsumedTokensV2(runData),
+		consumedTokens: getConsumedTokens(runData),
 		workflow: context.workflow,
 		executionId: context.executionId,
 		execution: context.data,
 	};
 }
 
-export function getTreeNodeDataV2(
+export function getTreeNodeData(
 	nodeName: string,
 	runData: ITaskData,
 	runIndex: number | undefined,
@@ -68,7 +68,7 @@ export function getTreeNodeDataV2(
 ): LogEntry[] {
 	const node = context.workflow.getNode(nodeName);
 
-	return node ? getTreeNodeDataRecV2(node, runData, context, runIndex) : [];
+	return node ? getTreeNodeDataRec(node, runData, context, runIndex) : [];
 }
 
 function getChildNodes(
@@ -123,7 +123,7 @@ function getChildNodes(
 			const subNode = context.workflow.getNode(subNodeName);
 
 			return subNode
-				? getTreeNodeDataRecV2(
+				? getTreeNodeDataRec(
 						subNode,
 						t,
 						{ ...context, depth: context.depth + 1, parent: treeNode },
@@ -134,13 +134,13 @@ function getChildNodes(
 	);
 }
 
-function getTreeNodeDataRecV2(
+function getTreeNodeDataRec(
 	node: INodeUi,
 	runData: ITaskData,
 	context: LogTreeCreationContext,
 	runIndex: number | undefined,
 ): LogEntry[] {
-	const treeNode = createNodeV2(node, context, runIndex ?? 0, runData);
+	const treeNode = createNode(node, context, runIndex ?? 0, runData);
 	const children = getChildNodes(treeNode, node, runIndex, context).sort(sortLogEntries);
 
 	treeNode.children = children;
@@ -225,7 +225,7 @@ function createLogTreeRec(context: LogTreeCreationContext) {
 		.sort(sortLogEntries);
 
 	return runs.flatMap(({ nodeName, runIndex, runData, nodeHasMultipleRuns }) =>
-		getTreeNodeDataV2(nodeName, runData, nodeHasMultipleRuns ? runIndex : undefined, context),
+		getTreeNodeData(nodeName, runData, nodeHasMultipleRuns ? runIndex : undefined, context),
 	);
 }
 

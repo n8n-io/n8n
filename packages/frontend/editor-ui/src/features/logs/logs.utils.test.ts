@@ -10,7 +10,7 @@ import {
 	deepToRaw,
 	findSelectedLogEntry,
 	getDefaultCollapsedEntries,
-	getTreeNodeDataV2,
+	getTreeNodeData,
 	mergeStartData,
 	restoreChatHistory,
 } from './logs.utils';
@@ -27,7 +27,7 @@ import { isReactive, reactive } from 'vue';
 import { createTestLogEntry } from './__test__/mocks';
 import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 
-describe(getTreeNodeDataV2, () => {
+describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {
 		const workflow = createTestWorkflowObject({
 			id: 'test-wf-id',
@@ -68,7 +68,7 @@ describe(getTreeNodeDataV2, () => {
 				createTestTaskData({ startTime: 1740528000004 }),
 			],
 		});
-		const logTree = getTreeNodeDataV2('A', ctx.data.resultData.runData.A[0], undefined, ctx);
+		const logTree = getTreeNodeData('A', ctx.data.resultData.runData.A[0], undefined, ctx);
 
 		expect(logTree.length).toBe(1);
 
@@ -158,7 +158,7 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test for RootNode1 - should only show SharedSubNode with source RootNode1
-		const rootNode1Tree = getTreeNodeDataV2(
+		const rootNode1Tree = getTreeNodeData(
 			'RootNode1',
 			runData.RootNode1[0],
 			undefined,
@@ -169,7 +169,7 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
 
 		// Test for RootNode2 - should only show SharedSubNode with source RootNode2
-		const rootNode2Tree = getTreeNodeDataV2(
+		const rootNode2Tree = getTreeNodeData(
 			'RootNode2',
 			runData.RootNode2[0],
 			undefined,
@@ -215,7 +215,7 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test for run #1 of RootNode - should only show SubNode with source run index 0
-		const rootNode1Tree = getTreeNodeDataV2(
+		const rootNode1Tree = getTreeNodeData(
 			'RootNode',
 			runData.RootNode[0],
 			0,
@@ -226,7 +226,7 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNode1Tree[0].children[0].runIndex).toBe(0);
 
 		// Test for run #2 of RootNode - should only show SubNode with source run index 1
-		const rootNode2Tree = getTreeNodeDataV2(
+		const rootNode2Tree = getTreeNodeData(
 			'RootNode',
 			runData.RootNode[1],
 			1,
@@ -237,7 +237,7 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNode2Tree[0].children[0].runIndex).toBe(1);
 	});
 
-	it('should include nodes without source information (v2)', () => {
+	it('should include nodes without source information', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
 			connections: {
@@ -266,7 +266,7 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test for RootNode - should still show SubNode even without source info
-		const rootNodeTree = getTreeNodeDataV2(
+		const rootNodeTree = getTreeNodeData(
 			'RootNode',
 			runData.RootNode[0],
 			undefined,
@@ -277,7 +277,7 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
 	});
 
-	it('should include nodes with empty source array (v2)', () => {
+	it('should include nodes with empty source array', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
 			connections: {
@@ -306,7 +306,7 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test for RootNode - should still show SubNode even with empty source array
-		const rootNodeTree = getTreeNodeDataV2(
+		const rootNodeTree = getTreeNodeData(
 			'RootNode',
 			runData.RootNode[0],
 			undefined,
@@ -317,7 +317,7 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNodeTree[0].children[0].runIndex).toBe(0);
 	});
 
-	it('should include nodes with source array without previous node (v2)', () => {
+	it('should include nodes with source array without previous node', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [createTestNode({ name: 'RootNode' }), createTestNode({ name: 'SubNode' })],
 			connections: {
@@ -333,7 +333,7 @@ describe(getTreeNodeDataV2, () => {
 			SubNode: [createTestTaskData({ executionIndex: 1, source: [null] })],
 		};
 
-		const rootNodeTree = getTreeNodeDataV2(
+		const rootNodeTree = getTreeNodeData(
 			'RootNode',
 			runData.RootNode[0],
 			undefined,
@@ -344,7 +344,7 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNodeTree[0].children[0].node.name).toBe('SubNode');
 	});
 
-	it('should filter deeper nested nodes based on source (v2)', () => {
+	it('should filter deeper nested nodes based on source', () => {
 		const workflow = createTestWorkflowObject({
 			nodes: [
 				createTestNode({ name: 'RootNode1' }),
@@ -410,7 +410,7 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test filtering for RootNode1
-		const rootNode1Tree = getTreeNodeDataV2(
+		const rootNode1Tree = getTreeNodeData(
 			'RootNode1',
 			runData.RootNode1[0],
 			undefined,
@@ -424,7 +424,7 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNode1Tree[0].children[0].children[0].runIndex).toBe(0);
 
 		// Test filtering for RootNode2
-		const rootNode2Tree = getTreeNodeDataV2(
+		const rootNode2Tree = getTreeNodeData(
 			'RootNode2',
 			runData.RootNode2[0],
 			undefined,
@@ -510,7 +510,7 @@ describe(getTreeNodeDataV2, () => {
 		};
 
 		// Test filtering for RootNode1 -> SubNodeA -> DeepNode
-		const rootNode1Tree = getTreeNodeDataV2(
+		const rootNode1Tree = getTreeNodeData(
 			'RootNode1',
 			runData.RootNode1[0],
 			undefined,
@@ -523,7 +523,7 @@ describe(getTreeNodeDataV2, () => {
 		expect(rootNode1Tree[0].children[0].children[0].runIndex).toBe(0); // First DeepNode execution
 
 		// Test filtering for RootNode2 -> SubNodeB -> DeepNode
-		const rootNode2Tree = getTreeNodeDataV2(
+		const rootNode2Tree = getTreeNodeData(
 			'RootNode2',
 			runData.RootNode2[0],
 			undefined,
