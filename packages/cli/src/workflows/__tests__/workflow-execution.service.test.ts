@@ -1,6 +1,13 @@
 import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { INode, IWorkflowBase, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type IConnections,
+	type INode,
+	type INodeType,
+	type IWorkflowBase,
+	type IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 
 import type { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -47,6 +54,15 @@ const hackerNewsNode: INode = {
 	name: 'Hacker News',
 	type: 'n8n-nodes-base.hackerNews',
 	id: '55d63bca-bb6c-4568-948f-8ed9aacb1fe9',
+	parameters: {},
+	typeVersion: 1,
+	position: [0, 0],
+};
+
+const secondHackerNewsNode: INode = {
+	name: 'Hacker News 2',
+	type: 'n8n-nodes-base.hackerNews',
+	id: '55d63bca-bb6c-4568-948f-8ed9aacb1fe3',
 	parameters: {},
 	typeVersion: 1,
 	position: [0, 0],
@@ -417,6 +433,23 @@ describe('WorkflowExecutionService', () => {
 			expect(node).toEqual(webhookNode);
 		});
 
+		it('should favor webhook node connected to the destination node', () => {
+			workflow.nodes.push(webhookNode, secondWebhookNode, hackerNewsNode, secondHackerNewsNode);
+			workflow.connections = {
+				...createMainConnection(webhookNode.name, hackerNewsNode.name),
+				...createMainConnection(secondWebhookNode.name, secondHackerNewsNode.name),
+			};
+
+			const node = workflowExecutionService.selectPinnedActivatorStarter(
+				workflow,
+				[],
+				{ ...pinData, [secondWebhookNode.name]: [{ json: { key: 'value' } }] },
+				secondHackerNewsNode.name,
+			);
+
+			expect(node).toEqual(secondWebhookNode);
+		});
+
 		describe('offloading manual executions to workers', () => {
 			test('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
 				const originalEnv = process.env;
@@ -458,3 +491,19 @@ describe('WorkflowExecutionService', () => {
 		});
 	});
 });
+
+function createMainConnection(targetNode: string, sourceNode: string): IConnections {
+	return {
+		[sourceNode]: {
+			[NodeConnectionTypes.Main]: [
+				[
+					{
+						node: targetNode,
+						type: 'main',
+						index: 0,
+					},
+				],
+			],
+		},
+	};
+}
