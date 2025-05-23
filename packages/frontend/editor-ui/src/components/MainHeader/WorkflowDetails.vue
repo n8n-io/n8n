@@ -12,13 +12,11 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 } from '@/constants';
-import ShortenName from '@/components/ShortenName.vue';
 import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
@@ -43,7 +41,7 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { computed, ref, useCssModule, watch } from 'vue';
+import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import type {
 	ActionDropdownItem,
 	FolderShortInfo,
@@ -59,6 +57,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { ProjectTypes } from '@/types/projects.types';
 import { useFoldersStore } from '@/stores/folders.store';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { N8nInlineTextEdit } from '@n8n/design-system';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -355,14 +354,10 @@ function onTagsEditEsc() {
 	isTagsEditEnabled.value = false;
 }
 
+const renameInput = useTemplateRef('renameInput');
 function onNameToggle() {
-	isNameEditEnabled.value = !isNameEditEnabled.value;
-	if (isNameEditEnabled.value) {
-		if (isTagsEditEnabled.value) {
-			void onTagsBlur();
-		}
-
-		isTagsEditEnabled.value = false;
+	if (renameInput.value?.forceFocus) {
+		renameInput.value.forceFocus();
 	}
 }
 
@@ -672,7 +667,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 			class="name-container"
 			data-test-id="canvas-breadcrumbs"
 		>
-			<template #default="{ value }">
+			<template #default>
 				<FolderBreadcrumbs
 					:current-folder="currentFolderForBreadcrumbs"
 					:current-folder-as-link="true"
@@ -684,28 +679,18 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							:class="$style['path-separator']"
 							>/</span
 						>
-						<ShortenName :name="name" :limit="value" :custom="true" test-id="workflow-name-input">
-							<template #default="{ shortenedName }">
-								<InlineTextEdit
-									:model-value="name"
-									:preview-value="shortenedName"
-									:is-edit-enabled="isNameEditEnabled"
-									:max-length="MAX_WORKFLOW_NAME_LENGTH"
-									:disabled="
-										readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)
-									"
-									placeholder="Enter workflow name"
-									class="name"
-									@toggle="onNameToggle"
-									@submit="onNameSubmit"
-								/>
-							</template>
-						</ShortenName>
+						<N8nInlineTextEdit
+							ref="renameInput"
+							class="name"
+							:model-value="name"
+							:max-length="MAX_WORKFLOW_NAME_LENGTH"
+							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
+							@update:model-value="(value) => onNameSubmit({ name: value, onSubmit: () => {} })"
+						/>
 					</template>
 				</FolderBreadcrumbs>
 			</template>
 		</BreakpointsObserver>
-
 		<span class="tags" data-test-id="workflow-tags-container">
 			<template v-if="settingsStore.areTagsEnabled">
 				<WorkflowTagsDropdown
@@ -862,6 +847,7 @@ $--header-spacing: 20px;
 .name {
 	color: $custom-font-dark;
 	font-size: var(--font-size-s);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .activator {
@@ -939,7 +925,7 @@ $--header-spacing: 20px;
 .path-separator {
 	font-size: var(--font-size-xl);
 	color: var(--color-foreground-base);
-	margin: var(--spacing-4xs);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .group {

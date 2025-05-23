@@ -26,6 +26,16 @@ const temp = ref(props.modelValue);
 const preview = useTemplateRef('preview');
 const { width } = useElementSize(preview);
 
+const editableRoot = useTemplateRef('editableRoot');
+
+function forceFocus() {
+	if (editableRoot.value) {
+		editableRoot.value.edit();
+	}
+}
+
+defineExpose({ forceFocus });
+
 function onSubmit() {
 	if (newValue.value === '') {
 		newValue.value = props.modelValue;
@@ -52,6 +62,7 @@ function onStateChange(state: string) {
 
 <template>
 	<EditableRoot
+		ref="editableRoot"
 		:model-value="newValue"
 		submit-mode="both"
 		:class="$style.inlineRenameRoot"
@@ -72,6 +83,7 @@ function onStateChange(state: string) {
 			</span>
 			<EditablePreview :class="$style.inlineRenamePreview" :style="{ maxWidth: `${maxWidth}px` }" />
 			<EditableInput
+				ref="input"
 				:style="{ width: `${width}px`, maxWidth: `${maxWidth}px`, zIndex: 1 }"
 				@input="(e) => onChange(e.target.value)"
 			/>
@@ -120,6 +132,13 @@ function onStateChange(state: string) {
 .inlineRenameArea[data-focused],
 .inlineRenameArea:hover {
 	z-index: 1;
+}
+
+.inlineRenameArea[data-readonly] {
+	pointer-events: none;
+	&::after {
+		content: none;
+	}
 }
 
 .inlineRenamePreview {
