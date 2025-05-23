@@ -69,7 +69,7 @@ const { isReady } = useAsyncState(async () => {
 	<div :class="$style.evaluationsView">
 		<template v-if="isReady && showWizard">
 			<div :class="$style.setupContent">
-				<div :class="$style.setupHeader">
+				<div>
 					<N8nText size="large" color="text-dark" tag="h3" bold>
 						{{ locale.baseText('evaluations.setupWizard.title') }}
 					</N8nText>
@@ -117,10 +117,6 @@ const { isReady } = useAsyncState(async () => {
 	max-width: 1024px;
 	margin-top: var(--spacing-2xl);
 	padding: 0;
-}
-
-.setupHeader {
-	// margin-bottom: var(--spacing-l);
 }
 
 .description {
