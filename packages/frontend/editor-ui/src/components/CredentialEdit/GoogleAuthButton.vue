@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const { baseUrl } = useRootStore();
 const type = useUIStore().appliedTheme === 'dark' ? '.dark.png' : '.png';

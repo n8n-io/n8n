@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import RunData from '@/components/RunData.vue';
 import { type LogEntry } from '@/components/RunDataAi/utils';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { type IRunDataDisplayMode, type NodePanelType } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { waitingNodeTooltip } from '@/utils/executionUtils';

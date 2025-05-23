@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { ITag, ITagRow } from '@/Interface';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.vue';
 import TagsTable from '@/components/TagsManager/TagsView/TagsTable.vue';
 import { useRBACStore } from '@/stores/rbac.store';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 
 defineOptions({ name: 'TagsView' });
 

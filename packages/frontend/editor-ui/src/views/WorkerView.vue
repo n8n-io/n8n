@@ -2,7 +2,7 @@
 import WorkerList from '@/components/WorkerList.ee.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const settingsStore = useSettingsStore();
 const pageRedirectionHelper = usePageRedirectionHelper();

@@ -14,7 +14,8 @@ import { get } from 'lodash-es';
 
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import { storeToRefs } from 'pinia';
 
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
@@ -34,9 +35,11 @@ const ndvStore = useNDVStore();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
 
+const { activeNode } = storeToRefs(ndvStore);
+
 const getPlaceholderText = computed(() => {
 	return (
-		i18n.nodeText().placeholder(props.parameter, props.path) ??
+		i18n.nodeText(activeNode.value?.type).placeholder(props.parameter, props.path) ??
 		i18n.baseText('collectionParameter.choose')
 	);
 });
@@ -51,7 +54,9 @@ function getParameterOptionLabel(
 	item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
 ): string {
 	if (isNodePropertyCollection(item)) {
-		return i18n.nodeText().collectionOptionDisplayName(props.parameter, item, props.path);
+		return i18n
+			.nodeText(activeNode.value?.type)
+			.collectionOptionDisplayName(props.parameter, item, props.path);
 	}
 
 	return 'displayName' in item ? item.displayName : item.name;

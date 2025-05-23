@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
 import {
 	GRANULARITY_DATE_FORMAT_MASK,

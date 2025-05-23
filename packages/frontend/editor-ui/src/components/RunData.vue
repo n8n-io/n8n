@@ -51,7 +51,7 @@ import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useNodeType } from '@/composables/useNodeType';
 import type { PinDataSource, UnpinDataSource } from '@/composables/usePinnedData';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { type NodePanelType, type IRunDataDisplayMode } from '@/Interface';
 import { N8nIcon, N8nRadioButtons } from '@n8n/design-system';
 import { computed, watch } from 'vue';

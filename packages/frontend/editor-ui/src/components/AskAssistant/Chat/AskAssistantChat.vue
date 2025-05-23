@@ -5,7 +5,7 @@ import { computed } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useBuilderStore } from '@/stores/builder.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const emit = defineEmits<{
 	close: [];

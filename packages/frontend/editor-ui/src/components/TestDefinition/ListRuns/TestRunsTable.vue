@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/testDefinition.ee';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconColor } from '@n8n/design-system/types/icon';
 import { computed } from 'vue';

@@ -19,7 +19,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useToast } from './useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { captor, mock } from 'vitest-mock-extended';
 import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
@@ -85,7 +85,7 @@ vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
 
-vi.mock('@/composables/useI18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	useI18n: vi.fn().mockReturnValue({ baseText: vi.fn().mockImplementation((key) => key) }),
 }));
 

@@ -1,4 +1,4 @@
-import type { I18nClass } from '@/plugins/i18n';
+import type { I18nClass } from '@n8n/i18n';
 
 /**
  * Formats a list of items into a string. Each item is formatted using

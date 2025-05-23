@@ -25,7 +25,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { ProjectTypes } from '@/types/projects.types';
 import { getResourcePermissions } from '@/permissions';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const route = useRoute();

@@ -2,7 +2,9 @@
 import { ref, watch, onMounted, nextTick } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import { useNDVStore } from '@/stores/ndv.store';
+import { storeToRefs } from 'pinia';
 
 const props = defineProps<{
 	dialogVisible: boolean;
@@ -20,7 +22,10 @@ const emit = defineEmits<{
 const inputField = ref<HTMLInputElement | null>(null);
 const tempValue = ref('');
 
+const ndvStore = useNDVStore();
 const i18n = useI18n();
+
+const { activeNode } = storeToRefs(ndvStore);
 
 watch(
 	() => props.dialogVisible,
@@ -67,18 +72,20 @@ const closeDialog = () => {
 			:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 			width="80%"
 			:title="`${i18n.baseText('textEdit.edit')} ${i18n
-				.nodeText()
+				.nodeText(activeNode?.type)
 				.inputLabelDisplayName(parameter, path)}`"
 			:before-close="closeDialog"
 		>
 			<div class="ignore-key-press-canvas">
-				<n8n-input-label :label="i18n.nodeText().inputLabelDisplayName(parameter, path)">
+				<n8n-input-label
+					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+				>
 					<div @keydown.stop @keydown.esc="onKeyDownEsc">
 						<n8n-input
 							ref="inputField"
 							v-model="tempValue"
 							type="textarea"
-							:placeholder="i18n.nodeText().placeholder(parameter, path)"
+							:placeholder="i18n.nodeText(activeNode?.type).placeholder(parameter, path)"
 							:read-only="isReadOnly"
 							:rows="15"
 							@update:model-value="valueChanged"

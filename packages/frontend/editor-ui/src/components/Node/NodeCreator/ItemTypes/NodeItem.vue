@@ -15,7 +15,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
 import { useViewStacks } from '../composables/useViewStacks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeType } from '@/composables/useNodeType';
 import { isNodePreviewKey } from '../utils';

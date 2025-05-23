@@ -1,19 +1,17 @@
-import axios from 'axios';
-import { createI18n } from 'vue-i18n';
-import { locale } from '@n8n/design-system';
+/* eslint-disable @typescript-eslint/no-this-alias */
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import { createI18n } from 'vue-i18n';
 
-import type { INodeTranslationHeaders } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import englishBaseText from './locales/en.json';
+import type { BaseTextKey, INodeTranslationHeaders } from './types';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
 	normalize,
 	insertOptionsAndValues,
 } from './utils';
+
+export * from './types';
 
 export const i18nInstance = createI18n({
 	locale: 'en',
@@ -118,9 +116,7 @@ export class I18nClass {
 	/**
 	 * Namespace for methods to render text in the credentials details modal.
 	 */
-	credText() {
-		const uiStore = useUIStore();
-		const credentialType = uiStore.activeCredentialType;
+	credText(credentialType: string | null) {
 		const credentialPrefix = `n8n-nodes-base.credentials.${credentialType}`;
 		const context = this;
 
@@ -204,10 +200,8 @@ export class I18nClass {
 	 * Namespace for methods to render text in the node details view,
 	 * except for `eventTriggerDescription`.
 	 */
-	nodeText() {
-		const ndvStore = useNDVStore();
-		const activeNode = ndvStore.activeNode;
-		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : ''; // unused in eventTriggerDescription
+	nodeText(activeNodeType?: string | null) {
+		const nodeType = activeNodeType ? this.shortNodeType(activeNodeType) : ''; // unused in eventTriggerDescription
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
 
@@ -355,10 +349,8 @@ export class I18nClass {
 		};
 	}
 
-	localizeNodeName(nodeName: string, type: string) {
-		const isEnglishLocale = useRootStore().defaultLocale === 'en';
-
-		if (isEnglishLocale) return nodeName;
+	localizeNodeName(language: string, nodeName: string, type: string) {
+		if (language === 'en') return nodeName;
 
 		const nodeTypeName = this.shortNodeType(type);
 
@@ -377,11 +369,7 @@ const loadedLanguages = ['en'];
 
 async function setLanguage(language: string) {
 	i18nInstance.global.locale = language as 'en';
-	axios.defaults.headers.common['Accept-Language'] = language;
 	document!.querySelector('html')!.setAttribute('lang', language);
-
-	// update n8n design system and element ui
-	await locale.use(language);
 
 	return language;
 }
@@ -449,14 +437,6 @@ export function addHeaders(headers: INodeTranslationHeaders, language: string) {
 
 export const i18n: I18nClass = new I18nClass();
 
-// ----------------------------------
-//             typings
-// ----------------------------------
-
-type GetBaseTextKey<T> = T extends `_${string}` ? never : T;
-
-export type BaseTextKey = GetBaseTextKey<keyof typeof englishBaseText>;
-
-type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}` ? C : never;
-
-export type CategoryName = GetCategoryName<keyof typeof englishBaseText>;
+export function useI18n() {
+	return i18n;
+}

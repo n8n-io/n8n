@@ -7,7 +7,7 @@ import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 import { get } from 'lodash-es';
 
 import { computed, ref, watch, onBeforeMount } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import {
 	N8nIconButton,
 	N8nSelect,
@@ -21,6 +21,7 @@ import Draggable from 'vuedraggable';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
+import { storeToRefs } from 'pinia';
 
 const locale = useI18n();
 
@@ -50,8 +51,12 @@ const emit = defineEmits<{
 const workflowsStore = useWorkflowsStore();
 const ndvStore = useNDVStore();
 
+const { activeNode } = storeToRefs(ndvStore);
+
 const getPlaceholderText = computed(() => {
-	const placeholder = locale.nodeText().placeholder(props.parameter, props.path);
+	const placeholder = locale
+		.nodeText(activeNode.value?.type)
+		.placeholder(props.parameter, props.path);
 	return placeholder ? placeholder : locale.baseText('fixedCollectionParameter.choose');
 });
 const mutableValues = ref({} as Record<string, INodeParameters[]>);
@@ -245,7 +250,7 @@ const trackWorkflowInputFieldAdded = () => {
 		>
 			<N8nInputLabel
 				v-if="property.displayName !== '' && parameter.options && parameter.options.length !== 1"
-				:label="locale.nodeText().inputLabelDisplayName(property, path)"
+				:label="locale.nodeText(activeNode?.type).inputLabelDisplayName(property, path)"
 				:underline="true"
 				size="small"
 				color="text-dark"
@@ -349,7 +354,9 @@ const trackWorkflowInputFieldAdded = () => {
 					<N8nOption
 						v-for="item in parameterOptions"
 						:key="item.name"
-						:label="locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
+						:label="
+							locale.nodeText(activeNode?.type).collectionOptionDisplayName(parameter, item, path)
+						"
 						:value="item.name"
 					></N8nOption>
 				</N8nSelect>

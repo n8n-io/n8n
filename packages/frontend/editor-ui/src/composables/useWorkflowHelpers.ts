@@ -61,7 +61,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';

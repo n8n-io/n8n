@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
 import { nodeViewEventBus } from '@/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();

@@ -5,8 +5,8 @@ import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
 import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
-import type { BaseTextKey } from '@/plugins/i18n';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 
 interface TagsManagerProps {
 	modalKey: string;

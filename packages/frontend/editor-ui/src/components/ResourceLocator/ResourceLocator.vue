@@ -5,7 +5,8 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useDebounce } from '@/composables/useDebounce';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -55,7 +56,6 @@ import {
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
 import { completeExpressionSyntax } from '@/utils/expressions';
-import type { BaseTextKey } from '@/plugins/i18n';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.

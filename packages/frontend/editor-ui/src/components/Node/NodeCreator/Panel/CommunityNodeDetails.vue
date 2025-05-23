@@ -4,7 +4,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useToast } from '@/composables/useToast';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useCredentialsStore } from '@/stores/credentials.store';

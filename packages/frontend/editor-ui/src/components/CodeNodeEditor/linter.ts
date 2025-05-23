@@ -6,7 +6,7 @@ import type { Node, MemberExpression } from 'estree';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import {
 	DEFAULT_LINTER_DELAY_IN_MS,
 	DEFAULT_LINTER_SEVERITY,

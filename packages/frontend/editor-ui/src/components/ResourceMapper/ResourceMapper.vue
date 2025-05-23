@@ -24,7 +24,7 @@ import {
 	parseResourceMapperFieldName,
 } from '@/utils/nodeTypesUtils';
 import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDocumentVisibility } from '@/composables/useDocumentVisibility';

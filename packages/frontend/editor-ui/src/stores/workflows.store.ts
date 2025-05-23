@@ -77,7 +77,7 @@ import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/uti
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';

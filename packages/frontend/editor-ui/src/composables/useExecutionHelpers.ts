@@ -1,6 +1,6 @@
 import type { ExecutionSummary, RelatedExecution } from 'n8n-workflow';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useTelemetry } from './useTelemetry';

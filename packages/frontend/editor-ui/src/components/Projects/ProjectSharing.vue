@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { AllRolesMap } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import ProjectSharingInfo from '@/components/Projects/ProjectSharingInfo.vue';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';

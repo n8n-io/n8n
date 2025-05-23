@@ -5,7 +5,8 @@ import type {
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { INodeTranslationHeaders, IRestApiContext } from '@/Interface';
+import type { IRestApiContext } from '@/Interface';
+import type { INodeTranslationHeaders } from '@n8n/i18n';
 import type { CommunityNodeAttributes } from '@n8n/api-types';
 import {
 	type INodeListSearchResult,

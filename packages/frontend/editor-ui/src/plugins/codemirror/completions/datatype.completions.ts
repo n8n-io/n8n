@@ -1,5 +1,5 @@
 import { VALID_EMAIL_REGEX } from '@/constants';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 

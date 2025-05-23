@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import N8nNotice from '@n8n/design-system/components/N8nNotice';
 import { formatList } from '@/utils/formatters/listFormatter';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type {
 	AppCredentials,
 	BaseNode,
