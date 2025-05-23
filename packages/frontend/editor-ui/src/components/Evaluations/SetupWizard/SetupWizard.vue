@@ -89,28 +89,6 @@ const initializeActiveStep = () => {
 // Run initialization on component mount
 initializeActiveStep();
 
-// Watch for changes and update active step dynamically
-watch(
-	() => datasetTriggerExist.value,
-	(newValue) => {
-		if (newValue && activeStepIndex.value < 1 && !evaluationsQuotaExceeded.value) {
-			activeStepIndex.value = 2;
-		}
-	},
-	{ immediate: true },
-);
-
-// Watch for changes to evaluation metric node
-watch(
-	() => datasetTriggerExist.value && evaluationMetricNodeExist.value,
-	(newValue) => {
-		if (newValue && activeStepIndex.value < 3 && !evaluationsQuotaExceeded.value) {
-			activeStepIndex.value = 3;
-		}
-	},
-	{ immediate: true },
-);
-
 const toggleStep = (index: number) => {
 	activeStepIndex.value = index;
 };
