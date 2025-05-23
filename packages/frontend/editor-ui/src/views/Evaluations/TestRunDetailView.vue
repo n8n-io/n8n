@@ -14,7 +14,6 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { orderBy } from 'lodash-es';
 import { statusDictionary } from '@/components/Evaluations/shared/statusDictionary';
-// TODO: replace with n8n-api type
 import { getErrorBaseKey } from '@/components/Evaluations/shared/errorCodes';
 
 const router = useRouter();
@@ -112,7 +111,7 @@ const fetchExecutionTestCases = async () => {
 		);
 		await evaluationStore.fetchTestRuns(run.value.workflowId);
 	} catch (error) {
-		toast.showError(error, 'Failed to load run details');
+		toast.showError(error, locale.baseText('evaluation.listRuns.toast.error.fetchTestCases'));
 	} finally {
 		isLoading.value = false;
 	}

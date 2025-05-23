@@ -3083,6 +3083,7 @@
 	"evaluation.listRuns.noRuns.description": "Run a test to see the results here",
 	"evaluation.listRuns.deleteRuns": "No runs to delete | Delete {count} run | Delete {count} runs",
 	"evaluation.listRuns.noRuns.button": "Run Test",
+	"evaluation.listRuns.toast.error.fetchTestCases": "Failed to load run details",
 	"evaluation.listRuns.error.testCasesNotFound": "No matching rows in dataset{description}",
 	"evaluation.listRuns.error.testCasesNotFound.description": "Check any filters or limits set in the evaluation trigger",
 	"evaluation.listRuns.error.executionInterrupted": "Test run was interrupted",
