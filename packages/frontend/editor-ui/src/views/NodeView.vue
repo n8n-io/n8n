@@ -127,6 +127,7 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/stores/logs.store';
 import { canvasEventBus } from '@/event-bus/canvas';
+import { useUsageStore } from '@/stores/usage.store';
 
 defineOptions({
 	name: 'NodeView',
@@ -181,6 +182,7 @@ const builderStore = useBuilderStore();
 const foldersStore = useFoldersStore();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
+const usageStore = useUsageStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -290,6 +292,7 @@ async function initializeData() {
 			workflowsStore.fetchActiveWorkflows(),
 			credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(true),
+			usageStore.getLicenseInfo(),
 		];
 
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
