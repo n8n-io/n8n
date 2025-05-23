@@ -7,7 +7,6 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
 

@@ -28,7 +28,6 @@ import {
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverrideUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { storeToRefs } from 'pinia';
 
 type Props = {
 	parameter: INodeProperties;

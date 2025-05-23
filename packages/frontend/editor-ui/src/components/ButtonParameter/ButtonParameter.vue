@@ -16,7 +16,6 @@ import {
 import { useTelemetry } from '@/composables/useTelemetry';
 
 import { propertyNameFromExpression } from '../../utils/mappingUtils';
-import { storeToRefs } from 'pinia';
 
 const AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT = 'codeGeneratedForPrompt';
 
