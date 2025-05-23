@@ -172,7 +172,7 @@ function parseExpressionMapping(
 	// The calling code is expected to only handle $json expressions for the root node
 	// As these are invalid conversions for inner nodes
 	if (exprStart === '$json') {
-		const partsIdx = parts.findIndex(() => !DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx]));
+		const partsIdx = parts.findIndex((x) => !DOT_REFERENCEABLE_JS_VARIABLE.test(x));
 
 		return {
 			nodeNameInExpression: null,
@@ -208,9 +208,7 @@ function parseExpressionMapping(
 		} else {
 			if (DATA_ACCESSORS.some((x) => parts[1] === x)) {
 				// This should always be at least 2
-				const partsIdx = parts.findIndex(
-					() => !DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx]),
-				);
+				const partsIdx = parts.findIndex((x) => !DOT_REFERENCEABLE_JS_VARIABLE.test(x));
 
 				// Use a separate name for anything except item to avoid users confusing their e.g. first() variables
 				const replacementPostfix =
