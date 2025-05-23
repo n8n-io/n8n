@@ -55,6 +55,7 @@ import {
 	N8nCard,
 	N8nHeading,
 	N8nIcon,
+	N8nInlineTextEdit,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
@@ -64,7 +65,7 @@ import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Brea
 import { createEventBus } from '@n8n/utils/event-bus';
 import { debounce } from 'lodash-es';
 import { PROJECT_ROOT } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTemplateRef, computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 const SEARCH_DEBOUNCE_TIME = 300;
@@ -1300,9 +1301,12 @@ const onCreateWorkflowClick = () => {
 	});
 };
 
-const onNameToggle = () => {
-	isNameEditEnabled.value = !isNameEditEnabled.value;
-};
+const renameInput = useTemplateRef('renameInput');
+function onNameToggle() {
+	if (renameInput.value?.forceFocus) {
+		renameInput.value.forceFocus();
+	}
+}
 
 const onNameSubmit = async ({
 	name,
@@ -1492,17 +1496,13 @@ const onNameSubmit = async ({
 				>
 					<template #append>
 						<span :class="$style['path-separator']">/</span>
-						<InlineTextEdit
-							data-test-id="breadcrumbs-item-current"
+						<N8nInlineTextEdit
+							ref="renameInput"
 							:model-value="currentFolder.name"
-							:preview-value="currentFolder.name"
-							:is-edit-enabled="isNameEditEnabled"
 							:max-length="30"
-							:disabled="readOnlyEnv || !hasPermissionToUpdateFolders"
+							:read-only="readOnlyEnv || !hasPermissionToUpdateFolders"
 							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
-							:placeholder="i18n.baseText('folders.rename.placeholder')"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
+							@update:model-value="(value) => onNameSubmit({ name: value, onSubmit: () => {} })"
 						/>
 					</template>
 				</FolderBreadcrumbs>
@@ -1825,12 +1825,13 @@ const onNameSubmit = async ({
 .path-separator {
 	font-size: var(--font-size-xl);
 	color: var(--color-foreground-base);
-	margin: var(--spacing-4xs);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .name {
 	color: $custom-font-dark;
 	font-size: var(--font-size-s);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
 }
 
 .pointer-disabled {
