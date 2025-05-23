@@ -61,7 +61,7 @@ export class TestRunnerService {
 	/**
 	 * Finds the dataset trigger node in the workflow
 	 */
-	private findTriggerNode(workflow: IWorkflowBase) {
+	private findEvaluationTriggerNode(workflow: IWorkflowBase) {
 		return workflow.nodes.find((node) => node.type === EVALUATION_DATASET_TRIGGER_NODE);
 	}
 
@@ -69,8 +69,8 @@ export class TestRunnerService {
 	 * Validates the evaluation trigger node is present in the workflow
 	 * and is configured correctly.
 	 */
-	private validateTriggerNode(workflow: IWorkflowBase) {
-		const triggerNode = this.findTriggerNode(workflow);
+	private validateEvaluationTriggerNode(workflow: IWorkflowBase) {
+		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		if (!triggerNode) {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
 		}
@@ -120,7 +120,7 @@ export class TestRunnerService {
 	 * Throws appropriate TestRunError if validation fails
 	 */
 	private validateWorkflowConfiguration(workflow: IWorkflowBase): void {
-		this.validateTriggerNode(workflow);
+		this.validateEvaluationTriggerNode(workflow);
 
 		// TODO: validate Set Outputs node
 
@@ -147,7 +147,7 @@ export class TestRunnerService {
 		// Evaluation executions should run the same way as manual,
 		// because they need pinned data and partial execution logic
 
-		const triggerNode = this.findTriggerNode(workflow);
+		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		assert(triggerNode);
 
 		const pinData = {
@@ -212,7 +212,7 @@ export class TestRunnerService {
 		// Evaluation executions should run the same way as manual,
 		// because they need pinned data and partial execution logic
 
-		const triggerNode = this.findTriggerNode(workflow);
+		const triggerNode = this.findEvaluationTriggerNode(workflow);
 
 		if (!triggerNode) {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
@@ -295,7 +295,7 @@ export class TestRunnerService {
 	 * Extract the dataset trigger output
 	 */
 	private extractDatasetTriggerOutput(execution: IRun, workflow: IWorkflowBase) {
-		const triggerNode = this.findTriggerNode(workflow);
+		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		assert(triggerNode);
 
 		const triggerOutputData = execution.data.resultData.runData[triggerNode.name][0];
