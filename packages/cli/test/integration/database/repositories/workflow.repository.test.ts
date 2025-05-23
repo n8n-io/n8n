@@ -1,6 +1,7 @@
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { createTestRun } from '../../shared/db/evaluation';
 import {
 	createWorkflowWithTrigger,
 	createWorkflow,
@@ -113,6 +114,75 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(activeIds).toHaveLength(1);
+		});
+	});
+
+	describe('getWorkflowsWithEvaluationCount', () => {
+		it('should return 0 when no workflows have test runs', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow();
+			await createWorkflow();
+
+			//
+			// ACT
+			//
+			const count = await workflowRepository.getWorkflowsWithEvaluationCount();
+
+			//
+			// ASSERT
+			//
+			expect(count).toBe(0);
+		});
+
+		it('should return correct count when some workflows have test runs', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow1 = await createWorkflow();
+			await createWorkflow();
+			const workflow3 = await createWorkflow();
+
+			await createTestRun(workflow1.id);
+			await createTestRun(workflow3.id);
+
+			//
+			// ACT
+			//
+			const count = await workflowRepository.getWorkflowsWithEvaluationCount();
+
+			//
+			// ASSERT
+			//
+			expect(count).toBe(2);
+		});
+
+		it('should count each workflow only once even with multiple test runs', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow1 = await createWorkflow();
+			const workflow2 = await createWorkflow();
+
+			await createTestRun(workflow1.id);
+			await createTestRun(workflow1.id);
+			await createTestRun(workflow1.id);
+			await createTestRun(workflow2.id);
+			await createTestRun(workflow2.id);
+
+			//
+			// ACT
+			//
+			const count = await workflowRepository.getWorkflowsWithEvaluationCount();
+
+			//
+			// ASSERT
+			//
+			expect(count).toBe(2);
 		});
 	});
 });

@@ -10,6 +10,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IExecuteData,
 	INodeExecutionData,
+	AssignmentCollectionValue,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -17,6 +18,7 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { EVALUATION_DATASET_TRIGGER_NODE, EVALUATION_NODE } from '@/constants';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
+import { checkNodeParameterNotEmpty } from '@/evaluation.ee/test-runner/utils.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -59,8 +61,97 @@ export class TestRunnerService {
 	/**
 	 * Finds the dataset trigger node in the workflow
 	 */
-	private findTriggerNode(workflow: IWorkflowBase) {
+	private findEvaluationTriggerNode(workflow: IWorkflowBase) {
 		return workflow.nodes.find((node) => node.type === EVALUATION_DATASET_TRIGGER_NODE);
+	}
+
+	/**
+	 * Validates the evaluation trigger node is present in the workflow
+	 * and is configured correctly.
+	 */
+	private validateEvaluationTriggerNode(workflow: IWorkflowBase) {
+		const triggerNode = this.findEvaluationTriggerNode(workflow);
+		if (!triggerNode) {
+			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
+		}
+
+		if (
+			!triggerNode.credentials ||
+			!checkNodeParameterNotEmpty(triggerNode.parameters?.documentId) ||
+			!checkNodeParameterNotEmpty(triggerNode.parameters?.sheetName)
+		) {
+			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: triggerNode.name });
+		}
+
+		if (triggerNode?.disabled) {
+			throw new TestRunError('EVALUATION_TRIGGER_DISABLED');
+		}
+	}
+
+	/**
+	 * Checks if the Evaluation Set Metrics nodes are present in the workflow
+	 * and are configured correctly.
+	 */
+	private validateSetMetricsNodes(workflow: IWorkflowBase) {
+		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
+		if (metricsNodes.length === 0) {
+			throw new TestRunError('SET_METRICS_NODE_NOT_FOUND');
+		}
+
+		const unconfiguredMetricsNode = metricsNodes.find(
+			(node) =>
+				!node.parameters ||
+				!node.parameters.metrics ||
+				(node.parameters.metrics as AssignmentCollectionValue).assignments?.length === 0 ||
+				(node.parameters.metrics as AssignmentCollectionValue).assignments?.some(
+					(assignment) => !assignment.name || assignment.value === null,
+				),
+		);
+
+		if (unconfiguredMetricsNode) {
+			throw new TestRunError('SET_METRICS_NODE_NOT_CONFIGURED', {
+				node_name: unconfiguredMetricsNode.name,
+			});
+		}
+	}
+
+	/**
+	 * Checks if the Evaluation Set Outputs nodes are present in the workflow
+	 * and are configured correctly.
+	 */
+	private validateSetOutputsNodes(workflow: IWorkflowBase) {
+		const setOutputsNodes = TestRunnerService.getEvaluationSetOutputsNodes(workflow);
+		if (setOutputsNodes.length === 0) {
+			throw new TestRunError('SET_OUTPUTS_NODE_NOT_FOUND');
+		}
+
+		const unconfiguredSetOutputsNode = setOutputsNodes.find(
+			(node) =>
+				!node.parameters ||
+				!node.parameters.outputs ||
+				(node.parameters.outputs as AssignmentCollectionValue).assignments?.length === 0 ||
+				(node.parameters.outputs as AssignmentCollectionValue).assignments?.some(
+					(assignment) => !assignment.name || assignment.value === null,
+				),
+		);
+
+		if (unconfiguredSetOutputsNode) {
+			throw new TestRunError('SET_OUTPUTS_NODE_NOT_CONFIGURED', {
+				node_name: unconfiguredSetOutputsNode.name,
+			});
+		}
+	}
+
+	/**
+	 * Validates workflow configuration for evaluation
+	 * Throws appropriate TestRunError if validation fails
+	 */
+	private validateWorkflowConfiguration(workflow: IWorkflowBase): void {
+		this.validateEvaluationTriggerNode(workflow);
+
+		this.validateSetOutputsNodes(workflow);
+
+		this.validateSetMetricsNodes(workflow);
 	}
 
 	/**
@@ -83,7 +174,7 @@ export class TestRunnerService {
 		// Evaluation executions should run the same way as manual,
 		// because they need pinned data and partial execution logic
 
-		const triggerNode = this.findTriggerNode(workflow);
+		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		assert(triggerNode);
 
 		const pinData = {
@@ -148,7 +239,7 @@ export class TestRunnerService {
 		// Evaluation executions should run the same way as manual,
 		// because they need pinned data and partial execution logic
 
-		const triggerNode = this.findTriggerNode(workflow);
+		const triggerNode = this.findEvaluationTriggerNode(workflow);
 
 		if (!triggerNode) {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
@@ -219,7 +310,7 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Get the evaluation metrics nodes from a workflow.
+	 * Get the evaluation set metrics nodes from a workflow.
 	 */
 	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
 		return workflow.nodes.filter(
@@ -228,13 +319,29 @@ export class TestRunnerService {
 	}
 
 	/**
+	 * Get the evaluation set outputs nodes from a workflow.
+	 */
+	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
+		return workflow.nodes.filter(
+			(node) => node.type === EVALUATION_NODE && node.parameters.operation === 'setOutputs',
+		);
+	}
+
+	/**
 	 * Extract the dataset trigger output
 	 */
 	private extractDatasetTriggerOutput(execution: IRun, workflow: IWorkflowBase) {
-		const triggerNode = this.findTriggerNode(workflow);
+		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		assert(triggerNode);
 
 		const triggerOutputData = execution.data.resultData.runData[triggerNode.name][0];
+
+		if (triggerOutputData?.error) {
+			throw new TestRunError('CANT_FETCH_TEST_CASES', {
+				message: triggerOutputData.error.message,
+			});
+		}
+
 		const triggerOutput = triggerOutputData?.data?.main?.[0];
 
 		if (!triggerOutput || triggerOutput.length === 0) {
@@ -248,16 +355,16 @@ export class TestRunnerService {
 	 * Evaluation result is collected from all Evaluation Metrics nodes
 	 */
 	private extractEvaluationResult(execution: IRun, workflow: IWorkflowBase): IDataObject {
-		// TODO: Do not fail if not all metric nodes were executed
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
-		const metricsRunData = metricsNodes.flatMap(
-			(node) => execution.data.resultData.runData[node.name],
-		);
+
+		// If a metrics node did not execute, ignore it.
+		const metricsRunData = metricsNodes
+			.flatMap((node) => execution.data.resultData.runData[node.name])
+			.filter((data) => data !== undefined);
 		const metricsData = metricsRunData
 			.reverse()
 			.map((data) => data.data?.main?.[0]?.[0]?.json ?? {});
 		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {});
-
 		return metricsResult;
 	}
 
@@ -293,6 +400,9 @@ export class TestRunnerService {
 		try {
 			// Update test run status
 			await this.testRunRepository.markAsRunning(testRun.id);
+
+			// Check if the workflow is ready for evaluation
+			this.validateWorkflowConfiguration(workflow);
 
 			this.telemetry.track('User ran test', {
 				user_id: user.id,
@@ -377,19 +487,31 @@ export class TestRunnerService {
 						this.extractEvaluationResult(testCaseExecution, workflow),
 					);
 
-					this.logger.debug('Test case metrics extracted', addedMetrics);
-
-					// Create a new test case execution in DB
-					await this.testCaseExecutionRepository.createTestCaseExecution({
-						executionId: testCaseExecutionId,
-						testRun: {
-							id: testRun.id,
-						},
-						runAt,
-						completedAt,
-						status: 'success',
-						metrics: addedMetrics,
-					});
+					if (Object.keys(addedMetrics).length === 0) {
+						await this.testCaseExecutionRepository.createTestCaseExecution({
+							executionId: testCaseExecutionId,
+							testRun: {
+								id: testRun.id,
+							},
+							runAt,
+							completedAt,
+							status: 'error',
+							errorCode: 'NO_METRICS_COLLECTED',
+						});
+					} else {
+						this.logger.debug('Test case metrics extracted', addedMetrics);
+						// Create a new test case execution in DB
+						await this.testCaseExecutionRepository.createTestCaseExecution({
+							executionId: testCaseExecutionId,
+							testRun: {
+								id: testRun.id,
+							},
+							runAt,
+							completedAt,
+							status: 'success',
+							metrics: addedMetrics,
+						});
+					}
 				} catch (e) {
 					const completedAt = new Date();
 					// FIXME: this is a temporary log
@@ -500,7 +622,7 @@ export class TestRunnerService {
 		} else {
 			const { manager: dbManager } = this.testRunRepository;
 
-			// If there is no abort controller - just mark the test run and all its' pending test case executions as cancelled
+			// If there is no abort controller - just mark the test run and all its pending test case executions as cancelled
 			await dbManager.transaction(async (trx) => {
 				await this.testRunRepository.markAsCancelled(testRunId, trx);
 				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);

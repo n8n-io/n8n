@@ -20,7 +20,10 @@ export class LicenseMetricsService {
 			manualExecutions,
 		} = await this.licenseMetricsRepository.getLicenseRenewalMetrics();
 
-		const activeTriggerCount = await this.workflowRepository.getActiveTriggerCount();
+		const [activeTriggerCount, workflowsWithEvaluationsCount] = await Promise.all([
+			this.workflowRepository.getActiveTriggerCount(),
+			this.workflowRepository.getWorkflowsWithEvaluationCount(),
+		]);
 
 		return [
 			{ name: 'activeWorkflows', value: activeWorkflows },
@@ -32,6 +35,7 @@ export class LicenseMetricsService {
 			{ name: 'productionRootExecutions', value: productionRootExecutions },
 			{ name: 'manualExecutions', value: manualExecutions },
 			{ name: 'activeWorkflowTriggers', value: activeTriggerCount },
+			{ name: 'evaluations', value: workflowsWithEvaluationsCount },
 		];
 	}
 
