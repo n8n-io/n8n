@@ -36,7 +36,7 @@ export class CommunityNodeTypesService {
 				this.globalConfig.nodes.communityPackages.enabled &&
 				this.globalConfig.nodes.communityPackages.verifiedEnabled
 			) {
-				const environment = this.globalConfig.license.tenantId === 1 ? 'production' : 'staging';
+				const environment = this.globalConfig.license.tenantId !== 1001 ? 'production' : 'staging';
 				const url =
 					environment === 'production'
 						? N8N_VETTED_NODE_TYPES_PRODUCTION_URL
