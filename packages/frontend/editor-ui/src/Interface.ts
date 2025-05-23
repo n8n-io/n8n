@@ -46,7 +46,7 @@ import type {
 	ISourceData,
 } from 'n8n-workflow';
 
-import {
+import type {
 	AI_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	SignInType,

@@ -245,7 +245,7 @@ onMounted(async () => {
 					/>
 					<template v-if="row.status === 'error'">
 						<N8nTooltip placement="top" :show-after="300">
-							<template #content :class="$style.capitalized">
+							<template #content>
 								{{
 									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
 								}}

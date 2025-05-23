@@ -11,7 +11,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-	(e: 'click'): void;
+	click: [];
 }>();
 
 const handleClick = (event: Event) => {

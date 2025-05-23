@@ -9,7 +9,7 @@ import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
-import { TestRunRecord } from '@/api/evaluation.ee';
+import type { TestRunRecord } from '@/api/evaluation.ee';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 
 describe('TestDefinitionRootView', () => {
