@@ -79,6 +79,7 @@
       "sqlite3"
     ],
     "overrides": {
+      "@azure/identity": "^4.3.0",
       "@types/node": "^18.16.16",
       "chokidar": "^4.0.1",
       "esbuild": "^0.24.0",
