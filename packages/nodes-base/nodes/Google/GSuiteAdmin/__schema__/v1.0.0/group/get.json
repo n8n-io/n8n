@@ -1,29 +1,29 @@
 {
     "type": "object",
     "properties": {
-        "kind": {
-            "type": "string"
+        "adminCreated": {
+            "type": "boolean"
         },
-        "id": {
-            "type": "string"
-        },
-        "etag": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "name": {
+        "description": {
             "type": "string"
         },
         "directMembersCount": {
             "type": "string"
         },
-        "description": {
+        "email": {
             "type": "string"
         },
-        "adminCreated": {
-            "type": "boolean"
+        "etag": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
         }
     },
     "version": 1

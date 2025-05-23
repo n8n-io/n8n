@@ -7,73 +7,19 @@
         "@odata.etag": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "changeKey": {
-            "type": "string"
-        },
-        "parentFolderId": {
-            "type": "string"
-        },
-        "birthday": {
-            "type": "null"
-        },
-        "fileAs": {
-            "type": "string"
-        },
-        "displayName": {
-            "type": "string"
-        },
-        "initials": {
-            "type": "null"
-        },
-        "middleName": {
-            "type": "null"
-        },
-        "nickName": {
-            "type": "null"
-        },
-        "yomiGivenName": {
-            "type": "null"
-        },
-        "yomiSurname": {
-            "type": "null"
-        },
-        "yomiCompanyName": {
-            "type": "null"
-        },
-        "generation": {
-            "type": "null"
-        },
-        "profession": {
-            "type": "null"
-        },
-        "manager": {
-            "type": "null"
-        },
-        "homePhones": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "businessPhones": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "spouseName": {
-            "type": "null"
+        "changeKey": {
+            "type": "string"
         },
-        "personalNotes": {
+        "createdDateTime": {
+            "type": "string"
+        },
+        "displayName": {
             "type": "string"
         },
         "emailAddresses": {
@@ -87,54 +33,57 @@
                     "name": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "address"
-                ]
+                }
             }
+        },
+        "fileAs": {
+            "type": "string"
+        },
+        "generation": {
+            "type": "null"
+        },
+        "homePhones": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "initials": {
+            "type": "null"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "middleName": {
+            "type": "null"
+        },
+        "nickName": {
+            "type": "null"
+        },
+        "parentFolderId": {
+            "type": "string"
+        },
+        "personalNotes": {
+            "type": "string"
+        },
+        "profession": {
+            "type": "null"
+        },
+        "spouseName": {
+            "type": "null"
+        },
+        "yomiCompanyName": {
+            "type": "null"
+        },
+        "yomiGivenName": {
+            "type": "null"
+        },
+        "yomiSurname": {
+            "type": "null"
         }
     },
-    "required": [
-        "@odata.context",
-        "@odata.etag",
-        "id",
-        "createdDateTime",
-        "lastModifiedDateTime",
-        "changeKey",
-        "categories",
-        "parentFolderId",
-        "birthday",
-        "fileAs",
-        "displayName",
-        "givenName",
-        "initials",
-        "middleName",
-        "nickName",
-        "surname",
-        "title",
-        "yomiGivenName",
-        "yomiSurname",
-        "yomiCompanyName",
-        "generation",
-        "imAddresses",
-        "jobTitle",
-        "companyName",
-        "department",
-        "officeLocation",
-        "profession",
-        "businessHomePage",
-        "assistantName",
-        "manager",
-        "homePhones",
-        "mobilePhone",
-        "businessPhones",
-        "spouseName",
-        "personalNotes",
-        "children",
-        "emailAddresses",
-        "homeAddress",
-        "businessAddress",
-        "otherAddress"
-    ],
     "version": 1
 }

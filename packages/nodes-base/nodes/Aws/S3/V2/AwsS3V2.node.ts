@@ -8,7 +8,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { Builder } from 'xml2js';
 
@@ -37,8 +37,8 @@ export class AwsS3V2 implements INodeType {
 				name: 'AWS S3',
 			},
 			usableAsTool: true,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'aws',

@@ -1,32 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "enrichmentId": {
-            "type": "string"
-        },
-        "enrichmentStatus": {
-            "type": "string"
-        },
-        "input": {
-            "type": "object",
-            "properties": {
-                "firstName": {
-                    "type": "string"
-                },
-                "lastName": {
-                    "type": "string"
-                },
-                "linkedinUrl": {
-                    "type": "string"
-                },
-                "companyName": {
-                    "type": "string"
-                },
-                "companyDomain": {
-                    "type": "string"
-                }
-            }
-        },
         "data": {
             "type": "object",
             "properties": {
@@ -39,15 +13,35 @@
                         "notFound": {
                             "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "notFound"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "email"
-            ]
+            }
+        },
+        "enrichmentId": {
+            "type": "string"
+        },
+        "enrichmentStatus": {
+            "type": "string"
+        },
+        "input": {
+            "type": "object",
+            "properties": {
+                "companyDomain": {
+                    "type": "string"
+                },
+                "companyName": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "linkedinUrl": {
+                    "type": "string"
+                }
+            }
         }
     },
     "version": 1

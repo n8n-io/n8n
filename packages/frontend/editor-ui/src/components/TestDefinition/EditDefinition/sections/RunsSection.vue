@@ -4,27 +4,19 @@ import MetricsChart from '@/components/TestDefinition/ListRuns/MetricsChart.vue'
 import TestRunsTable from '@/components/TestDefinition/ListRuns/TestRunsTable.vue';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
-import type { AppliedThemeOption } from '@/Interface';
+import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 const props = defineProps<{
-	runs: TestRunRecord[];
+	runs: Array<TestRunRecord & { index: number }>;
 	testId: string;
-	appliedTheme: AppliedThemeOption;
 }>();
 
-const emit = defineEmits<{
-	deleteRuns: [runs: TestRunRecord[]];
-}>();
 const locale = useI18n();
 const router = useRouter();
 
 const selectedMetric = defineModel<string>('selectedMetric', { required: true });
-
-function onDeleteRuns(toDelete: TestRunRecord[]) {
-	emit('deleteRuns', toDelete);
-}
 
 const metrics = computed(() => {
 	const metricKeys = props.runs.reduce((acc, run) => {
@@ -42,15 +34,15 @@ const metricColumns = computed(() =>
 		showHeaderTooltip: true,
 		sortMethod: (a: TestRunRecord, b: TestRunRecord) =>
 			(a.metrics?.[metric] ?? 0) - (b.metrics?.[metric] ?? 0),
-		formatter: (row: TestRunRecord) => (row.metrics?.[metric] ?? 0).toFixed(2),
+		formatter: (row: TestRunRecord) =>
+			row.metrics?.[metric] !== undefined ? (row.metrics?.[metric]).toFixed(2) : '',
 	})),
 );
 
 const columns = computed(() => [
 	{
-		prop: 'runNumber',
+		prop: 'id',
 		label: locale.baseText('testDefinition.listRuns.runNumber'),
-		formatter: (row: TestRunRecord) => `${row.id}`,
 		showOverflowTooltip: true,
 	},
 	{
@@ -58,6 +50,10 @@ const columns = computed(() => [
 		label: 'Run at',
 		sortable: true,
 		showOverflowTooltip: true,
+		formatter: (row: TestRunRecord) => {
+			const { date, time } = convertToDisplayDate(row.runAt);
+			return [date, time].join(', ');
+		},
 		sortMethod: (a: TestRunRecord, b: TestRunRecord) =>
 			new Date(a.runAt ?? a.createdAt).getTime() - new Date(b.runAt ?? b.createdAt).getTime(),
 	},
@@ -79,7 +75,7 @@ const handleRowClick = (row: TestRunRecord) => {
 
 <template>
 	<div :class="$style.runs">
-		<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" :theme="appliedTheme" />
+		<MetricsChart v-model:selectedMetric="selectedMetric" :runs="runs" />
 
 		<TestRunsTable
 			:class="$style.runsTable"
@@ -87,7 +83,6 @@ const handleRowClick = (row: TestRunRecord) => {
 			:columns
 			:selectable="true"
 			data-test-id="past-runs-table"
-			@delete-runs="onDeleteRuns"
 			@row-click="handleRowClick"
 		/>
 	</div>
@@ -97,7 +92,7 @@ const handleRowClick = (row: TestRunRecord) => {
 .runs {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: var(--spacing-s);
 	flex: 1;
 	overflow: auto;
 	margin-bottom: 20px;

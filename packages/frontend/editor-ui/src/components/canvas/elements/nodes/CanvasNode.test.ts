@@ -1,7 +1,7 @@
 import CanvasNode from '@/components/canvas/elements/nodes/CanvasNode.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { fireEvent } from '@testing-library/vue';
 import { createCanvasNodeData, createCanvasNodeProps, createCanvasProvide } from '@/__tests__/data';
 import { CanvasNodeRenderType } from '@/types';
@@ -61,13 +61,13 @@ describe('CanvasNode', () => {
 					...createCanvasNodeProps({
 						data: {
 							inputs: [
-								{ type: NodeConnectionType.Main, index: 0 },
-								{ type: NodeConnectionType.Main, index: 0 },
-								{ type: NodeConnectionType.Main, index: 0 },
+								{ type: NodeConnectionTypes.Main, index: 0 },
+								{ type: NodeConnectionTypes.Main, index: 0 },
+								{ type: NodeConnectionTypes.Main, index: 0 },
 							],
 							outputs: [
-								{ type: NodeConnectionType.Main, index: 0 },
-								{ type: NodeConnectionType.Main, index: 0 },
+								{ type: NodeConnectionTypes.Main, index: 0 },
+								{ type: NodeConnectionTypes.Main, index: 0 },
 							],
 						},
 					}),
@@ -92,9 +92,9 @@ describe('CanvasNode', () => {
 					...createCanvasNodeProps({
 						data: {
 							inputs: [
-								{ type: NodeConnectionType.Main, index: 0 },
-								{ type: NodeConnectionType.AiAgent, index: 0, required: true },
-								{ type: NodeConnectionType.AiTool, index: 0 },
+								{ type: NodeConnectionTypes.Main, index: 0 },
+								{ type: NodeConnectionTypes.AiAgent, index: 0, required: true },
+								{ type: NodeConnectionTypes.AiTool, index: 0 },
 							],
 							outputs: [],
 						},

@@ -1,10 +1,15 @@
-import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IConnection,
+	IConnections,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { BoundingBox, CanvasConnection, CanvasConnectionPort } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { Connection } from '@vue-flow/core';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 /**
  * Maps multiple legacy n8n connections to VueFlow connections
@@ -117,7 +122,7 @@ export function parseCanvasConnectionHandleString(handle: string | null | undefi
 	const [mode, type, index] = (handle ?? '').split('/');
 
 	const resolvedMode = isValidCanvasConnectionMode(mode) ? mode : CanvasConnectionMode.Output;
-	const resolvedType = isValidNodeConnectionType(type) ? type : NodeConnectionType.Main;
+	const resolvedType = isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main;
 	let resolvedIndex = parseInt(index, 10);
 	if (isNaN(resolvedIndex)) {
 		resolvedIndex = 0;
@@ -135,7 +140,7 @@ export function parseCanvasConnectionHandleString(handle: string | null | undefi
  */
 export function createCanvasConnectionHandleString({
 	mode,
-	type = NodeConnectionType.Main,
+	type = NodeConnectionTypes.Main,
 	index = 0,
 }: {
 	mode: 'inputs' | 'outputs';
@@ -200,7 +205,7 @@ export function mapLegacyEndpointsToCanvasConnectionPort(
 
 	return endpoints.map((endpoint, endpointIndex) => {
 		const typeValue = typeof endpoint === 'string' ? endpoint : endpoint.type;
-		const type = isValidNodeConnectionType(typeValue) ? typeValue : NodeConnectionType.Main;
+		const type = isValidNodeConnectionType(typeValue) ? typeValue : NodeConnectionTypes.Main;
 		const label =
 			typeof endpoint === 'string' ? endpointNames[endpointIndex] : endpoint.displayName;
 		const index =

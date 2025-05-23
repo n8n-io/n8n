@@ -4,11 +4,10 @@ import axios from 'axios';
 import { Logger } from 'n8n-core';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import type { SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
-import { SecretsProvider } from '@/interfaces';
-
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
-import { preferGet } from '../external-secrets-helper.ee';
+import { ExternalSecretsConfig } from '../external-secrets.config';
+import type { SecretsProviderSettings, SecretsProviderState } from '../types';
+import { SecretsProvider } from '../types';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 
@@ -419,7 +418,7 @@ export class VaultProvider extends SecretsProvider {
 		listPath += path;
 		let listResp: AxiosResponse<VaultResponse<VaultSecretList>>;
 		try {
-			const shouldPreferGet = preferGet();
+			const shouldPreferGet = Container.get(ExternalSecretsConfig).preferGet;
 			const url = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const method = shouldPreferGet ? 'GET' : ('LIST' as any);

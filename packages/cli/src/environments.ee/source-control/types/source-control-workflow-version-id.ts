@@ -5,5 +5,6 @@ export interface SourceControlWorkflowVersionId {
 	name?: string;
 	localId?: string;
 	remoteId?: string;
+	parentFolderId: string | null;
 	updatedAt?: string;
 }

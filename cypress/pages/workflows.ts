@@ -19,12 +19,12 @@ export class WorkflowsPage extends BasePage {
 			cy.getByTestId('add-resource-workflow').should('be.visible');
 			return cy.getByTestId('add-resource-workflow');
 		},
-		workflowCards: () => cy.getByTestId('resources-list-item'),
+		workflowCards: () => cy.getByTestId('resources-list-item-workflow'),
 		workflowCard: (workflowName: string) =>
 			this.getters
 				.workflowCards()
 				.contains(workflowName)
-				.parents('[data-test-id="resources-list-item"]'),
+				.parents('[data-test-id="resources-list-item-workflow"]'),
 		workflowTags: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-tags'),
 		workflowCardContent: (workflowName: string) =>
@@ -36,6 +36,10 @@ export class WorkflowsPage extends BasePage {
 		workflowCardActions: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-actions'),
 		workflowActionItem: (action: string) => cy.getByTestId(`action-${action}`).filter(':visible'),
+		workflowArchiveButton: () =>
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Archive'),
+		workflowUnarchiveButton: () =>
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Unarchive'),
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
 		workflowMoveButton: () =>
@@ -47,6 +51,7 @@ export class WorkflowsPage extends BasePage {
 		workflowStatusItem: (status: string) => cy.getByTestId('status').contains(status),
 		workflowOwnershipDropdown: () => cy.getByTestId('user-select-trigger'),
 		workflowOwner: (email: string) => cy.getByTestId('user-email').contains(email),
+		workflowArchivedCheckbox: () => cy.getByTestId('show-archived-checkbox'),
 		workflowResetFilters: () => cy.getByTestId('workflows-filter-reset'),
 		workflowSortDropdown: () => cy.getByTestId('resources-list-sort'),
 		workflowSortItem: (sort: string) =>

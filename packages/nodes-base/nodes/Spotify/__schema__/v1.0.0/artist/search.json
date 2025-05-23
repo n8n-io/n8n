@@ -7,10 +7,7 @@
                 "spotify": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "spotify"
-            ]
+            }
         },
         "followers": {
             "type": "object",
@@ -21,11 +18,7 @@
                 "total": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "href",
-                "total"
-            ]
+            }
         },
         "genres": {
             "type": "array",
@@ -44,21 +37,16 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "url": {
-                        "type": "string"
-                    },
                     "height": {
                         "type": "integer"
+                    },
+                    "url": {
+                        "type": "string"
                     },
                     "width": {
                         "type": "integer"
                     }
-                },
-                "required": [
-                    "url",
-                    "height",
-                    "width"
-                ]
+                }
             }
         },
         "name": {
@@ -74,17 +62,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "external_urls",
-        "followers",
-        "genres",
-        "href",
-        "id",
-        "images",
-        "name",
-        "popularity",
-        "type",
-        "uri"
-    ],
     "version": 1
 }

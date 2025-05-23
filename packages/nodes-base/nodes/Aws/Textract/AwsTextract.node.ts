@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type ICredentialDataDecryptedObject,
 	type ICredentialsDecrypted,
 	type ICredentialTestFunctions,
@@ -27,8 +27,8 @@ export class AwsTextract implements INodeType {
 			name: 'AWS Textract',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aws',

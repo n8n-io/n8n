@@ -4,23 +4,14 @@
         "@odata.context": {
             "type": "string"
         },
-        "id": {
-            "type": "string"
+        "allowedOnlineMeetingProviders": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
-        "name": {
-            "type": "string"
-        },
-        "color": {
-            "type": "string"
-        },
-        "hexColor": {
-            "type": "string"
-        },
-        "isDefaultCalendar": {
+        "canEdit": {
             "type": "boolean"
-        },
-        "changeKey": {
-            "type": "string"
         },
         "canShare": {
             "type": "boolean"
@@ -28,38 +19,43 @@
         "canViewPrivateItems": {
             "type": "boolean"
         },
-        "canEdit": {
-            "type": "boolean"
+        "changeKey": {
+            "type": "string"
         },
-        "allowedOnlineMeetingProviders": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+        "color": {
+            "type": "string"
         },
         "defaultOnlineMeetingProvider": {
             "type": "string"
         },
-        "isTallyingResponses": {
+        "hexColor": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isDefaultCalendar": {
             "type": "boolean"
         },
         "isRemovable": {
             "type": "boolean"
         },
+        "isTallyingResponses": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
         "owner": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
-                },
                 "address": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "name",
-                "address"
-            ]
+            }
         }
     },
     "version": 1

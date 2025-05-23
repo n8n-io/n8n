@@ -1,15 +1,16 @@
 import jp from 'jsonpath';
-import { useDataSchema, useFlattenSchema } from '@/composables/useDataSchema';
+import { useDataSchema, useFlattenSchema, type SchemaNode } from '@/composables/useDataSchema';
 import type { IExecutionResponse, INodeUi, Schema } from '@/Interface';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeExecutionData,
 	type ITaskDataConnections,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { JSONSchema7 } from 'json-schema';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('@/stores/workflows.store');
 
@@ -553,14 +554,16 @@ describe('useDataSchema', () => {
 			data: {
 				resultData: {
 					runData: {
-						[runDataKey ?? name]: [{ data, startTime: 0, executionTime: 0, source: [] }],
+						[runDataKey ?? name]: [
+							{ data, startTime: 0, executionTime: 0, executionIndex: 0, source: [] },
+						],
 					},
 				},
 			},
 		});
 
 		const mockExecutionDataMarker = Symbol() as unknown as INodeExecutionData[];
-		const Main = NodeConnectionType.Main;
+		const Main = NodeConnectionTypes.Main;
 
 		test.each<
 			[
@@ -619,17 +622,20 @@ describe('useDataSchema', () => {
 										{
 											startTime: 0,
 											executionTime: 0,
+											executionIndex: 0,
 											source: [],
 										},
 										{
 											startTime: 0,
 											executionTime: 0,
+											executionIndex: 1,
 											source: [],
 										},
 										{
 											data: { [Main]: [null, mockExecutionDataMarker] },
 											startTime: 0,
 											executionTime: 0,
+											executionIndex: 2,
 											source: [],
 										},
 									],
@@ -780,60 +786,197 @@ describe('useDataSchema', () => {
 });
 
 describe('useFlattenSchema', () => {
-	it('flattens a schema', () => {
-		const schema: Schema = {
-			path: '',
-			type: 'object',
-			value: [
-				{
-					key: 'obj',
-					path: '.obj',
-					type: 'object',
-					value: [
-						{
-							key: 'foo',
-							path: '.obj.foo',
-							type: 'object',
-							value: [
-								{
-									key: 'nested',
-									path: '.obj.foo.nested',
-									type: 'string',
-									value: 'bar',
-								},
-							],
-						},
-					],
-				},
-			],
-		};
-		expect(
-			useFlattenSchema().flattenSchema({
-				schema,
-			}).length,
-		).toBe(3);
+	describe('flattenSchema', () => {
+		it('flattens a schema', () => {
+			const schema: Schema = {
+				path: '',
+				type: 'object',
+				value: [
+					{
+						key: 'obj',
+						path: '.obj',
+						type: 'object',
+						value: [
+							{
+								key: 'foo',
+								path: '.obj.foo',
+								type: 'object',
+								value: [
+									{
+										key: 'nested',
+										path: '.obj.foo.nested',
+										type: 'string',
+										value: 'bar',
+									},
+								],
+							},
+						],
+					},
+				],
+			};
+			expect(
+				useFlattenSchema().flattenSchema({
+					schema,
+				}).length,
+			).toBe(3);
+		});
+
+		it('items ids should be unique', () => {
+			const { flattenSchema } = useFlattenSchema();
+			const schema: Schema = {
+				path: '',
+				type: 'object',
+				value: [
+					{
+						key: 'index',
+						type: 'number',
+						value: '0',
+						path: '.index',
+					},
+				],
+			};
+			const node1Schema = flattenSchema({ schema, expressionPrefix: '$("First Node")', depth: 1 });
+			const node2Schema = flattenSchema({ schema, expressionPrefix: '$("Second Node")', depth: 1 });
+
+			expect(node1Schema[0].id).not.toBe(node2Schema[0].id);
+		});
 	});
 
-	it('items ids should be unique', () => {
-		const { flattenSchema } = useFlattenSchema();
-		const schema: Schema = {
-			path: '',
-			type: 'object',
-			value: [
-				{
-					key: 'index',
-					type: 'number',
-					value: '0',
-					path: '.index',
-				},
-			],
-		};
-		const node1 = { name: 'First Node', type: 'any' };
-		const node2 = { name: 'Second Node', type: 'any' };
+	describe('flattenMultipleSchemas', () => {
+		it('should handle empty data', () => {
+			const { flattenMultipleSchemas } = useFlattenSchema();
 
-		const node1Schema = flattenSchema({ schema, node: node1, depth: 1 });
-		const node2Schema = flattenSchema({ schema, node: node2, depth: 1 });
+			const result = flattenMultipleSchemas(
+				[
+					mock<SchemaNode>({
+						node: { name: 'Test Node' },
+						isDataEmpty: true,
+						schema: { type: 'object', value: [] },
+					}),
+				],
+				vi.fn(),
+			);
+			expect(result).toHaveLength(2);
+			expect(result[0]).toEqual(expect.objectContaining({ type: 'header', title: 'Test Node' }));
+			expect(result[1]).toEqual(
+				expect.objectContaining({ type: 'empty', key: 'emptyData', level: 1 }),
+			);
+		});
 
-		expect(node1Schema[0].id).not.toBe(node2Schema[0].id);
+		it('should handle unexecuted nodes', () => {
+			const { flattenMultipleSchemas } = useFlattenSchema();
+
+			const result = flattenMultipleSchemas(
+				[
+					mock<SchemaNode>({
+						node: { name: 'Test Node' },
+						isNodeExecuted: false,
+						schema: { type: 'object', value: [] },
+					}),
+				],
+				vi.fn(),
+			);
+			expect(result).toHaveLength(2);
+			expect(result[0]).toEqual(expect.objectContaining({ type: 'header', title: 'Test Node' }));
+			expect(result[1]).toEqual(
+				expect.objectContaining({ type: 'empty', key: 'executeSchema', level: 1 }),
+			);
+		});
+
+		it('should handle empty schema', () => {
+			const { flattenMultipleSchemas } = useFlattenSchema();
+
+			const result = flattenMultipleSchemas(
+				[
+					mock<SchemaNode>({
+						node: { name: 'Test Node' },
+						isDataEmpty: false,
+						hasBinary: false,
+						schema: { type: 'object', value: [] },
+					}),
+				],
+				vi.fn(),
+			);
+			expect(result).toHaveLength(2);
+			expect(result[0]).toEqual(expect.objectContaining({ type: 'header', title: 'Test Node' }));
+			expect(result[1]).toEqual(
+				expect.objectContaining({ type: 'empty', key: 'emptySchema', level: 1 }),
+			);
+		});
+
+		it('should handle empty schema with binary', () => {
+			const { flattenMultipleSchemas } = useFlattenSchema();
+
+			const result = flattenMultipleSchemas(
+				[
+					mock<SchemaNode>({
+						node: { name: 'Test Node' },
+						isDataEmpty: false,
+						hasBinary: true,
+						schema: { type: 'object', value: [] },
+					}),
+				],
+				vi.fn(),
+			);
+			expect(result).toHaveLength(2);
+			expect(result[0]).toEqual(expect.objectContaining({ type: 'header', title: 'Test Node' }));
+			expect(result[1]).toEqual(
+				expect.objectContaining({ type: 'empty', key: 'emptySchemaWithBinary', level: 1 }),
+			);
+		});
+
+		it('should flatten node schemas', () => {
+			const { flattenMultipleSchemas } = useFlattenSchema();
+			const schema: Schema = {
+				path: '',
+				type: 'object',
+				value: [
+					{
+						key: 'obj',
+						path: '.obj',
+						type: 'object',
+						value: [
+							{
+								key: 'foo',
+								path: '.obj.foo',
+								type: 'object',
+								value: [
+									{
+										key: 'nested',
+										path: '.obj.foo.nested',
+										type: 'string',
+										value: 'bar',
+									},
+								],
+							},
+						],
+					},
+				],
+			};
+
+			const result = flattenMultipleSchemas(
+				[
+					mock<SchemaNode>({
+						node: { name: 'Test Node' },
+						isDataEmpty: false,
+						hasBinary: false,
+						preview: false,
+						schema,
+					}),
+					mock<SchemaNode>({
+						node: { name: 'Test Node' },
+						isDataEmpty: false,
+						hasBinary: false,
+						preview: false,
+						schema,
+					}),
+				],
+				vi.fn(),
+			);
+			expect(result).toHaveLength(10);
+			expect(result.filter((item) => item.type === 'header')).toHaveLength(2);
+			expect(result.filter((item) => item.type === 'item')).toHaveLength(8);
+			expect(result).toMatchSnapshot();
+		});
 	});
 });

@@ -275,7 +275,7 @@ onMounted(() => {
 			<N8nTooltip placement="top" :disabled="canCreateVariables">
 				<div>
 					<N8nButton
-						size="large"
+						size="medium"
 						block
 						:disabled="!canCreateVariables"
 						data-test-id="resources-list-add"

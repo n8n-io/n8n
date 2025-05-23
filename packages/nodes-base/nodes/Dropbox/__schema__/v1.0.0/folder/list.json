@@ -1,20 +1,17 @@
 {
     "type": "object",
     "properties": {
+        "contentHash": {
+            "type": "string"
+        },
+        "contentSize": {
+            "type": "integer"
+        },
         "id": {
             "type": "string"
         },
-        "name": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "pathLower": {
-            "type": "string"
-        },
-        "pathDisplay": {
-            "type": "string"
+        "isDownloadable": {
+            "type": "boolean"
         },
         "lastModifiedClient": {
             "type": "string"
@@ -22,25 +19,21 @@
         "lastModifiedServer": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
+        "pathDisplay": {
+            "type": "string"
+        },
+        "pathLower": {
+            "type": "string"
+        },
         "rev": {
             "type": "string"
         },
-        "contentSize": {
-            "type": "integer"
-        },
-        "contentHash": {
+        "type": {
             "type": "string"
-        },
-        "isDownloadable": {
-            "type": "boolean"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "type",
-        "pathLower",
-        "pathDisplay"
-    ],
     "version": 1
 }

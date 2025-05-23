@@ -6,7 +6,7 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { agentFields, agentOperations } from './AgentDescription';
@@ -30,8 +30,8 @@ export class Phantombuster implements INodeType {
 			name: 'Phantombuster',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'phantombusterApi',

@@ -1,143 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "kind": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "mimeType": {
-            "type": "string"
-        },
-        "starred": {
-            "type": "boolean"
-        },
-        "trashed": {
-            "type": "boolean"
-        },
-        "explicitlyTrashed": {
-            "type": "boolean"
-        },
-        "parents": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "spaces": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "version": {
-            "type": "string"
-        },
-        "webContentLink": {
-            "type": "string"
-        },
-        "webViewLink": {
-            "type": "string"
-        },
-        "iconLink": {
-            "type": "string"
-        },
-        "hasThumbnail": {
-            "type": "boolean"
-        },
-        "thumbnailVersion": {
-            "type": "string"
-        },
-        "viewedByMe": {
-            "type": "boolean"
-        },
-        "createdTime": {
-            "type": "string"
-        },
-        "modifiedTime": {
-            "type": "string"
-        },
-        "modifiedByMeTime": {
-            "type": "string"
-        },
-        "modifiedByMe": {
-            "type": "boolean"
-        },
-        "owners": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "kind": {
-                        "type": "string"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "photoLink": {
-                        "type": "string"
-                    },
-                    "me": {
-                        "type": "boolean"
-                    },
-                    "permissionId": {
-                        "type": "string"
-                    },
-                    "emailAddress": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "kind",
-                    "displayName",
-                    "photoLink",
-                    "me",
-                    "permissionId",
-                    "emailAddress"
-                ]
-            }
-        },
-        "lastModifyingUser": {
-            "type": "object",
-            "properties": {
-                "kind": {
-                    "type": "string"
-                },
-                "displayName": {
-                    "type": "string"
-                },
-                "photoLink": {
-                    "type": "string"
-                },
-                "me": {
-                    "type": "boolean"
-                },
-                "permissionId": {
-                    "type": "string"
-                },
-                "emailAddress": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "kind",
-                "displayName",
-                "photoLink",
-                "me",
-                "permissionId",
-                "emailAddress"
-            ]
-        },
-        "shared": {
-            "type": "boolean"
-        },
-        "ownedByMe": {
-            "type": "boolean"
-        },
         "capabilities": {
             "type": "object",
             "properties": {
@@ -192,10 +55,10 @@
                 "canModifyEditorContentRestriction": {
                     "type": "boolean"
                 },
-                "canModifyOwnerContentRestriction": {
+                "canModifyLabels": {
                     "type": "boolean"
                 },
-                "canModifyLabels": {
+                "canModifyOwnerContentRestriction": {
                     "type": "boolean"
                 },
                 "canMoveChildrenWithinDrive": {
@@ -237,121 +100,66 @@
                 "canUntrash": {
                     "type": "boolean"
                 }
-            },
-            "required": [
-                "canAddChildren",
-                "canChangeCopyRequiresWriterPermission",
-                "canChangeSecurityUpdateEnabled",
-                "canChangeViewersCanCopyContent",
-                "canComment",
-                "canCopy",
-                "canDelete",
-                "canDisableInheritedPermissions",
-                "canDownload",
-                "canEdit",
-                "canEnableInheritedPermissions",
-                "canListChildren",
-                "canModifyContent",
-                "canModifyContentRestriction",
-                "canModifyEditorContentRestriction",
-                "canModifyOwnerContentRestriction",
-                "canModifyLabels",
-                "canMoveChildrenWithinDrive",
-                "canMoveItemIntoTeamDrive",
-                "canMoveItemOutOfDrive",
-                "canMoveItemWithinDrive",
-                "canReadLabels",
-                "canReadRevisions",
-                "canRemoveChildren",
-                "canRemoveContentRestriction",
-                "canRename",
-                "canShare",
-                "canTrash",
-                "canUntrash"
-            ]
-        },
-        "viewersCanCopyContent": {
-            "type": "boolean"
+            }
         },
         "copyRequiresWriterPermission": {
             "type": "boolean"
         },
-        "writersCanShare": {
+        "createdTime": {
+            "type": "string"
+        },
+        "explicitlyTrashed": {
             "type": "boolean"
         },
-        "permissions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "kind": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "role": {
-                        "type": "string"
-                    },
-                    "emailAddress": {
-                        "type": "string"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "deleted": {
-                        "type": "boolean"
-                    },
-                    "pendingOwner": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "kind",
-                    "id",
-                    "type",
-                    "role"
-                ]
-            }
-        },
-        "permissionIds": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "originalFilename": {
+        "fileExtension": {
             "type": "string"
         },
         "fullFileExtension": {
             "type": "string"
         },
-        "fileExtension": {
-            "type": "string"
-        },
-        "md5Checksum": {
-            "type": "string"
-        },
-        "sha1Checksum": {
-            "type": "string"
-        },
-        "sha256Checksum": {
-            "type": "string"
-        },
-        "size": {
-            "type": "string"
-        },
-        "quotaBytesUsed": {
-            "type": "string"
+        "hasThumbnail": {
+            "type": "boolean"
         },
         "headRevisionId": {
             "type": "string"
         },
+        "iconLink": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "inheritedPermissionsDisabled": {
+            "type": "boolean"
+        },
         "isAppAuthorized": {
             "type": "boolean"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "lastModifyingUser": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "emailAddress": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "me": {
+                    "type": "boolean"
+                },
+                "permissionId": {
+                    "type": "string"
+                },
+                "photoLink": {
+                    "type": "string"
+                }
+            }
         },
         "linkShareMetadata": {
             "type": "object",
@@ -362,13 +170,148 @@
                 "securityUpdateEnabled": {
                     "type": "boolean"
                 }
-            },
-            "required": [
-                "securityUpdateEligible",
-                "securityUpdateEnabled"
-            ]
+            }
         },
-        "inheritedPermissionsDisabled": {
+        "md5Checksum": {
+            "type": "string"
+        },
+        "mimeType": {
+            "type": "string"
+        },
+        "modifiedByMe": {
+            "type": "boolean"
+        },
+        "modifiedByMeTime": {
+            "type": "string"
+        },
+        "modifiedTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "originalFilename": {
+            "type": "string"
+        },
+        "ownedByMe": {
+            "type": "boolean"
+        },
+        "owners": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "emailAddress": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "type": "string"
+                    },
+                    "me": {
+                        "type": "boolean"
+                    },
+                    "permissionId": {
+                        "type": "string"
+                    },
+                    "photoLink": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "parents": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "permissionIds": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "permissions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "deleted": {
+                        "type": "boolean"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "emailAddress": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "type": "string"
+                    },
+                    "pendingOwner": {
+                        "type": "boolean"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "quotaBytesUsed": {
+            "type": "string"
+        },
+        "sha1Checksum": {
+            "type": "string"
+        },
+        "sha256Checksum": {
+            "type": "string"
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "size": {
+            "type": "string"
+        },
+        "spaces": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "starred": {
+            "type": "boolean"
+        },
+        "thumbnailVersion": {
+            "type": "string"
+        },
+        "trashed": {
+            "type": "boolean"
+        },
+        "version": {
+            "type": "string"
+        },
+        "viewedByMe": {
+            "type": "boolean"
+        },
+        "viewersCanCopyContent": {
+            "type": "boolean"
+        },
+        "webContentLink": {
+            "type": "string"
+        },
+        "webViewLink": {
+            "type": "string"
+        },
+        "writersCanShare": {
             "type": "boolean"
         }
     },

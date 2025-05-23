@@ -9,7 +9,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
@@ -35,8 +35,8 @@ export class MicrosoftSql implements INodeType {
 		defaults: {
 			name: 'Microsoft SQL',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		parameterPane: 'wide',
 		credentials: [
@@ -269,7 +269,7 @@ export class MicrosoftSql implements INodeType {
 						);
 					}
 					const results = await executeSqlQueryAndPrepareResults(pool, rawQuery, i);
-					returnData.push(...results);
+					returnData = returnData.concat(results);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({

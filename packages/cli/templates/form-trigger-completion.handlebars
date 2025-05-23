@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang='en'>
 
 <head>
@@ -157,6 +158,58 @@
 			<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
 		{{/if}}
 	<script>
+		let interval = 1000;
+		let timeoutId;
+		const checkExecutionStatus = async () => {
+			if (!interval) return;
+
+			try {
+				const response = await fetch(`${ window.location.href }/n8n-execution-status`);
+				const text = (await response.text()).trim();
+
+				if (text === "form-waiting") {
+					window.location.replace(window.location.href);
+					return;
+				}
+
+				if(["canceled", "crashed", "error", "success", "null" ].includes(text)) {
+					interval = 0;
+					clearTimeout(timeoutId);
+					return;
+				}
+
+				interval = Math.round(interval * 1.1);
+				timeoutId = setTimeout(checkExecutionStatus, interval);
+			} catch (error) {
+				console.error("Error fetching data:", error);
+			}
+		};
+
+		document.addEventListener('DOMContentLoaded', function () {
+			const binary = "{{{responseBinary}}}"
+				?	JSON.parse(decodeURIComponent("{{{responseBinary}}}"))
+				: '';
+
+			const byteArray = binary.data.type === 'Buffer'
+				? new Uint8Array(binary.data.data)
+				: Uint8Array.from(binary.data, c => c.charCodeAt(0));
+
+			if (binary) {
+				const blob = new Blob(
+					[byteArray],
+					{ type: binary.type }
+				);
+
+				const link = document.createElement("a");
+				link.href = URL.createObjectURL(blob);
+				link.download = binary.fileName;
+				document.body.appendChild(link);
+
+				link.click();
+				document.body.removeChild(link);
+			}
+		});
+
 			fetch('', {
 					method: 'POST',
 					body: {}
@@ -185,6 +238,9 @@
 			})
 			.catch(function (error) {
 					console.error('Error:', error);
+			})
+			.finally(() => {
+				timeoutId = setTimeout(checkExecutionStatus, interval);
 			});
 	</script>
 	</body>

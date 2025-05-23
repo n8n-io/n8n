@@ -11,10 +11,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "key",
-        "self"
-    ],
     "version": 1
 }

@@ -1,3 +1,4 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
 import {
@@ -13,14 +14,18 @@ import {
 	sendAudioResponse,
 	getMemberResponse,
 } from './apiResponses';
-import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
-import { getWorkflowFilenames, testWorkflows } from '../../../../test/nodes/Helpers';
 
 describe('Telegram', () => {
+	const credentials = {
+		telegramApi: {
+			accessToken: 'testToken',
+			baseUrl: 'https://api.telegram.org',
+		},
+	};
+
 	describe('Run Telegram workflow', () => {
 		beforeAll(() => {
-			const { baseUrl } = FAKE_CREDENTIALS_DATA.telegramApi;
-			const mock = nock(baseUrl);
+			const mock = nock(credentials.telegramApi.baseUrl);
 
 			mock.post('/bottestToken/getChat').reply(200, getChatResponse);
 			mock.post('/bottestToken/sendMessage').reply(200, sendMessageResponse);
@@ -41,7 +46,6 @@ describe('Telegram', () => {
 			mock.post('/bottestToken/getChatMember').reply(200, getMemberResponse);
 		});
 
-		const workflows = getWorkflowFilenames(__dirname);
-		testWorkflows(workflows);
+		new NodeTestHarness().setupTests({ credentials });
 	});
 });

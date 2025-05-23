@@ -3,10 +3,7 @@
     "properties": {
         "timestamp": {
             "type": "string"
-        },
-        "profileUrl": {
-            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

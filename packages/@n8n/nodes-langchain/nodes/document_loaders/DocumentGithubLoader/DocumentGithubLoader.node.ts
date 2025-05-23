@@ -2,7 +2,7 @@
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
 import type { CharacterTextSplitter } from '@langchain/textsplitters';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -47,15 +47,15 @@ export class DocumentGithubLoader implements INodeType {
 			{
 				displayName: 'Text Splitter',
 				maxConnections: 1,
-				type: NodeConnectionType.AiTextSplitter,
+				type: NodeConnectionTypes.AiTextSplitter,
 			},
 		],
 		inputNames: ['Text Splitter'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiDocument],
+		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName: 'Repository Link',
 				name: 'repository',
@@ -106,11 +106,11 @@ export class DocumentGithubLoader implements INodeType {
 		};
 
 		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
+			NodeConnectionTypes.AiTextSplitter,
 			0,
 		)) as CharacterTextSplitter | undefined;
 
-		const { index } = this.addInputData(NodeConnectionType.AiDocument, [
+		const { index } = this.addInputData(NodeConnectionTypes.AiDocument, [
 			[{ json: { repository, branch, ignorePaths, recursive } }],
 		]);
 		const docs = new GithubRepoLoader(repository, {
@@ -125,7 +125,7 @@ export class DocumentGithubLoader implements INodeType {
 			? await textSplitter.splitDocuments(await docs.load())
 			: await docs.load();
 
-		this.addOutputData(NodeConnectionType.AiDocument, index, [[{ json: { loadedDocs } }]]);
+		this.addOutputData(NodeConnectionTypes.AiDocument, index, [[{ json: { loadedDocs } }]]);
 		return {
 			response: logWrapper(loadedDocs, this),
 		};

@@ -1,6 +1,6 @@
 import isEmpty from 'lodash/isEmpty';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IBinaryKeyData,
 	type IDataObject,
 	type IExecuteFunctions,
@@ -38,8 +38,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Gmail',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
 			name: 'googleApi',

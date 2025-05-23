@@ -14,7 +14,6 @@ const form: Partial<ReturnType<typeof useTestDefinitionForm>> = {
 		description: { value: '', isEditing: false, tempValue: '' },
 		tags: { value: [], tempValue: [], isEditing: false },
 		evaluationWorkflow: { mode: 'list', value: '', __rl: true },
-		metrics: [],
 		mockedNodes: [],
 	}),
 	loadTestData: vi.fn(),
@@ -22,8 +21,6 @@ const form: Partial<ReturnType<typeof useTestDefinitionForm>> = {
 	updateTest: vi.fn(),
 	startEditing: vi.fn(),
 	saveChanges: vi.fn(),
-	deleteMetric: vi.fn(),
-	updateMetrics: vi.fn(),
 	createTest: vi.fn(),
 };
 vi.mock('@/components/TestDefinition/composables/useTestDefinitionForm', () => ({
@@ -88,9 +85,6 @@ describe('TestDefinitionEditView', () => {
 					createdAt: '2023-01-01',
 					updatedAt: '2023-01-01',
 					completedAt: '2023-01-01',
-					failedCases: 0,
-					passedCases: 1,
-					totalCases: 1,
 				},
 			};
 

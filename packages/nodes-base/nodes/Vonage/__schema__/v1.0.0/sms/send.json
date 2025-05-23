@@ -1,16 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "to": {
-            "type": "string"
-        },
         "message-id": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "remaining-balance": {
             "type": "string"
         },
         "message-price": {
@@ -18,10 +9,16 @@
         },
         "network": {
             "type": "string"
+        },
+        "remaining-balance": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "to": {
+            "type": "string"
         }
     },
-    "required": [
-        "status"
-    ],
     "version": 1
 }

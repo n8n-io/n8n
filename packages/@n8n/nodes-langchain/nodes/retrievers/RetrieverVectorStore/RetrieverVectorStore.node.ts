@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { VectorStore } from '@langchain/core/vectorstores';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -40,12 +40,12 @@ export class RetrieverVectorStore implements INodeType {
 			{
 				displayName: 'Vector Store',
 				maxConnections: 1,
-				type: NodeConnectionType.AiVectorStore,
+				type: NodeConnectionTypes.AiVectorStore,
 				required: true,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiRetriever],
+		outputs: [NodeConnectionTypes.AiRetriever],
 		outputNames: ['Retriever'],
 		properties: [
 			{
@@ -63,7 +63,7 @@ export class RetrieverVectorStore implements INodeType {
 
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 		const vectorStore = (await this.getInputConnectionData(
-			NodeConnectionType.AiVectorStore,
+			NodeConnectionTypes.AiVectorStore,
 			itemIndex,
 		)) as VectorStore;
 

@@ -94,18 +94,7 @@
                 "user_defined_messages": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "events",
-                "notifications",
-                "payments",
-                "recordings",
-                "siprec",
-                "streams",
-                "transcriptions",
-                "user_defined_message_subscriptions",
-                "user_defined_messages"
-            ]
+            }
         },
         "to": {
             "type": "string"

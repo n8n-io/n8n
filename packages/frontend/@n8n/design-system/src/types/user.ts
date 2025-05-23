@@ -16,6 +16,7 @@ export interface UserAction {
 	value: string;
 	disabled: boolean;
 	type?: 'external-link';
+	tooltip?: string;
 	guard?: (user: IUser) => boolean;
 }
 

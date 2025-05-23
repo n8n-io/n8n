@@ -2,7 +2,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -43,7 +43,8 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			icon: args.meta.icon,
 			iconColor: args.meta.iconColor,
 			group: ['transform'],
-			version: [1, 1.1],
+			// 1.2 has changes to VectorStoreInMemory node.
+			version: [1, 1.1, 1.2],
 			defaults: {
 				name: args.meta.displayName,
 			},
@@ -66,18 +67,18 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;
-				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
+				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionTypes.AiEmbedding}", required: true, maxConnections: 1}]
 
 				if (mode === 'retrieve-as-tool') {
 					return inputs;
 				}
 
 				if (['insert', 'load', 'update'].includes(mode)) {
-					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
+					inputs.push({ displayName: "", type: "${NodeConnectionTypes.Main}"})
 				}
 
 				if (['insert'].includes(mode)) {
-					inputs.push({ displayName: "Document", type: "${NodeConnectionType.AiDocument}", required: true, maxConnections: 1})
+					inputs.push({ displayName: "Document", type: "${NodeConnectionTypes.AiDocument}", required: true, maxConnections: 1})
 				}
 				return inputs
 			})($parameter)
@@ -87,13 +88,13 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				const mode = parameters?.mode ?? 'retrieve';
 
 				if (mode === 'retrieve-as-tool') {
-					return [{ displayName: "Tool", type: "${NodeConnectionType.AiTool}"}]
+					return [{ displayName: "Tool", type: "${NodeConnectionTypes.AiTool}"}]
 				}
 
 				if (mode === 'retrieve') {
-					return [{ displayName: "Vector Store", type: "${NodeConnectionType.AiVectorStore}"}]
+					return [{ displayName: "Vector Store", type: "${NodeConnectionTypes.AiVectorStore}"}]
 				}
-				return [{ displayName: "", type: "${NodeConnectionType.Main}"}]
+				return [{ displayName: "", type: "${NodeConnectionTypes.Main}"}]
 			})($parameter)
 		}}`,
 			properties: [
@@ -106,7 +107,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					options: getOperationModeOptions(args),
 				},
 				{
-					...getConnectionHintNoticeField([NodeConnectionType.AiRetriever]),
+					...getConnectionHintNoticeField([NodeConnectionTypes.AiRetriever]),
 					displayOptions: {
 						show: {
 							mode: ['retrieve'],
@@ -232,7 +233,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 
 			// Get the embeddings model connected to this node
 			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionType.AiEmbedding,
+				NodeConnectionTypes.AiEmbedding,
 				0,
 			)) as Embeddings;
 
@@ -274,7 +275,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 
 			// Get the embeddings model connected to this node
 			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionType.AiEmbedding,
+				NodeConnectionTypes.AiEmbedding,
 				0,
 			)) as Embeddings;
 

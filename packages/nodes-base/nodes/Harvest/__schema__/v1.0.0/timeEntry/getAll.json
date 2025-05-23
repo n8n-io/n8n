@@ -1,35 +1,85 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "spent_date": {
-            "type": "string"
-        },
-        "is_locked": {
-            "type": "boolean"
-        },
-        "is_closed": {
-            "type": "boolean"
-        },
-        "is_billed": {
-            "type": "boolean"
-        },
-        "ended_time": {
-            "type": "null"
-        },
-        "is_running": {
-            "type": "boolean"
-        },
         "billable": {
             "type": "boolean"
         },
         "budgeted": {
             "type": "boolean"
         },
+        "client": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "created_at": {
             "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_billed": {
+            "type": "boolean"
+        },
+        "is_closed": {
+            "type": "boolean"
+        },
+        "is_locked": {
+            "type": "boolean"
+        },
+        "is_running": {
+            "type": "boolean"
+        },
+        "project": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "spent_date": {
+            "type": "string"
+        },
+        "task": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "task_assignment": {
+            "type": "object",
+            "properties": {
+                "billable": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
         },
         "updated_at": {
             "type": "string"
@@ -43,151 +93,31 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
-        },
-        "client": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "currency"
-            ]
-        },
-        "project": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "code"
-            ]
-        },
-        "task": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
+            }
         },
         "user_assignment": {
             "type": "object",
             "properties": {
+                "created_at": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
-                },
-                "is_project_manager": {
-                    "type": "boolean"
                 },
                 "is_active": {
                     "type": "boolean"
                 },
+                "is_project_manager": {
+                    "type": "boolean"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
                 "use_default_rates": {
                     "type": "boolean"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "is_project_manager",
-                "is_active",
-                "use_default_rates",
-                "budget",
-                "created_at",
-                "updated_at",
-                "hourly_rate"
-            ]
-        },
-        "task_assignment": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "billable": {
-                    "type": "boolean"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "billable",
-                "is_active",
-                "created_at",
-                "updated_at",
-                "hourly_rate",
-                "budget"
-            ]
+            }
         }
     },
-    "required": [
-        "id",
-        "spent_date",
-        "hours",
-        "hours_without_timer",
-        "rounded_hours",
-        "notes",
-        "is_locked",
-        "locked_reason",
-        "is_closed",
-        "is_billed",
-        "timer_started_at",
-        "started_time",
-        "ended_time",
-        "is_running",
-        "billable",
-        "budgeted",
-        "billable_rate",
-        "cost_rate",
-        "created_at",
-        "updated_at",
-        "user",
-        "client",
-        "project",
-        "task",
-        "user_assignment",
-        "task_assignment",
-        "invoice",
-        "external_reference"
-    ],
     "version": 1
 }

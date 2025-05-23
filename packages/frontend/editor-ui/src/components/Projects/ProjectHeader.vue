@@ -4,14 +4,16 @@ import { useRoute, useRouter } from 'vue-router';
 import type { UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@/composables/useI18n';
-import { type ProjectIcon, ProjectTypes } from '@/types/projects.types';
+import { type ProjectIcon as ProjectIconType, ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
+import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
 import { getResourcePermissions } from '@/permissions';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useProjectPages } from '@/composables/useProjectPages';
 
 const route = useRoute();
 const router = useRouter();
@@ -19,12 +21,13 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
+const projectPages = useProjectPages();
 
 const emit = defineEmits<{
 	createFolder: [];
 }>();
 
-const headerIcon = computed((): ProjectIcon => {
+const headerIcon = computed((): ProjectIconType => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
 	} else if (projectsStore.currentProject?.name) {
@@ -36,7 +39,12 @@ const headerIcon = computed((): ProjectIcon => {
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
-		return i18n.baseText('projects.menu.overview');
+		if (projectPages.isOverviewSubPage) {
+			return i18n.baseText('projects.menu.overview');
+		} else if (projectPages.isSharedSubPage) {
+			return i18n.baseText('projects.header.shared.title');
+		}
+		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	} else {
@@ -56,8 +64,16 @@ const showSettings = computed(
 );
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
+const isPersonalProject = computed(() => {
+	return homeProject.value?.type === ProjectTypes.Personal;
+});
+
 const showFolders = computed(() => {
-	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+	return (
+		settingsStore.isFoldersFeatureEnabled &&
+		[VIEWS.PROJECTS_WORKFLOWS, VIEWS.PROJECTS_FOLDERS].includes(route.name as VIEWS)
+	);
 });
 
 const ACTION_TYPES = {
@@ -76,6 +92,7 @@ const createWorkflowButton = computed(() => ({
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(homeProject.value?.scopes).workflow.create,
 }));
+
 const menu = computed(() => {
 	const items: UserAction[] = [
 		{
@@ -96,6 +113,12 @@ const menu = computed(() => {
 		});
 	}
 	return items;
+});
+
+const showProjectIcon = computed(() => {
+	return (
+		!projectPages.isOverviewSubPage && !projectPages.isSharedSubPage && !isPersonalProject.value
+	);
 });
 
 const actions: Record<ActionTypes, (projectId: string) => void> = {
@@ -122,6 +145,27 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 	},
 } as const;
 
+const pageType = computed(() => {
+	if (projectPages.isOverviewSubPage) {
+		return 'overview';
+	} else if (projectPages.isSharedSubPage) {
+		return 'shared';
+	} else {
+		return 'project';
+	}
+});
+
+const subtitle = computed(() => {
+	if (projectPages.isOverviewSubPage) {
+		return i18n.baseText('projects.header.overview.subtitle');
+	} else if (projectPages.isSharedSubPage) {
+		return i18n.baseText('projects.header.shared.subtitle');
+	} else if (isPersonalProject.value) {
+		return i18n.baseText('projects.header.personal.subtitle');
+	}
+	return null;
+});
+
 const onSelect = (action: string) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
@@ -135,14 +179,16 @@ const onSelect = (action: string) => {
 	<div>
 		<div :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
-				<ProjectIcon :icon="headerIcon" :border-less="true" size="medium" />
+				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
-					<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
+					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
+						projectName
+					}}</N8nHeading>
 					<N8nText color="text-light">
 						<slot name="subtitle">
-							<span v-if="!projectsStore.currentProject">{{
-								i18n.baseText('projects.header.subtitle')
-							}}</span>
+							<N8nText v-if="subtitle" color="text-light" data-test-id="project-subtitle">{{
+								subtitle
+							}}</N8nText>
 						</slot>
 					</N8nText>
 				</div>
@@ -167,8 +213,13 @@ const onSelect = (action: string) => {
 				</N8nTooltip>
 			</div>
 		</div>
+		<slot></slot>
 		<div :class="$style.actions">
-			<ProjectTabs :show-settings="showSettings" />
+			<ProjectTabs
+				:page-type="pageType"
+				:show-executions="!projectPages.isSharedSubPage"
+				:show-settings="showSettings"
+			/>
 		</div>
 	</div>
 </template>
@@ -177,7 +228,7 @@ const onSelect = (action: string) => {
 .projectHeader,
 .projectDescription {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
 	padding-bottom: var(--spacing-m);
 	min-height: var(--spacing-3xl);
@@ -189,7 +240,7 @@ const onSelect = (action: string) => {
 }
 
 .actions {
-	padding: var(--spacing-2xs) 0 var(--spacing-l);
+	padding: var(--spacing-2xs) 0 var(--spacing-xs);
 }
 
 @include mixins.breakpoint('xs-only') {

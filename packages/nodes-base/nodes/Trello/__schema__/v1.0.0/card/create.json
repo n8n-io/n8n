@@ -1,8 +1,46 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "bytes": {
+                        "type": "null"
+                    },
+                    "date": {
+                        "type": "string"
+                    },
+                    "edgeColor": {
+                        "type": "null"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "idMember": {
+                        "type": "string"
+                    },
+                    "isMalicious": {
+                        "type": "boolean"
+                    },
+                    "isUpload": {
+                        "type": "boolean"
+                    },
+                    "mimeType": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "pos": {
+                        "type": "integer"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "badges": {
             "type": "object",
@@ -10,8 +48,21 @@
                 "attachments": {
                     "type": "integer"
                 },
-                "fogbugz": {
-                    "type": "string"
+                "attachmentsByType": {
+                    "type": "object",
+                    "properties": {
+                        "trello": {
+                            "type": "object",
+                            "properties": {
+                                "board": {
+                                    "type": "integer"
+                                },
+                                "card": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
                 },
                 "checkItems": {
                     "type": "integer"
@@ -31,76 +82,60 @@
                 "dueComplete": {
                     "type": "boolean"
                 },
+                "externalSource": {
+                    "type": "null"
+                },
+                "fogbugz": {
+                    "type": "string"
+                },
                 "lastUpdatedByAi": {
+                    "type": "boolean"
+                },
+                "location": {
                     "type": "boolean"
                 },
                 "start": {
                     "type": "null"
                 },
-                "externalSource": {
-                    "type": "null"
-                },
-                "attachmentsByType": {
-                    "type": "object",
-                    "properties": {
-                        "trello": {
-                            "type": "object",
-                            "properties": {
-                                "board": {
-                                    "type": "integer"
-                                },
-                                "card": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "board",
-                                "card"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "trello"
-                    ]
-                },
-                "location": {
+                "subscribed": {
                     "type": "boolean"
-                },
-                "votes": {
-                    "type": "integer"
                 },
                 "viewingMemberVoted": {
                     "type": "boolean"
                 },
-                "subscribed": {
-                    "type": "boolean"
+                "votes": {
+                    "type": "integer"
                 }
-            },
-            "required": [
-                "attachments",
-                "fogbugz",
-                "checkItems",
-                "checkItemsChecked",
-                "checkItemsEarliestDue",
-                "comments",
-                "description",
-                "due",
-                "dueComplete",
-                "lastUpdatedByAi",
-                "start",
-                "externalSource",
-                "attachmentsByType",
-                "location",
-                "votes",
-                "viewingMemberVoted",
-                "subscribed"
-            ]
+            }
+        },
+        "cardRole": {
+            "type": "null"
         },
         "closed": {
             "type": "boolean"
         },
-        "dueComplete": {
-            "type": "boolean"
+        "cover": {
+            "type": "object",
+            "properties": {
+                "brightness": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "null"
+                },
+                "idAttachment": {
+                    "type": "null"
+                },
+                "idPlugin": {
+                    "type": "null"
+                },
+                "idUploadedBackground": {
+                    "type": "null"
+                },
+                "size": {
+                    "type": "string"
+                }
+            }
         },
         "dateLastActivity": {
             "type": "string"
@@ -108,16 +143,31 @@
         "desc": {
             "type": "string"
         },
+        "dueComplete": {
+            "type": "boolean"
+        },
         "dueReminder": {
             "type": "null"
         },
         "email": {
             "type": "null"
         },
+        "id": {
+            "type": "string"
+        },
+        "idAttachmentCover": {
+            "type": "null"
+        },
         "idBoard": {
             "type": "string"
         },
         "idChecklists": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "idLabels": {
             "type": "array",
             "items": {
                 "type": "string"
@@ -135,8 +185,8 @@
         "idShort": {
             "type": "integer"
         },
-        "idAttachmentCover": {
-            "type": "null"
+        "isTemplate": {
+            "type": "boolean"
         },
         "labels": {
             "type": "array",
@@ -161,26 +211,14 @@
                     "uses": {
                         "type": "integer"
                     }
-                },
-                "required": [
-                    "id",
-                    "idBoard",
-                    "idOrganization",
-                    "name",
-                    "nodeId",
-                    "color",
-                    "uses"
-                ]
-            }
-        },
-        "idLabels": {
-            "type": "array",
-            "items": {
-                "type": "string"
+                }
             }
         },
         "manualCoverAttachment": {
             "type": "boolean"
+        },
+        "mirrorSourceId": {
+            "type": "null"
         },
         "name": {
             "type": "string"
@@ -205,141 +243,7 @@
         },
         "url": {
             "type": "string"
-        },
-        "cover": {
-            "type": "object",
-            "properties": {
-                "idAttachment": {
-                    "type": "null"
-                },
-                "color": {
-                    "type": "null"
-                },
-                "idUploadedBackground": {
-                    "type": "null"
-                },
-                "size": {
-                    "type": "string"
-                },
-                "brightness": {
-                    "type": "string"
-                },
-                "idPlugin": {
-                    "type": "null"
-                }
-            },
-            "required": [
-                "idAttachment",
-                "color",
-                "idUploadedBackground",
-                "size",
-                "brightness",
-                "idPlugin"
-            ]
-        },
-        "isTemplate": {
-            "type": "boolean"
-        },
-        "cardRole": {
-            "type": "null"
-        },
-        "mirrorSourceId": {
-            "type": "null"
-        },
-        "attachments": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "bytes": {
-                        "type": "null"
-                    },
-                    "date": {
-                        "type": "string"
-                    },
-                    "edgeColor": {
-                        "type": "null"
-                    },
-                    "idMember": {
-                        "type": "string"
-                    },
-                    "isMalicious": {
-                        "type": "boolean"
-                    },
-                    "isUpload": {
-                        "type": "boolean"
-                    },
-                    "mimeType": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "url": {
-                        "type": "string"
-                    },
-                    "pos": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "id",
-                    "bytes",
-                    "date",
-                    "edgeColor",
-                    "idMember",
-                    "isUpload",
-                    "mimeType",
-                    "name",
-                    "previews",
-                    "url",
-                    "pos",
-                    "fileName"
-                ]
-            }
         }
     },
-    "required": [
-        "id",
-        "badges",
-        "checkItemStates",
-        "closed",
-        "dueComplete",
-        "dateLastActivity",
-        "desc",
-        "descData",
-        "due",
-        "dueReminder",
-        "email",
-        "idBoard",
-        "idChecklists",
-        "idList",
-        "idMembers",
-        "idMembersVoted",
-        "idShort",
-        "idAttachmentCover",
-        "labels",
-        "idLabels",
-        "manualCoverAttachment",
-        "name",
-        "nodeId",
-        "pinned",
-        "pos",
-        "shortLink",
-        "shortUrl",
-        "start",
-        "subscribed",
-        "url",
-        "cover",
-        "isTemplate",
-        "cardRole",
-        "mirrorSourceId",
-        "attachments",
-        "stickers",
-        "limits"
-    ],
     "version": 1
 }

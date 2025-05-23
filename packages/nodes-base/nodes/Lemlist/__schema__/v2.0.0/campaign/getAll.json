@@ -4,27 +4,18 @@
         "_id": {
             "type": "string"
         },
-        "name": {
-            "type": "string"
-        },
         "createdAt": {
             "type": "string"
         },
         "createdBy": {
             "type": "string"
         },
-        "status": {
+        "name": {
             "type": "string"
         },
-        "hasError": {
-            "type": "boolean"
-        },
-        "errors": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+        "status": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -24,9 +24,11 @@ import { type PinDataSource, usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { getExecutionErrorToastConfiguration } from '@/utils/executionUtils';
 import {
 	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	WEBHOOK_NODE_TYPE,
@@ -46,7 +48,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -57,6 +59,7 @@ import type {
 	CanvasConnectionPort,
 	CanvasNode,
 	CanvasNodeMoveEvent,
+	ViewportBoundaries,
 } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import {
@@ -71,7 +74,9 @@ import {
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
+	DEFAULT_VIEWPORT_BOUNDARIES,
 	generateOffsets,
+	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
 } from '@/utils/nodeViewUtils';
 import type { Connection } from '@vue-flow/core';
@@ -91,8 +96,9 @@ import type {
 	NodeInputConnections,
 	NodeParameterValueType,
 	Workflow,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
@@ -100,6 +106,9 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { isPresent } from '../utils/typesUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { CanvasLayoutEvent } from './useCanvasLayout';
+import { chatEventBus } from '@n8n/chat/event-buses';
+import { isChatNode } from '@/components/CanvasChat/utils';
+import { useLogsStore } from '@/stores/logs.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -114,6 +123,7 @@ type AddNodesBaseOptions = {
 	trackHistory?: boolean;
 	keepPristine?: boolean;
 	telemetry?: boolean;
+	viewport?: ViewportBoundaries;
 };
 
 type AddNodesOptions = AddNodesBaseOptions & {
@@ -140,6 +150,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	const nodeCreatorStore = useNodeCreatorStore();
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
+	const logsStore = useLogsStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -174,11 +185,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
-		telemetry.track('User tidied up canvas', {
-			source,
-			target,
-			nodes_count: result.nodes.length,
-		});
+		telemetry.track(
+			'User tidied up canvas',
+			{
+				source,
+				target,
+				nodes_count: result.nodes.length,
+			},
+			{ withPostHog: true },
+		);
 	}
 
 	function updateNodesPosition(
@@ -520,7 +535,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		);
 	}
 
-	async function addNodes(nodes: AddedNodesAndConnections['nodes'], options: AddNodesOptions = {}) {
+	async function addNodes(
+		nodes: AddedNodesAndConnections['nodes'],
+		{ viewport, ...options }: AddNodesOptions = {},
+	) {
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
@@ -540,7 +558,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.startRecordingUndo();
 		}
 
-		for (const nodeAddData of nodesWithTypeVersion) {
+		for (const [index, nodeAddData] of nodesWithTypeVersion.entries()) {
 			const { isAutoAdd, openDetail: openNDV, ...node } = nodeAddData;
 			const position = node.position ?? insertPosition;
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
@@ -554,6 +572,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					nodeTypeDescription,
 					{
 						...options,
+						...(index === 0 ? { viewport } : {}),
 						openNDV,
 						isAutoAdd,
 					},
@@ -628,7 +647,9 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	): INodeUi {
 		checkMaxNodesOfTypeReached(nodeTypeDescription);
 
-		const nodeData = resolveNodeData(node, nodeTypeDescription);
+		const nodeData = resolveNodeData(node, nodeTypeDescription, {
+			viewport: options.viewport,
+		});
 		if (!nodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 		}
@@ -724,13 +745,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				source: lastInteractedWithNodeId,
 				sourceHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 				target: node.id,
 				targetHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Input,
-					type: NodeConnectionType.Main,
+					type: NodeConnectionTypes.Main,
 					index: 0,
 				}),
 			});
@@ -745,7 +766,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					source: node.id,
 					sourceHandle: createCanvasConnectionHandleString({
 						mode: CanvasConnectionMode.Input,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					}),
 					target: lastInteractedWithNodeConnection.target,
@@ -791,12 +812,15 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	function resolveNodeData(
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
+		options: { viewport?: ViewportBoundaries } = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
-		const position = resolveNodePosition(node as INodeUi, nodeTypeDescription);
+		const position = resolveNodePosition(node as INodeUi, nodeTypeDescription, {
+			viewport: options.viewport,
+		});
 		const disabled = node.disabled ?? false;
 		const parameters = node.parameters ?? {};
 
@@ -868,6 +892,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			true,
 			false,
 			node,
+			nodeTypeDescription,
 		);
 
 		node.parameters = nodeParameters ?? {};
@@ -876,14 +901,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	function resolveNodePosition(
 		node: Omit<INodeUi, 'position'> & { position?: INodeUi['position'] },
 		nodeTypeDescription: INodeTypeDescription,
+		options: { viewport?: ViewportBoundaries } = {},
 	) {
-		let position: XYPosition | undefined = node.position;
-		let pushOffsets: XYPosition = [40, 40];
-
-		if (position) {
-			return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, pushOffsets);
-		}
-
 		// Available when
 		// - clicking the plus button of a node handle
 		// - dragging an edge / connection of a node handle
@@ -899,7 +918,18 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		);
 
 		const nodeSize =
-			connectionType === NodeConnectionType.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
+			connectionType === NodeConnectionTypes.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
+		let pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
+
+		let position: XYPosition | undefined = node.position;
+		if (position) {
+			return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, {
+				offset: pushOffsets,
+				size: nodeSize,
+				viewport: options.viewport,
+				normalize: false,
+			});
+		}
 
 		if (lastInteractedWithNode) {
 			const lastInteractedWithNodeTypeDescription = nodeTypesStore.getNodeType(
@@ -916,8 +946,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				// The new node should be placed at the same position as the mouse up event,
 				// designated by the `newNodeInsertPosition` value.
 
-				const xOffset = connectionType === NodeConnectionType.Main ? 0 : -nodeSize[0] / 2;
-				const yOffset = connectionType === NodeConnectionType.Main ? -nodeSize[1] / 2 : 0;
+				const xOffset = connectionType === NodeConnectionTypes.Main ? 0 : -nodeSize[0] / 2;
+				const yOffset = connectionType === NodeConnectionTypes.Main ? -nodeSize[1] / 2 : 0;
 
 				position = [newNodeInsertPosition[0] + xOffset, newNodeInsertPosition[1] + yOffset];
 
@@ -939,7 +969,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 				const lastInteractedWithNodeScopedInputTypes = (
 					lastInteractedWithNodeInputTypes || []
-				).filter((input) => input !== NodeConnectionType.Main);
+				).filter((input) => input !== NodeConnectionTypes.Main);
 
 				const lastInteractedWithNodeOutputs = NodeHelpers.getNodeOutputs(
 					editableWorkflowObject.value,
@@ -951,7 +981,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				);
 
 				const lastInteractedWithNodeMainOutputs = lastInteractedWithNodeOutputTypes.filter(
-					(output) => output === NodeConnectionType.Main,
+					(output) => output === NodeConnectionTypes.Main,
 				);
 
 				let yOffset = 0;
@@ -994,7 +1024,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 				if (
 					outputTypes.length > 0 &&
-					outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
+					outputTypes.every((outputName) => outputName !== NodeConnectionTypes.Main)
 				) {
 					// When the added node has only non-main outputs (configuration nodes)
 					// We want to place the new node directly below the last interacted with node.
@@ -1021,7 +1051,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 					let pushOffset = PUSH_NODES_OFFSET;
 					if (
-						!!lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionType.Main)
+						!!lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
@@ -1049,7 +1079,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			}
 		}
 
-		return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, pushOffsets);
+		return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, {
+			offset: pushOffsets,
+			size: nodeSize,
+			viewport: options.viewport,
+		});
 	}
 
 	function resolveNodeName(node: INodeUi) {
@@ -1065,7 +1099,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		// if it's a webhook and the path is empty set the UUID as the default path
 		if (
-			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(node.type) &&
+			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE].includes(node.type) &&
 			node.parameters.path === ''
 		) {
 			node.parameters.path = node.webhookId as string;
@@ -1447,10 +1481,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowsStore.resetWorkflow();
 		workflowsStore.resetState();
 		workflowsStore.currentWorkflowExecutions = [];
+		workflowsStore.setActiveExecutionId(undefined);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
-		uiStore.removeActiveAction('workflowRunning');
 		uiStore.stateIsDirty = false;
 
 		// Reset executions
@@ -1496,7 +1530,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 	async function addImportedNodesToWorkflow(
 		data: IWorkflowDataUpdate,
-		{ trackBulk = true, trackHistory = false } = {},
+		{ trackBulk = true, trackHistory = false, viewport = DEFAULT_VIEWPORT_BOUNDARIES } = {},
 	): Promise<IWorkflowDataUpdate> {
 		// Because nodes with the same name maybe already exist, it could
 		// be needed that they have to be renamed. Also could it be possible
@@ -1507,7 +1541,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		const nodeNameTable: {
 			[key: string]: string;
 		} = {};
-		const newNodeNames = new Set<string>();
+		const newNodeNames = new Set<string>((data.nodes ?? []).map((node) => node.name));
 
 		if (!data.nodes) {
 			// No nodes to add
@@ -1547,9 +1581,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 			const localized = i18n.localizeNodeName(node.name, node.type);
 
+			newNodeNames.delete(oldName);
 			newName = uniqueNodeName(localized, Array.from(newNodeNames));
-
 			newNodeNames.add(newName);
+
 			nodeNameTable[oldName] = newName;
 
 			createNodes.push(node);
@@ -1642,7 +1677,11 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			historyStore.startRecordingUndo();
 		}
 
-		await addNodes(Object.values(tempWorkflow.nodes), { trackBulk: false, trackHistory });
+		await addNodes(Object.values(tempWorkflow.nodes), {
+			trackBulk: false,
+			trackHistory,
+			viewport,
+		});
 		await addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
@@ -1666,8 +1705,17 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	async function importWorkflowData(
 		workflowData: IWorkflowDataUpdate,
 		source: string,
-		importTags = true,
-		{ trackBulk = true, trackHistory = true } = {},
+		{
+			importTags = true,
+			trackBulk = true,
+			trackHistory = true,
+			viewport,
+		}: {
+			importTags?: boolean;
+			trackBulk?: boolean;
+			trackHistory?: boolean;
+			viewport?: ViewportBoundaries;
+		} = {},
 	): Promise<IWorkflowDataUpdate> {
 		uiStore.resetLastInteractedWith();
 
@@ -1759,10 +1807,19 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			// the user
 			workflowHelpers.updateNodePositions(
 				workflowData,
-				NodeViewUtils.getNewNodePosition(editableWorkflow.value.nodes, lastClickPosition.value),
+				NodeViewUtils.getNewNodePosition(editableWorkflow.value.nodes, lastClickPosition.value, {
+					...(workflowData.nodes && workflowData.nodes.length > 1
+						? { size: getNodesGroupSize(workflowData.nodes) }
+						: {}),
+					viewport,
+				}),
 			);
 
-			await addImportedNodesToWorkflow(workflowData, { trackBulk, trackHistory });
+			await addImportedNodesToWorkflow(workflowData, {
+				trackBulk,
+				trackHistory,
+				viewport,
+			});
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
@@ -1912,9 +1969,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return filteredConnections;
 	}
 
-	async function duplicateNodes(ids: string[]) {
+	async function duplicateNodes(ids: string[], options: { viewport?: ViewportBoundaries } = {}) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
-		const result = await importWorkflowData(workflowData, 'duplicate', false);
+		const result = await importWorkflowData(workflowData, 'duplicate', {
+			viewport: options.viewport,
+			importTags: false,
+		});
 
 		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
 	}
@@ -1954,6 +2014,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			throw new Error(`Execution with id "${executionId}" could not be found!`);
 		}
 
+		if (data.status === 'error' && data.data?.resultData.error) {
+			const { title, message } = getExecutionErrorToastConfiguration({
+				error: data.data.resultData.error,
+				lastNodeExecuted: data.data.resultData.lastNodeExecuted,
+			});
+			toast.showMessage({ title, message, type: 'error', duration: 0 });
+		}
+
 		initializeWorkspace(data.workflowData);
 
 		workflowsStore.setWorkflowExecutionData(data);
@@ -1967,12 +2035,14 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		return data;
 	}
 
-	async function toggleChatOpen(source: 'node' | 'main') {
+	function startChat(source?: 'node' | 'main') {
+		if (!workflowsStore.allNodes.some(isChatNode)) {
+			return;
+		}
+
 		const workflow = workflowsStore.getCurrentWorkflow();
 
-		workflowsStore.setPanelState(
-			workflowsStore.chatPanelState === 'closed' ? 'attached' : 'closed',
-		);
+		logsStore.toggleOpen(true);
 
 		const payload = {
 			workflow_id: workflow.id,
@@ -1981,6 +2051,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		void externalHooks.run('nodeView.onOpenChat', payload);
 		telemetry.track('User clicked chat open button', payload);
+
+		setTimeout(() => {
+			chatEventBus.emit('focusInput');
+		}, 0);
 	}
 
 	async function importTemplate({
@@ -1998,8 +2072,17 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			workflowsStore.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? []);
-		await workflowsStore.getNewWorkflowData(name, projectsStore.currentProjectId);
+		await workflowsStore.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowsStore.addToWorkflowMetadata({ templateId: `${id}` });
+	}
+
+	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
+		const node = workflowsStore.getNodeById(nodeId);
+		if (!node) return false;
+		const subWorkflowId = NodeHelpers.getSubworkflowId(node);
+		if (!subWorkflowId) return false;
+		window.open(`${rootStore.baseUrl}workflow/${subWorkflowId}`, '_blank');
+		return true;
 	}
 
 	return {
@@ -2050,7 +2133,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		initializeWorkspace,
 		resolveNodeWebhook,
 		openExecution,
-		toggleChatOpen,
+		startChat,
 		importTemplate,
+		tryToOpenSubworkflowInNewTab,
 	};
 }

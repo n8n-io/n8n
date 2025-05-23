@@ -253,7 +253,7 @@ onMounted(async () => {
 							i18n.baseText('projects.move.resource.modal.message.sharingInfo', {
 								adjustToNumber: props.data.resource.sharedWithProjects?.length,
 								interpolate: {
-									numberOfProjects: props.data.resource.sharedWithProjects?.length ?? 0,
+									count: props.data.resource.sharedWithProjects?.length ?? 0,
 								},
 							})
 						}}</span
@@ -271,7 +271,7 @@ onMounted(async () => {
 										{{
 											i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
 												adjustToNumber: shareableCredentials.length,
-												interpolate: { number: shareableCredentials.length },
+												interpolate: { count: shareableCredentials.length },
 											})
 										}}
 									</span>

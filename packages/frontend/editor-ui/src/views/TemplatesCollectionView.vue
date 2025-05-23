@@ -6,7 +6,6 @@ import TemplatesView from './TemplatesView.vue';
 import type { ITemplatesWorkflow } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -18,7 +17,6 @@ import { useI18n } from '@/composables/useI18n';
 
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
-const posthogStore = usePostHog();
 const nodeTypesStore = useNodeTypesStore();
 
 const route = useRoute();
@@ -64,7 +62,6 @@ const onOpenTemplate = ({ event, id }: { event: MouseEvent; id: number }) => {
 
 const onUseWorkflow = async ({ event, id }: { event: MouseEvent; id: number }) => {
 	await useTemplateWorkflow({
-		posthogStore,
 		router,
 		templateId: `${id}`,
 		inNewBrowserTab: event.metaKey || event.ctrlKey,
@@ -78,8 +75,8 @@ const onUseWorkflow = async ({ event, id }: { event: MouseEvent; id: number }) =
 
 const navigateTo = (e: MouseEvent, page: string, id: string) => {
 	if (e.metaKey || e.ctrlKey) {
-		const route = router.resolve({ name: page, params: { id } });
-		window.open(route.href, '_blank');
+		const { href } = router.resolve({ name: page, params: { id } });
+		window.open(href, '_blank');
 		return;
 	} else {
 		void router.push({ name: page, params: { id } });

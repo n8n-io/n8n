@@ -15,7 +15,7 @@ export function convertToDisplayDate(fullDate: Date | string | number): {
 	date: string;
 	time: string;
 } {
-	const mask = `d mmm${
+	const mask = `mmm d${
 		new Date(fullDate).getFullYear() === new Date().getFullYear() ? '' : ', yyyy'
 	}#HH:MM:ss`;
 	const formattedDate = dateformat(fullDate, mask);
@@ -25,4 +25,5 @@ export function convertToDisplayDate(fullDate: Date | string | number): {
 
 export const toDayMonth = (fullDate: Date | string) => dateformat(fullDate, 'd mmm');
 
-export const toTime = (fullDate: Date | string) => dateformat(fullDate, 'HH:MM:ss');
+export const toTime = (fullDate: Date | string, includeMillis: boolean = false) =>
+	dateformat(fullDate, includeMillis ? 'HH:MM:ss.l' : 'HH:MM:ss');

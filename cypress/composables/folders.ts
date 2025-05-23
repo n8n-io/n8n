@@ -1,4 +1,4 @@
-import { successToast } from '../pages/notifications';
+import { errorToast, successToast } from '../pages/notifications';
 
 /**
  * Getters
@@ -22,6 +22,39 @@ export function getFolderCards() {
 export function getFolderCard(name: string) {
 	return cy.getByTestId('folder-card-name').contains(name).closest('[data-test-id="folder-card"]');
 }
+
+export function getWorkflowCards() {
+	return cy.getByTestId('resources-list-item-workflow');
+}
+
+export function getWorkflowCard(name: string) {
+	return cy
+		.getByTestId('workflow-card-name')
+		.contains(name)
+		.closest('[data-test-id="resources-list-item-workflow"]');
+}
+
+export function getWorkflowCardActions(name: string) {
+	return getWorkflowCard(name).find('[data-test-id="workflow-card-actions"]');
+}
+
+export function getWorkflowCardActionItem(workflowName: string, actionName: string) {
+	return getWorkflowCardActions(workflowName)
+		.find('span[aria-controls]')
+		.invoke('attr', 'aria-controls')
+		.then((popperId) => {
+			return cy.get(`#${popperId}`).find(`[data-test-id="action-${actionName}"]`);
+		});
+}
+
+export function getDuplicateWorkflowModal() {
+	return cy.getByTestId('duplicate-modal');
+}
+
+export function getWorkflowMenu() {
+	return cy.getByTestId('workflow-menu');
+}
+
 export function getAddFolderButton() {
 	return cy.getByTestId('add-folder-button');
 }
@@ -34,12 +67,20 @@ export function getHomeProjectBreadcrumb() {
 	return getListBreadcrumbs().findChildByTestId('home-project');
 }
 
+export function getListBreadcrumbItem(name: string) {
+	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item').contains(name);
+}
+
 export function getVisibleListBreadcrumbs() {
 	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item');
 }
 
 export function getCurrentBreadcrumb() {
-	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item-current');
+	return getListBreadcrumbs().findChildByTestId('breadcrumbs-item-current').find('input');
+}
+
+export function getCurrentBreadcrumbText() {
+	return getCurrentBreadcrumb().invoke('val');
 }
 
 export function getMainBreadcrumbsEllipsis() {
@@ -80,6 +121,11 @@ export function getListActionsToggle() {
 	return cy.getByTestId('folder-breadcrumbs-actions');
 }
 
+export function getCanvasBreadcrumbs() {
+	cy.getByTestId('canvas-breadcrumbs').should('exist');
+	return cy.getByTestId('canvas-breadcrumbs').findChildByTestId('folder-breadcrumbs');
+}
+
 export function getListActionItem(name: string) {
 	return cy
 		.getByTestId('folder-breadcrumbs-actions')
@@ -90,17 +136,22 @@ export function getListActionItem(name: string) {
 		});
 }
 
+export function getInlineEditInput() {
+	return cy.getByTestId('inline-edit-input');
+}
+
 export function getFolderCardActionToggle(folderName: string) {
 	return getFolderCard(folderName).find('[data-test-id="folder-card-actions"]');
 }
 
-export function getFolderCardActionItem(name: string) {
-	return cy
-		.getByTestId('folder-card-actions')
+export function getFolderCardActionItem(folderName: string, actionName: string) {
+	return getFolderCard(folderName)
+		.findChildByTestId('folder-card-actions')
+		.filter(':visible')
 		.find('span[aria-controls]')
 		.invoke('attr', 'aria-controls')
 		.then((popperId) => {
-			return cy.get(`#${popperId}`).find(`[data-test-id="action-${name}"]`);
+			return cy.get(`#${popperId}`).find(`[data-test-id="action-${actionName}"]`);
 		});
 }
 
@@ -108,8 +159,16 @@ export function getFolderDeleteModal() {
 	return cy.getByTestId('deleteFolder-modal');
 }
 
+export function getMoveFolderModal() {
+	return cy.getByTestId('moveFolder-modal');
+}
+
 export function getDeleteRadioButton() {
 	return cy.getByTestId('delete-content-radio');
+}
+
+export function getTransferContentRadioButton() {
+	return cy.getByTestId('transfer-content-radio');
 }
 
 export function getConfirmDeleteInput() {
@@ -119,6 +178,66 @@ export function getConfirmDeleteInput() {
 export function getDeleteFolderModalConfirmButton() {
 	return getFolderDeleteModal().findChildByTestId('confirm-delete-folder-button');
 }
+
+export function getProjectEmptyState() {
+	return cy.getByTestId('list-empty-state');
+}
+
+export function getFolderEmptyState() {
+	return cy.getByTestId('empty-folder-container');
+}
+
+export function getProjectMenuItem(name: string) {
+	if (name.toLowerCase() === 'personal') {
+		return getPersonalProjectMenuItem();
+	}
+	return cy.getByTestId('project-menu-item').contains(name);
+}
+
+export function getMoveToFolderDropdown() {
+	return cy.getByTestId('move-to-folder-dropdown');
+}
+
+export function getMoveToFolderOption(name: string) {
+	return cy.getByTestId('move-to-folder-option').contains(name);
+}
+
+export function getMoveToFolderInput() {
+	return getMoveToFolderDropdown().find('input');
+}
+
+export function getEmptyFolderDropdownMessage(text: string) {
+	return cy.get('.el-select-dropdown__empty').contains(text);
+}
+
+export function getMoveFolderConfirmButton() {
+	return cy.getByTestId('confirm-move-folder-button');
+}
+
+export function getMoveWorkflowModal() {
+	return cy.getByTestId('moveFolder-modal');
+}
+
+export function getWorkflowCardBreadcrumbs(workflowName: string) {
+	return getWorkflowCard(workflowName).find('[data-test-id="workflow-card-breadcrumbs"]');
+}
+
+export function getWorkflowCardBreadcrumbsEllipsis(workflowName: string) {
+	return getWorkflowCardBreadcrumbs(workflowName).find('[data-test-id="ellipsis"]');
+}
+
+export function getNewFolderNameInput() {
+	return cy.get('.add-folder-modal').filter(':visible').find('input.el-input__inner');
+}
+
+export function getNewFolderModalErrorMessage() {
+	return cy.get('.el-message-box__errormsg').filter(':visible');
+}
+
+export function getProjectTab(tabId: string) {
+	return cy.getByTestId('project-tabs').find(`#${tabId}`);
+}
+
 /**
  * Actions
  */
@@ -136,8 +255,46 @@ export function createFolderFromListHeaderButton(folderName: string) {
 	createNewFolder(folderName);
 }
 
+export function createWorkflowFromEmptyState(workflowName?: string) {
+	getFolderEmptyState().find('button').contains('Create Workflow').click();
+	if (workflowName) {
+		cy.getByTestId('workflow-name-input').type(`{selectAll}{backspace}${workflowName}`, {
+			delay: 50,
+		});
+	}
+	cy.getByTestId('workflow-save-button').click();
+	successToast().should('exist');
+}
+
+export function createWorkflowFromProjectHeader(folderName?: string, workflowName?: string) {
+	cy.getByTestId('add-resource-workflow').click();
+	if (workflowName) {
+		cy.getByTestId('workflow-name-input').type(`{selectAll}{backspace}${workflowName}`, {
+			delay: 50,
+		});
+	}
+	cy.getByTestId('workflow-save-button').click();
+	if (folderName) {
+		successToast().should(
+			'contain.text',
+			`Workflow successfully created in "Personal", within "${folderName}"`,
+		);
+	}
+}
+
+export function createWorkflowFromListDropdown(workflowName?: string) {
+	getListActionsToggle().click();
+	getListActionItem('create_workflow').click();
+	if (workflowName) {
+		cy.getByTestId('workflow-name-input').type(`{selectAll}{backspace}${workflowName}`, {
+			delay: 50,
+		});
+	}
+	cy.getByTestId('workflow-save-button').click();
+	successToast().should('exist');
+}
+
 export function createFolderFromProjectHeader(folderName: string) {
-	getPersonalProjectMenuItem().click();
 	getAddResourceDropdown().click();
 	cy.getByTestId('action-folder').click();
 	createNewFolder(folderName);
@@ -151,7 +308,7 @@ export function createFolderFromListDropdown(folderName: string) {
 
 export function createFolderFromCardActions(parentName: string, folderName: string) {
 	getFolderCardActionToggle(parentName).click();
-	getFolderCardActionItem('create').click();
+	getFolderCardActionItem(parentName, 'create').click();
 	createNewFolder(folderName);
 }
 
@@ -159,13 +316,33 @@ export function renameFolderFromListActions(folderName: string, newName: string)
 	getFolderCard(folderName).click();
 	getListActionsToggle().click();
 	getListActionItem('rename').click();
-	renameFolder(newName);
+	getInlineEditInput().should('be.visible');
+	getInlineEditInput().type(newName, { delay: 50 });
+	successToast().should('exist');
 }
 
 export function renameFolderFromCardActions(folderName: string, newName: string) {
 	getFolderCardActionToggle(folderName).click();
-	getFolderCardActionItem('rename').click();
+	getFolderCardActionItem(folderName, 'rename').click();
 	renameFolder(newName);
+}
+
+export function duplicateWorkflowFromCardActions(workflowName: string, duplicateName: string) {
+	getWorkflowCardActions(workflowName).click();
+	getWorkflowCardActionItem(workflowName, 'duplicate').click();
+	getDuplicateWorkflowModal().find('input').first().type('{selectall}');
+	getDuplicateWorkflowModal().find('input').first().type(duplicateName);
+	getDuplicateWorkflowModal().find('button').contains('Duplicate').click();
+	errorToast().should('not.exist');
+}
+
+export function duplicateWorkflowFromWorkflowPage(duplicateName: string) {
+	getWorkflowMenu().click();
+	cy.getByTestId('workflow-menu-item-duplicate').click();
+	getDuplicateWorkflowModal().find('input').first().type('{selectall}');
+	getDuplicateWorkflowModal().find('input').first().type(duplicateName);
+	getDuplicateWorkflowModal().find('button').contains('Duplicate').click();
+	errorToast().should('not.exist');
 }
 
 export function deleteEmptyFolderFromCardDropdown(folderName: string) {
@@ -194,9 +371,75 @@ export function deleteFolderWithContentsFromListDropdown(folderName: string) {
 
 export function deleteFolderWithContentsFromCardDropdown(folderName: string) {
 	getFolderCardActionToggle(folderName).click();
-	getFolderCardActionItem('delete').click();
+	getFolderCardActionItem(folderName, 'delete').click();
 	confirmFolderDelete(folderName);
 }
+
+export function deleteAndTransferFolderContentsFromCardDropdown(
+	folderName: string,
+	destinationName: string,
+) {
+	getFolderCardActionToggle(folderName).click();
+	getFolderCardActionItem(folderName, 'delete').click();
+	deleteFolderAndMoveContents(folderName, destinationName);
+}
+
+export function deleteAndTransferFolderContentsFromListDropdown(destinationName: string) {
+	getListActionsToggle().click();
+	getListActionItem('delete').click();
+	getCurrentBreadcrumbText().then((currentFolderName) => {
+		deleteFolderAndMoveContents(String(currentFolderName), destinationName);
+	});
+}
+
+export function createNewProject(projectName: string, options: { openAfterCreate?: boolean } = {}) {
+	cy.getByTestId('universal-add').should('exist').click();
+	cy.getByTestId('navigation-menu-item').contains('Project').click();
+	cy.getByTestId('project-settings-name-input').type(projectName, { delay: 50 });
+	cy.getByTestId('project-settings-save-button').click();
+	successToast().should('exist');
+	if (options.openAfterCreate) {
+		getProjectMenuItem(projectName).click();
+	}
+}
+
+export function moveFolderFromFolderCardActions(folderName: string, destinationName: string) {
+	getFolderCardActionToggle(folderName).click();
+	getFolderCardActionItem(folderName, 'move').click();
+	moveFolder(folderName, destinationName);
+}
+
+export function moveFolderFromListActions(folderName: string, destinationName: string) {
+	getFolderCard(folderName).click();
+	getListActionsToggle().click();
+	getListActionItem('move').click();
+	moveFolder(folderName, destinationName);
+}
+
+export function moveWorkflowToFolder(workflowName: string, folderName: string) {
+	getWorkflowCardActions(workflowName).click();
+	getWorkflowCardActionItem(workflowName, 'moveToFolder').click();
+	getMoveFolderModal().should('be.visible');
+	getMoveToFolderDropdown().click();
+	getMoveToFolderInput().type(folderName, { delay: 50 });
+	getMoveToFolderOption(folderName).should('be.visible').click();
+	getMoveFolderConfirmButton().should('be.enabled').click();
+}
+
+export function dragAndDropToFolder(sourceName: string, destinationName: string) {
+	const draggable = `[data-test-id=draggable]:has([data-resourcename="${sourceName}"])`;
+	const droppable = `[data-test-id=draggable]:has([data-resourcename="${destinationName}"])`;
+	cy.get(draggable).trigger('mousedown');
+	cy.draganddrop(draggable, droppable, { position: 'center' });
+}
+
+export function dragAndDropToProjectRoot(sourceName: string) {
+	const draggable = `[data-test-id=draggable]:has([data-resourcename="${sourceName}"])`;
+	const droppable = '[data-test-id="home-project"]';
+	cy.get(draggable).trigger('mousedown');
+	cy.draganddrop(draggable, droppable, { position: 'center' });
+}
+
 /**
  * Utils
  */
@@ -239,4 +482,35 @@ function confirmFolderDelete(folderName: string) {
 	getDeleteFolderModalConfirmButton().should('be.enabled').click();
 	cy.wait('@deleteFolder');
 	successToast().contains('Folder deleted').should('exist');
+}
+
+function deleteFolderAndMoveContents(folderName: string, destinationName: string) {
+	cy.intercept('DELETE', '/rest/projects/**').as('deleteFolder');
+	getFolderDeleteModal().should('be.visible');
+	getFolderDeleteModal().find('h1').first().contains(`Delete "${folderName}"`);
+	getTransferContentRadioButton().should('be.visible').click();
+	getMoveToFolderDropdown().click();
+	getMoveToFolderInput().type(destinationName);
+	getMoveToFolderOption(destinationName).click();
+	getDeleteFolderModalConfirmButton().should('be.enabled').click();
+	cy.wait('@deleteFolder');
+	successToast().should('contain.text', `Data transferred to "${destinationName}"`);
+}
+
+function moveFolder(folderName: string, destinationName: string) {
+	cy.intercept('PATCH', '/rest/projects/**').as('moveFolder');
+	getMoveFolderModal().should('be.visible');
+	getMoveFolderModal().find('h1').first().contains(`Move "${folderName}" to another folder`);
+	// Try to find current folder in the dropdown
+	// This tests that auto-focus worked as expected
+	cy.focused().type(folderName, { delay: 50 });
+	// Should not be available
+	getEmptyFolderDropdownMessage('No folders found').should('exist');
+	// Select destination folder
+	getMoveToFolderInput().type(`{selectall}{backspace}${destinationName}`, {
+		delay: 50,
+	});
+	getMoveToFolderOption(destinationName).should('be.visible').click();
+	getMoveFolderConfirmButton().should('be.enabled').click();
+	cy.wait('@moveFolder');
 }

@@ -1,8 +1,40 @@
-import { DateTime } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 
-import { getValueDescription, validateFieldType } from '@/TypeValidation';
+import { getValueDescription, tryToParseDateTime, validateFieldType } from '@/TypeValidation';
 
 describe('Type Validation', () => {
+	describe('string-alphanumeric', () => {
+		test('should validate and parse alphanumeric strings, not starting with a number', () => {
+			const VALID_STRINGS = ['abc123', 'ABC123', 'abc_123', '_abc123', 'abcABC123_'];
+			VALID_STRINGS.forEach((value) =>
+				expect(validateFieldType('string', value, 'string-alphanumeric')).toEqual({
+					valid: true,
+					newValue: value,
+				}),
+			);
+		});
+
+		test('should not validate non-alphanumeric strings, or starting with a number', () => {
+			const INVALID_STRINGS = [
+				'abc-123',
+				'abc 123',
+				'abc@123',
+				'abc#123',
+				'abc.123',
+				'abc$123',
+				'abc&123',
+				'abc!123',
+				'abc(123)',
+				'bπc123',
+				'πι',
+				'123abc', // Cannot start with number
+				'456_abc', // Cannot start with number
+			];
+			INVALID_STRINGS.forEach((value) =>
+				expect(validateFieldType('string', value, 'string-alphanumeric').valid).toBe(false),
+			);
+		});
+	});
 	describe('Dates', () => {
 		test('should validate and cast ISO dates', () => {
 			const VALID_ISO_DATES = [
@@ -290,6 +322,41 @@ describe('Type Validation', () => {
 			expect(getValueDescription(undefined)).toBe("'undefined'");
 			expect(getValueDescription([{}])).toBe('array');
 			expect(getValueDescription({})).toBe('object');
+		});
+	});
+
+	describe('tryToParseDateTime', () => {
+		it('should NOT use defaultZone if set', () => {
+			const result = tryToParseDateTime('2025-04-17T06:22:20-04:00', 'Europe/Brussels');
+
+			expect(result.zoneName).toEqual('UTC-4');
+			expect(result.toISO()).toEqual('2025-04-17T06:22:20.000-04:00');
+		});
+
+		it('should use defaultZone if timezone is not set', () => {
+			const result = tryToParseDateTime('2025-04-17T06:22:20', 'Europe/Brussels');
+
+			expect(result.zoneName).toEqual('Europe/Brussels');
+			expect(result.toISO()).toEqual('2025-04-17T06:22:20.000+02:00');
+		});
+
+		it('should use the system timezone when defaultZone arg is not given', () => {
+			Settings.defaultZone = 'UTC-7';
+			const result = tryToParseDateTime('2025-04-17T06:22:20');
+
+			expect(result.zoneName).toEqual('UTC-7');
+			expect(result.toISO()).toEqual('2025-04-17T06:22:20.000-07:00');
+		});
+
+		it('should not impact DateTime zone', () => {
+			const dateTime = DateTime.fromObject(
+				{ year: 2025, month: 1, day: 1 },
+				{ zone: 'Asia/Tokyo' },
+			);
+			const result = tryToParseDateTime(dateTime, 'Europe/Brussels');
+
+			expect(result.zoneName).toEqual('Asia/Tokyo');
+			expect(result.toISO()).toEqual('2025-01-01T00:00:00.000+09:00');
 		});
 	});
 });

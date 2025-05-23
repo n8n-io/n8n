@@ -36,6 +36,10 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
 	},
 	{
+		find: /^@n8n\/stores(.+)$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
+	},
+	{
 		find: /^@n8n\/utils(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
 	},
@@ -75,7 +79,21 @@ const plugins = [
 		],
 	}),
 	vue(),
-	svgLoader(),
+	svgLoader({
+		svgoConfig: {
+			plugins: [
+				{
+					name: 'preset-default',
+					params: {
+						overrides: {
+							// disable a default plugin
+							cleanupIds: false,
+						},
+					},
+				},
+			],
+		},
+	}),
 	legacy({
 		modernTargets: browsers,
 		modernPolyfills: true,

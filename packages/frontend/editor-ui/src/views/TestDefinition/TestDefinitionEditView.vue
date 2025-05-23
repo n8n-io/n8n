@@ -9,15 +9,15 @@ import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import type { TestMetricRecord, TestRunRecord } from '@/api/testDefinition.ee';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import ConfigSection from '@/components/TestDefinition/EditDefinition/sections/ConfigSection.vue';
 import RunsSection from '@/components/TestDefinition/EditDefinition/sections/RunsSection.vue';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useDocumentVisibility } from '@vueuse/core';
 import { N8nButton, N8nIconButton, N8nText } from '@n8n/design-system';
+import { useDocumentVisibility } from '@vueuse/core';
+import { orderBy } from 'lodash-es';
 import type { IDataObject, IPinData } from 'n8n-workflow';
 
 const props = defineProps<{
@@ -44,22 +44,12 @@ watch(visibility, async () => {
 	testDefinitionStore.updateRunFieldIssues(props.testId);
 });
 
-const {
-	state,
-	isSaving,
-	cancelEditing,
-	loadTestData,
-	updateTest,
-	startEditing,
-	saveChanges,
-	deleteMetric,
-	updateMetrics,
-} = useTestDefinitionForm();
+const { state, isSaving, cancelEditing, loadTestData, updateTest, startEditing, saveChanges } =
+	useTestDefinitionForm();
 
 const isLoading = computed(() => tagsStore.isLoading);
 const tagsById = computed(() => tagsStore.tagsById);
 const currentWorkflowId = computed(() => props.name);
-const appliedTheme = computed(() => uiStore.appliedTheme);
 const workflowName = computed(() => workflowStore.workflow.name);
 const hasRuns = computed(() => runs.value.length > 0);
 const fieldsIssues = computed(() => testDefinitionStore.getFieldIssues(props.testId) ?? []);
@@ -79,20 +69,9 @@ const handleUpdateTest = async () => {
 };
 
 const handleUpdateTestDebounced = debounce(handleUpdateTest, { debounceTime: 400, trailing: true });
-const handleUpdateMetricsDebounced = debounce(
-	async (testId: string) => {
-		await updateMetrics(testId);
-		testDefinitionStore.updateRunFieldIssues(testId);
-	},
-	{ debounceTime: 400, trailing: true },
-);
 
 function getFieldIssues(key: string) {
 	return fieldsIssues.value.filter((issue) => issue.field === key);
-}
-
-async function onDeleteMetric(deletedMetric: TestMetricRecord) {
-	await deleteMetric(deletedMetric.id, props.testId);
 }
 
 async function openPinningModal() {
@@ -114,22 +93,18 @@ async function openExecutionsViewForTag() {
 	window.open(executionsRoute.href, '_blank');
 }
 
-const runs = computed(() =>
-	Object.values(testDefinitionStore.testRunsById ?? {}).filter(
-		(run) => run.testDefinitionId === props.testId,
-	),
-);
+const runs = computed(() => {
+	const testRuns = Object.values(testDefinitionStore.testRunsById ?? {}).filter(
+		({ testDefinitionId }) => testDefinitionId === props.testId,
+	);
+
+	return orderBy(testRuns, (record) => new Date(record.runAt), ['asc']).map((record, index) =>
+		Object.assign(record, { index: index + 1 }),
+	);
+});
 
 const isRunning = computed(() => runs.value.some((run) => run.status === 'running'));
 const isRunTestEnabled = computed(() => fieldsIssues.value.length === 0 && !isRunning.value);
-
-async function onDeleteRuns(toDelete: TestRunRecord[]) {
-	await Promise.all(
-		toDelete.map(async (run) => {
-			await testDefinitionStore.deleteTestRun({ testDefinitionId: props.testId, runId: run.id });
-		}),
-	);
-}
 
 async function renameTag(newName: string) {
 	await tagsStore.rename({ id: state.value.tags.value[0], name: newName });
@@ -245,15 +220,12 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 					:class="$style.runs"
 					:runs="runs"
 					:test-id="testId"
-					:applied-theme="appliedTheme"
-					@delete-runs="onDeleteRuns"
 				/>
 
 				<ConfigSection
 					v-if="showConfig"
 					v-model:tags="state.tags"
 					v-model:evaluationWorkflow="state.evaluationWorkflow"
-					v-model:metrics="state.metrics"
 					v-model:mockedNodes="state.mockedNodes"
 					:class="$style.config"
 					:cancel-editing="cancelEditing"
@@ -266,11 +238,9 @@ function onEvaluationWorkflowCreated(workflowId: string) {
 					:example-pinned-data="examplePinnedData"
 					:sample-workflow-name="workflowName"
 					@rename-tag="renameTag"
-					@update:metrics="() => handleUpdateMetricsDebounced(testId)"
 					@update:evaluation-workflow="handleUpdateTestDebounced"
 					@update:mocked-nodes="handleUpdateTestDebounced"
 					@open-pinning-modal="openPinningModal"
-					@delete-metric="onDeleteMetric"
 					@open-executions-view-for-tag="openExecutionsViewForTag"
 					@evaluation-workflow-created="onEvaluationWorkflowCreated($event)"
 				/>

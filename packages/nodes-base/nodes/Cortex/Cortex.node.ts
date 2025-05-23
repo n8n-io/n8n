@@ -10,7 +10,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
 import type { IJob } from './AnalyzerInterface';
@@ -30,8 +30,8 @@ export class Cortex implements INodeType {
 		defaults: {
 			name: 'Cortex',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'cortexApi',

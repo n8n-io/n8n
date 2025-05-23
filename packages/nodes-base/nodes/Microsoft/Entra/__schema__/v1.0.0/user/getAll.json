@@ -1,27 +1,18 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "createdDateTime": {
             "type": "string"
         },
         "displayName": {
             "type": "string"
         },
+        "id": {
+            "type": "string"
+        },
         "userPrincipalName": {
-            "type": "string"
-        },
-        "mailNickname": {
-            "type": "string"
-        },
-        "securityIdentifier": {
             "type": "string"
         }
     },
-    "required": [
-        "id"
-    ],
-    "version": 1
+    "version": 2
 }

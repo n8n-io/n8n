@@ -1,56 +1,11 @@
 {
     "type": "object",
     "properties": {
-        "user": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "ts": {
-            "type": "string"
-        },
-        "client_msg_id": {
-            "type": "string"
-        },
-        "text": {
-            "type": "string"
-        },
-        "team": {
-            "type": "string"
-        },
-        "thread_ts": {
-            "type": "string"
-        },
-        "reply_count": {
-            "type": "integer"
-        },
-        "reply_users_count": {
-            "type": "integer"
-        },
-        "latest_reply": {
-            "type": "string"
-        },
-        "reply_users": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "is_locked": {
-            "type": "boolean"
-        },
-        "subscribed": {
-            "type": "boolean"
-        },
         "blocks": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": {
-                        "type": "string"
-                    },
                     "block_id": {
                         "type": "string"
                     },
@@ -59,104 +14,86 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "type": {
-                                    "type": "string"
-                                },
                                 "elements": {
                                     "type": "array",
                                     "items": {
                                         "type": "object",
                                         "properties": {
+                                            "text": {
+                                                "type": "string"
+                                            },
                                             "type": {
                                                 "type": "string"
                                             },
-                                            "text": {
+                                            "url": {
+                                                "type": "string"
+                                            },
+                                            "user_id": {
                                                 "type": "string"
                                             }
-                                        },
-                                        "required": [
-                                            "type"
-                                        ]
+                                        }
                                     }
+                                },
+                                "type": {
+                                    "type": "string"
                                 }
-                            },
-                            "required": [
-                                "type"
-                            ]
+                            }
                         }
+                    },
+                    "type": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "type",
-                    "block_id"
-                ]
+                }
             }
         },
         "bot_id": {
             "type": "string"
         },
-        "app_id": {
+        "client_msg_id": {
             "type": "string"
         },
-        "bot_profile": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "deleted": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated": {
-                    "type": "integer"
-                },
-                "app_id": {
-                    "type": "string"
-                },
-                "icons": {
-                    "type": "object",
-                    "properties": {
-                        "image_36": {
-                            "type": "string"
-                        },
-                        "image_48": {
-                            "type": "string"
-                        },
-                        "image_72": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "image_36",
-                        "image_48",
-                        "image_72"
-                    ]
-                },
-                "team_id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "deleted",
-                "name",
-                "updated",
-                "app_id",
-                "icons",
-                "team_id"
-            ]
+        "is_locked": {
+            "type": "boolean"
+        },
+        "latest_reply": {
+            "type": "string"
         },
         "parent_user_id": {
             "type": "string"
+        },
+        "reply_count": {
+            "type": "integer"
+        },
+        "reply_users": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "reply_users_count": {
+            "type": "integer"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
+        "team": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "thread_ts": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
         }
     },
-    "required": [
-        "type",
-        "ts",
-        "text"
-    ],
     "version": 1
 }

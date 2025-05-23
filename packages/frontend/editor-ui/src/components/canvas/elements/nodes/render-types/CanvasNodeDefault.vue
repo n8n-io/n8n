@@ -12,7 +12,7 @@ const i18n = useI18n();
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
-	activate: [id: string];
+	activate: [id: string, event: MouseEvent];
 }>();
 
 const { initialized, viewport } = useCanvas();
@@ -107,6 +107,10 @@ const isStrikethroughVisible = computed(() => {
 	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
 });
 
+const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
+
+const iconSource = computed(() => renderOptions.value.icon);
+
 const showTooltip = ref(false);
 
 watch(initialized, () => {
@@ -126,8 +130,8 @@ function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
 
-function onActivate() {
-	emit('activate', id.value);
+function onActivate(event: MouseEvent) {
+	emit('activate', id.value, event);
 }
 </script>
 
@@ -140,7 +144,7 @@ function onActivate() {
 		@dblclick.stop="onActivate"
 	>
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
-		<slot />
+		<NodeIcon :icon-source="iconSource" :size="iconSize" :shrink="false" :disabled="isDisabled" />
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
@@ -171,6 +175,7 @@ function onActivate() {
 	--configurable-node--icon-size: 30px;
 	--trigger-node--border-radius: 36px;
 	--canvas-node--status-icons-offset: var(--spacing-3xs);
+	--node-icon-color: var(--color-foreground-dark);
 
 	position: relative;
 	height: var(--canvas-node--height);

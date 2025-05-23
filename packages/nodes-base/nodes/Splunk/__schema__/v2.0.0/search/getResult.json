@@ -1,8 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "preview": {
-            "type": "boolean"
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "init_offset": {
             "type": "integer"
@@ -12,32 +20,17 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "type": {
-                        "type": "string"
-                    },
                     "text": {
                         "type": "string"
-                    }
-                },
-                "required": [
-                    "type",
-                    "text"
-                ]
-            }
-        },
-        "fields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
+                    },
+                    "type": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "name"
-                ]
+                }
             }
+        },
+        "preview": {
+            "type": "boolean"
         },
         "results": {
             "type": "array",
@@ -47,16 +40,19 @@
                     "_time": {
                         "type": "string"
                     },
-                    "attack": {
+                    "app": {
                         "type": "string"
                     },
-                    "app": {
+                    "attack": {
                         "type": "string"
                     },
                     "dest_ip": {
                         "type": "string"
                     },
                     "dest_port": {
+                        "type": "string"
+                    },
+                    "file_name": {
                         "type": "string"
                     },
                     "file_path": {
@@ -85,19 +81,10 @@
                     },
                     "transport": {
                         "type": "string"
-                    },
-                    "file_name": {
-                        "type": "string"
                     }
                 }
             }
         }
     },
-    "required": [
-        "preview",
-        "init_offset",
-        "messages",
-        "results"
-    ],
     "version": 1
 }

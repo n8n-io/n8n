@@ -16,7 +16,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
@@ -106,7 +106,11 @@ function getSchemas() {
 		})
 		.filter((node) => node.schema?.value.length > 0);
 
-	const inputSchema = parentNodesSchemas.shift();
+	// Account for empty objects
+	const inputSchema = parentNodesSchemas.shift() ?? {
+		nodeName: parentNodesNames[0] ?? '',
+		schema: { path: '', type: 'undefined', value: '' },
+	};
 
 	return {
 		parentNodesNames,
@@ -161,7 +165,7 @@ async function onSubmit() {
 		question: prompt.value,
 		context: {
 			schema: schemas.parentNodesSchemas,
-			inputSchema: schemas.inputSchema!,
+			inputSchema: schemas.inputSchema,
 			ndvPushRef: useNDVStore().pushRef,
 			pushRef: rootStore.pushRef,
 		},

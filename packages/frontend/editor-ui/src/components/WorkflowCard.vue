@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -26,12 +26,17 @@ import { ResourceType } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { WorkflowResource } from './layouts/ResourcesListLayout.vue';
 import type { IUser } from 'n8n-workflow';
+import { ProjectTypes } from '@/types/projects.types';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { useFoldersStore } from '@/stores/folders.store';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
 	DUPLICATE: 'duplicate',
 	DELETE: 'delete',
+	ARCHIVE: 'archive',
+	UNARCHIVE: 'unarchive',
 	MOVE: 'move',
 	MOVE_TO_FOLDER: 'moveToFolder',
 };
@@ -41,10 +46,12 @@ const props = withDefaults(
 		data: WorkflowResource;
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
+		showOwnershipBadge?: boolean;
 	}>(),
 	{
 		readOnly: false,
 		workflowListEventBus: undefined,
+		showOwnershipBadge: false,
 	},
 );
 
@@ -52,6 +59,8 @@ const emit = defineEmits<{
 	'expand:tags': [];
 	'click:tag': [tagId: string, e: PointerEvent];
 	'workflow:deleted': [];
+	'workflow:archived': [];
+	'workflow:unarchived': [];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 	'action:move-to-folder': [value: { id: string; name: string; parentFolderId?: string }];
 }>();
@@ -68,6 +77,10 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const foldersStore = useFoldersStore();
+
+const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
+const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -75,6 +88,37 @@ const workflowPermissions = computed(() => getResourcePermissions(props.data.sco
 
 const showFolders = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled && route.name !== VIEWS.WORKFLOWS;
+});
+
+const showCardBreadcrumbs = computed(() => {
+	return props.showOwnershipBadge && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
+});
+
+const projectName = computed(() => {
+	if (props.data.homeProject?.type === ProjectTypes.Personal) {
+		return locale.baseText('projects.menu.personal');
+	}
+	return props.data.homeProject?.name;
+});
+
+const cardBreadcrumbs = computed<PathItem[]>(() => {
+	if (props.data.parentFolder) {
+		return [
+			{
+				id: props.data.parentFolder.id,
+				name: props.data.parentFolder.name,
+				label: props.data.parentFolder.name,
+				href: router.resolve({
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: {
+						projectId: props.data.homeProject?.id,
+						folderId: props.data.parentFolder.id,
+					},
+				}).href,
+			},
+		];
+	}
+	return [];
 });
 
 const actions = computed(() => {
@@ -89,14 +133,14 @@ const actions = computed(() => {
 		},
 	];
 
-	if (workflowPermissions.value.create && !props.readOnly) {
+	if (workflowPermissions.value.create && !props.readOnly && !props.data.isArchived) {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
 		});
 	}
 
-	if (workflowPermissions.value.update && !props.readOnly && showFolders.value) {
+	if (workflowPermissions.value.update && showFolders.value && !props.readOnly) {
 		items.push({
 			label: locale.baseText('folders.actions.moveToFolder'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
@@ -111,10 +155,21 @@ const actions = computed(() => {
 	}
 
 	if (workflowPermissions.value.delete && !props.readOnly) {
-		items.push({
-			label: locale.baseText('workflows.item.delete'),
-			value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
-		});
+		if (!props.data.isArchived) {
+			items.push({
+				label: locale.baseText('workflows.item.archive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE,
+			});
+		} else {
+			items.push({
+				label: locale.baseText('workflows.item.delete'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+			});
+			items.push({
+				label: locale.baseText('workflows.item.unarchive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
+			});
+		}
 	}
 
 	return items;
@@ -127,6 +182,12 @@ const formattedCreatedAtDate = computed(() => {
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
 });
+
+const isSomeoneElsesWorkflow = computed(
+	() =>
+		props.data.homeProject?.type !== ProjectTypes.Team &&
+		props.data.homeProject?.id !== projectsStore.personalProject?.id,
+);
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -169,6 +230,7 @@ async function onAction(action: string) {
 						typeof tag !== 'string' && 'id' in tag ? tag.id : tag,
 					),
 					externalEventBus: props.workflowListEventBus,
+					parentFolderId: props.data.parentFolder?.id,
 				},
 			});
 			break;
@@ -186,6 +248,12 @@ async function onAction(action: string) {
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.DELETE:
 			await deleteWorkflow();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE:
+			await archiveWorkflow();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE:
+			await unarchiveWorkflow();
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
 			moveResource();
@@ -230,11 +298,86 @@ async function deleteWorkflow() {
 
 	// Reset tab title since workflow is deleted.
 	toast.showMessage({
-		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+			interpolate: { workflowName: props.data.name },
+		}),
 		type: 'success',
 	});
 	emit('workflow:deleted');
 }
+
+async function archiveWorkflow() {
+	if (props.data.active) {
+		const archiveConfirmed = await message.confirm(
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
+				interpolate: { workflowName: props.data.name },
+			}),
+			locale.baseText('mainSidebar.confirmMessage.workflowArchive.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.confirmButtonText',
+				),
+				cancelButtonText: locale.baseText(
+					'mainSidebar.confirmMessage.workflowArchive.cancelButtonText',
+				),
+			},
+		);
+
+		if (archiveConfirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
+	try {
+		await workflowsStore.archiveWorkflow(props.data.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
+		return;
+	}
+
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
+			interpolate: { workflowName: props.data.name },
+		}),
+		type: 'success',
+	});
+	emit('workflow:archived');
+}
+
+async function unarchiveWorkflow() {
+	try {
+		await workflowsStore.unarchiveWorkflow(props.data.id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.unarchiveWorkflowError'));
+		return;
+	}
+
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleUnarchive.title', {
+			interpolate: { workflowName: props.data.name },
+		}),
+		type: 'success',
+	});
+	emit('workflow:unarchived');
+}
+
+const fetchHiddenBreadCrumbsItems = async () => {
+	if (!props.data.homeProject?.id || !projectName.value || !props.data.parentFolder) {
+		hiddenBreadcrumbsItemsAsync.value = Promise.resolve([]);
+	} else {
+		if (cachedHiddenBreadcrumbsItems.value.length) {
+			hiddenBreadcrumbsItemsAsync.value = Promise.resolve(cachedHiddenBreadcrumbsItems.value);
+			return;
+		}
+		const loadedItem = foldersStore.getHiddenBreadcrumbsItems(
+			{ id: props.data.homeProject.id, name: projectName.value },
+			props.data.parentFolder.id,
+		);
+		hiddenBreadcrumbsItemsAsync.value = loadedItem;
+		cachedHiddenBreadcrumbsItems.value = await loadedItem;
+	}
+};
 
 function moveResource() {
 	uiStore.openModalWithData({
@@ -251,12 +394,33 @@ function moveResource() {
 const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	emit('workflow:active-toggle', value);
 };
+
+const onBreadcrumbItemClick = async (item: PathItem) => {
+	if (item.href) {
+		await router.push(item.href);
+	}
+};
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" data-test-id="workflow-card" @click="onClick">
+	<n8n-card
+		:class="{
+			[$style.cardLink]: true,
+			[$style.cardArchived]: data.isArchived,
+		}"
+		data-test-id="workflow-card"
+		@click="onClick"
+	>
 		<template #header>
-			<n8n-text tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
+			<n8n-text
+				tag="h2"
+				bold
+				:class="{
+					[$style.cardHeading]: true,
+					[$style.cardHeadingArchived]: data.isArchived,
+				}"
+				data-test-id="workflow-card-name"
+			>
 				{{ data.name }}
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
@@ -290,14 +454,47 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
-					:class="$style.cardBadge"
+					v-if="showOwnershipBadge"
+					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
-				/>
+					:show-badge-border="false"
+				>
+					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
+						<n8n-breadcrumbs
+							:items="cardBreadcrumbs"
+							:hidden-items="
+								data.parentFolder?.parentFolderId !== null ? hiddenBreadcrumbsItemsAsync : undefined
+							"
+							:path-truncated="data.parentFolder?.parentFolderId !== null"
+							:highlight-last-item="false"
+							hidden-items-trigger="hover"
+							theme="small"
+							data-test-id="workflow-card-breadcrumbs"
+							@tooltip-opened="fetchHiddenBreadCrumbsItems"
+							@item-selected="onBreadcrumbItemClick"
+						>
+							<template #prepend></template>
+						</n8n-breadcrumbs>
+					</div>
+				</ProjectCardBadge>
+
+				<n8n-text
+					v-if="data.isArchived"
+					color="text-light"
+					size="small"
+					bold
+					class="ml-s mr-s"
+					data-test-id="workflow-card-archived"
+				>
+					{{ locale.baseText('workflows.item.archived') }}
+				</n8n-text>
 				<WorkflowActivator
+					v-else
 					class="mr-s"
+					:is-archived="data.isArchived"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
 					:workflow-permissions="workflowPermissions"
@@ -338,6 +535,10 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	}
 }
 
+.cardHeadingArchived {
+	color: var(--color-text-light);
+}
+
 .cardDescription {
 	min-height: 19px;
 	display: flex;
@@ -355,10 +556,22 @@ const emitWorkflowActiveToggle = (value: { id: string; active: boolean }) => {
 	cursor: default;
 }
 
-.home-project span {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-3xs);
+.cardBadge {
+	background-color: var(--color-background-xlight);
+}
+
+.cardBadge.with-breadcrumbs {
+	:global(.n8n-badge) {
+		padding-right: 0;
+	}
+	:global(.n8n-breadcrumbs) {
+		padding-left: var(--spacing-5xs);
+	}
+}
+
+.cardArchived {
+	background-color: var(--color-background-light);
+	border-color: var(--color-foreground-light);
 	color: var(--color-text-base);
 }
 

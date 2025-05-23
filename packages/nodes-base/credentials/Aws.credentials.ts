@@ -436,8 +436,6 @@ export class Aws implements ICredentialType {
 					endpointString = credentials.sesEndpoint;
 				} else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
 					endpointString = credentials.rekognitionEndpoint;
-				} else if (service === 'sqs' && credentials.sqsEndpoint) {
-					endpointString = credentials.sqsEndpoint;
 				} else if (service) {
 					endpointString = `https://${service}.${region}.amazonaws.com`;
 				} else if (service === 'ssm' && credentials.ssmEndpoint) {
@@ -476,13 +474,29 @@ export class Aws implements ICredentialType {
 
 		path = endpoint.pathname + endpoint.search;
 
+		// ! aws4.sign *must* have the body to sign, but we might have .form instead of .body
+		const requestWithForm = requestOptions as unknown as { form?: Record<string, string> };
+		let bodyContent = body !== '' ? body : undefined;
+		let contentTypeHeader: string | undefined = undefined;
+		if (requestWithForm.form) {
+			const params = new URLSearchParams();
+			for (const key in requestWithForm.form) {
+				params.append(key, requestWithForm.form[key]);
+			}
+			bodyContent = params.toString();
+			contentTypeHeader = 'application/x-www-form-urlencoded';
+		}
+
 		const signOpts = {
 			...requestOptions,
-			headers: requestOptions.headers ?? {},
+			headers: {
+				...(requestOptions.headers ?? {}),
+				...(contentTypeHeader && { 'content-type': contentTypeHeader }),
+			},
 			host: endpoint.host,
 			method,
 			path,
-			body: body !== '' ? body : undefined,
+			body: bodyContent,
 			region,
 		} as Request;
 

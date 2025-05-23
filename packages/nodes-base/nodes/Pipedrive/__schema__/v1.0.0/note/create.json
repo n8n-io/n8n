@@ -1,35 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "user_id": {
-            "type": "integer"
-        },
-        "content": {
-            "type": "string"
+        "active_flag": {
+            "type": "boolean"
         },
         "add_time": {
             "type": "string"
         },
-        "update_time": {
+        "content": {
             "type": "string"
         },
-        "active_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_deal_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_person_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_organization_flag": {
-            "type": "boolean"
-        },
-        "pinned_to_lead_flag": {
-            "type": "boolean"
+        "id": {
+            "type": "integer"
         },
         "last_update_user_id": {
             "type": "null"
@@ -40,10 +22,7 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "name"
-            ]
+            }
         },
         "person": {
             "type": "object",
@@ -51,21 +30,22 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "name"
-            ]
+            }
         },
-        "deal": {
-            "type": "object",
-            "properties": {
-                "title": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "title"
-            ]
+        "pinned_to_deal_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_lead_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_organization_flag": {
+            "type": "boolean"
+        },
+        "pinned_to_person_flag": {
+            "type": "boolean"
+        },
+        "update_time": {
+            "type": "string"
         },
         "user": {
             "type": "object",
@@ -73,19 +53,16 @@
                 "email": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "is_you": {
                     "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "email",
-                "name",
-                "icon_url",
-                "is_you"
-            ]
+            }
+        },
+        "user_id": {
+            "type": "integer"
         }
     },
     "version": 1

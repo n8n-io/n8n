@@ -1,7 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "has_more": {
+            "type": "boolean"
+        },
         "object": {
+            "type": "string"
+        },
+        "request_id": {
             "type": "string"
         },
         "results": {
@@ -9,72 +15,47 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "object": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "parent": {
-                        "type": "object",
-                        "properties": {
-                            "type": {
-                                "type": "string"
-                            },
-                            "page_id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "type"
-                        ]
-                    },
-                    "created_time": {
-                        "type": "string"
-                    },
-                    "last_edited_time": {
-                        "type": "string"
+                    "archived": {
+                        "type": "boolean"
                     },
                     "created_by": {
                         "type": "object",
                         "properties": {
-                            "object": {
-                                "type": "string"
-                            },
                             "id": {
                                 "type": "string"
+                            },
+                            "object": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "object",
-                            "id"
-                        ]
+                        }
                     },
-                    "last_edited_by": {
-                        "type": "object",
-                        "properties": {
-                            "object": {
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "object",
-                            "id"
-                        ]
+                    "created_time": {
+                        "type": "string"
                     },
                     "has_children": {
                         "type": "boolean"
                     },
-                    "archived": {
-                        "type": "boolean"
+                    "id": {
+                        "type": "string"
                     },
                     "in_trash": {
                         "type": "boolean"
                     },
-                    "type": {
+                    "last_edited_by": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "object": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "last_edited_time": {
+                        "type": "string"
+                    },
+                    "object": {
                         "type": "string"
                     },
                     "paragraph": {
@@ -88,26 +69,17 @@
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "type": {
-                                            "type": "string"
-                                        },
-                                        "text": {
-                                            "type": "object",
-                                            "properties": {
-                                                "content": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "content",
-                                                "link"
-                                            ]
-                                        },
                                         "annotations": {
                                             "type": "object",
                                             "properties": {
                                                 "bold": {
                                                     "type": "boolean"
+                                                },
+                                                "code": {
+                                                    "type": "boolean"
+                                                },
+                                                "color": {
+                                                    "type": "string"
                                                 },
                                                 "italic": {
                                                     "type": "boolean"
@@ -117,62 +89,44 @@
                                                 },
                                                 "underline": {
                                                     "type": "boolean"
-                                                },
-                                                "code": {
-                                                    "type": "boolean"
-                                                },
-                                                "color": {
-                                                    "type": "string"
                                                 }
-                                            },
-                                            "required": [
-                                                "bold",
-                                                "italic",
-                                                "strikethrough",
-                                                "underline",
-                                                "code",
-                                                "color"
-                                            ]
+                                            }
                                         },
                                         "plain_text": {
                                             "type": "string"
+                                        },
+                                        "text": {
+                                            "type": "object",
+                                            "properties": {
+                                                "content": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "type": {
+                                            "type": "string"
                                         }
-                                    },
-                                    "required": [
-                                        "type",
-                                        "annotations",
-                                        "plain_text",
-                                        "href"
-                                    ]
+                                    }
                                 }
                             }
-                        },
-                        "required": [
-                            "color",
-                            "text"
-                        ]
+                        }
+                    },
+                    "parent": {
+                        "type": "object",
+                        "properties": {
+                            "page_id": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "object",
-                    "id",
-                    "parent",
-                    "created_time",
-                    "last_edited_time",
-                    "created_by",
-                    "last_edited_by",
-                    "has_children",
-                    "archived",
-                    "in_trash",
-                    "type"
-                ]
+                }
             }
-        },
-        "has_more": {
-            "type": "boolean"
-        },
-        "request_id": {
-            "type": "string"
         }
     },
     "version": 1

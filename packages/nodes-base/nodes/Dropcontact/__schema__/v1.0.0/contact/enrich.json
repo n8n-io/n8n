@@ -1,40 +1,28 @@
 {
     "type": "object",
     "properties": {
-        "first_name": {
-            "type": "string"
-        },
-        "last_name": {
-            "type": "string"
-        },
-        "full_name": {
-            "type": "string"
-        },
         "civility": {
-            "type": "string"
-        },
-        "linkedin": {
             "type": "string"
         },
         "company": {
             "type": "string"
         },
-        "website": {
+        "company_linkedin": {
             "type": "string"
         },
         "country": {
             "type": "string"
         },
-        "company_linkedin": {
+        "first_name": {
             "type": "string"
         },
-        "phone": {
+        "full_name": {
             "type": "string"
         },
-        "nb_employees": {
+        "last_name": {
             "type": "string"
         },
-        "siren": {
+        "linkedin": {
             "type": "string"
         },
         "naf5_code": {
@@ -43,27 +31,27 @@
         "naf5_des": {
             "type": "string"
         },
+        "nb_employees": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "siren": {
+            "type": "string"
+        },
+        "siret": {
+            "type": "string"
+        },
+        "siret_address": {
+            "type": "string"
+        },
         "vat": {
             "type": "string"
         },
-        "email": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string"
-                    },
-                    "qualification": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "email",
-                    "qualification"
-                ]
-            }
+        "website": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

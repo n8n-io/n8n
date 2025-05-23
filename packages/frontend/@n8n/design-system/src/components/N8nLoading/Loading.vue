@@ -19,6 +19,7 @@ interface LoadingProps {
 	animated?: boolean;
 	loading?: boolean;
 	rows?: number;
+	cols?: number;
 	shrinkLast?: boolean;
 	variant?: (typeof VARIANT)[number];
 }
@@ -27,6 +28,7 @@ withDefaults(defineProps<LoadingProps>(), {
 	animated: true,
 	loading: true,
 	rows: 1,
+	cols: 0,
 	shrinkLast: true,
 	variant: 'p',
 });
@@ -38,7 +40,10 @@ withDefaults(defineProps<LoadingProps>(), {
 		:animated="animated"
 		:class="['n8n-loading', `n8n-loading-${variant}`]"
 	>
-		<template #template>
+		<template v-if="cols" #template>
+			<ElSkeletonItem v-for="i in cols" :key="i" />
+		</template>
+		<template v-else #template>
 			<div v-if="variant === 'h1'">
 				<div
 					v-for="(item, index) in rows"

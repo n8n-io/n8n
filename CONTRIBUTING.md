@@ -251,6 +251,8 @@ If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
 
+If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
+
 #### E2E tests
 
 ⚠️ You have to run `pnpm cypress:install` to install cypress before running the tests for the first time and to update cypress.

@@ -1,17 +1,27 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
         "badges": {
             "type": "object",
             "properties": {
                 "attachments": {
                     "type": "integer"
                 },
-                "fogbugz": {
-                    "type": "string"
+                "attachmentsByType": {
+                    "type": "object",
+                    "properties": {
+                        "trello": {
+                            "type": "object",
+                            "properties": {
+                                "board": {
+                                    "type": "integer"
+                                },
+                                "card": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
                 },
                 "checkItems": {
                     "type": "integer"
@@ -31,67 +41,31 @@
                 "dueComplete": {
                     "type": "boolean"
                 },
-                "lastUpdatedByAi": {
-                    "type": "boolean"
-                },
-                "attachmentsByType": {
-                    "type": "object",
-                    "properties": {
-                        "trello": {
-                            "type": "object",
-                            "properties": {
-                                "board": {
-                                    "type": "integer"
-                                },
-                                "card": {
-                                    "type": "integer"
-                                }
-                            },
-                            "required": [
-                                "board",
-                                "card"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "trello"
-                    ]
-                },
                 "externalSource": {
                     "type": "null"
+                },
+                "fogbugz": {
+                    "type": "string"
+                },
+                "lastUpdatedByAi": {
+                    "type": "boolean"
                 },
                 "location": {
                     "type": "boolean"
                 },
-                "votes": {
-                    "type": "integer"
+                "subscribed": {
+                    "type": "boolean"
                 },
                 "viewingMemberVoted": {
                     "type": "boolean"
                 },
-                "subscribed": {
-                    "type": "boolean"
+                "votes": {
+                    "type": "integer"
                 }
-            },
-            "required": [
-                "attachments",
-                "fogbugz",
-                "checkItems",
-                "checkItemsChecked",
-                "checkItemsEarliestDue",
-                "comments",
-                "description",
-                "due",
-                "dueComplete",
-                "lastUpdatedByAi",
-                "start",
-                "attachmentsByType",
-                "externalSource",
-                "location",
-                "votes",
-                "viewingMemberVoted",
-                "subscribed"
-            ]
+            }
+        },
+        "cardRole": {
+            "type": "null"
         },
         "checkItemStates": {
             "type": "array",
@@ -104,18 +78,25 @@
                     "state": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "idCheckItem",
-                    "state"
-                ]
+                }
             }
         },
         "closed": {
             "type": "boolean"
         },
-        "dueComplete": {
-            "type": "boolean"
+        "cover": {
+            "type": "object",
+            "properties": {
+                "brightness": {
+                    "type": "string"
+                },
+                "idUploadedBackground": {
+                    "type": "null"
+                },
+                "size": {
+                    "type": "string"
+                }
+            }
         },
         "dateLastActivity": {
             "type": "string"
@@ -123,8 +104,14 @@
         "desc": {
             "type": "string"
         },
+        "dueComplete": {
+            "type": "boolean"
+        },
         "email": {
             "type": "null"
+        },
+        "id": {
+            "type": "string"
         },
         "idBoard": {
             "type": "string"
@@ -153,6 +140,9 @@
         "idShort": {
             "type": "integer"
         },
+        "isTemplate": {
+            "type": "boolean"
+        },
         "labels": {
             "type": "array",
             "items": {
@@ -176,20 +166,14 @@
                     "uses": {
                         "type": "integer"
                     }
-                },
-                "required": [
-                    "id",
-                    "idBoard",
-                    "idOrganization",
-                    "name",
-                    "nodeId",
-                    "color",
-                    "uses"
-                ]
+                }
             }
         },
         "manualCoverAttachment": {
             "type": "boolean"
+        },
+        "mirrorSourceId": {
+            "type": "null"
         },
         "name": {
             "type": "string"
@@ -211,41 +195,7 @@
         },
         "url": {
             "type": "string"
-        },
-        "cover": {
-            "type": "object",
-            "properties": {
-                "idUploadedBackground": {
-                    "type": "null"
-                },
-                "size": {
-                    "type": "string"
-                },
-                "brightness": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "idAttachment",
-                "color",
-                "idUploadedBackground",
-                "size",
-                "brightness",
-                "idPlugin"
-            ]
-        },
-        "isTemplate": {
-            "type": "boolean"
-        },
-        "cardRole": {
-            "type": "null"
-        },
-        "mirrorSourceId": {
-            "type": "null"
         }
     },
-    "required": [
-        "id"
-    ],
     "version": 1
 }

@@ -1,13 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "portalId": {
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "objectId": {
             "type": "integer"
         },
         "objectType": {
             "type": "string"
         },
-        "objectId": {
+        "portalId": {
             "type": "integer"
         },
         "properties": {
@@ -16,6 +19,21 @@
                 "subject": {
                     "type": "object",
                     "properties": {
+                        "persistenceTimestamp": {
+                            "type": "integer"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
                         "versions": {
                             "type": "array",
                             "items": {
@@ -24,16 +42,16 @@
                                     "name": {
                                         "type": "string"
                                     },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
+                                    "persistenceTimestamp": {
                                         "type": "integer"
                                     },
-                                    "sourceId": {
+                                    "requestId": {
                                         "type": "string"
                                     },
                                     "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
                                         "type": "string"
                                     },
                                     "sourceVid": {
@@ -42,421 +60,19 @@
                                             "type": "integer"
                                         }
                                     },
-                                    "persistenceTimestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceLabel": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        },
-                        "value": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "sensitivityLevel": {
-                            "type": "string"
-                        },
-                        "persistenceTimestamp": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "versions",
-                        "value",
-                        "source",
-                        "timestamp",
-                        "sourceId",
-                        "updatedByUserId",
-                        "isEncrypted",
-                        "sensitivityLevel",
-                        "persistenceTimestamp"
-                    ]
-                },
-                "hs_email_subject": {
-                    "type": "object",
-                    "properties": {
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
                                     "timestamp": {
                                         "type": "integer"
                                     },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "persistenceTimestamp": {
-                                        "type": "integer"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "sourceId",
-                                    "source",
-                                    "sourceVid"
-                                ]
-                            }
-                        },
-                        "value": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "sourceId": {
-                            "type": "string"
-                        },
-                        "updatedByUserId": {
-                            "type": "null"
-                        },
-                        "sensitivityLevel": {
-                            "type": "string"
-                        },
-                        "persistenceTimestamp": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "versions",
-                        "value",
-                        "source",
-                        "timestamp",
-                        "sourceId",
-                        "updatedByUserId",
-                        "isEncrypted",
-                        "sensitivityLevel",
-                        "persistenceTimestamp"
-                    ]
-                },
-                "createdate": {
-                    "type": "object",
-                    "properties": {
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
                                     "value": {
                                         "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "useTimestampAsPersistenceTimestamp": {
-                                        "type": "boolean"
                                     }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "source",
-                                    "sourceVid"
-                                ]
+                                }
                             }
-                        },
-                        "value": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "sensitivityLevel": {
-                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "versions",
-                        "value",
-                        "source",
-                        "timestamp",
-                        "sourceId",
-                        "updatedByUserId",
-                        "isEncrypted",
-                        "sensitivityLevel",
-                        "persistenceTimestamp"
-                    ]
-                },
-                "support_form_message": {
-                    "type": "object",
-                    "properties": {
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "sourceLabel": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "persistenceTimestamp": {
-                                        "type": "integer"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "sourceId",
-                                    "sourceLabel",
-                                    "source",
-                                    "sourceVid",
-                                    "persistenceTimestamp"
-                                ]
-                            }
-                        },
-                        "value": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "sensitivityLevel": {
-                            "type": "string"
-                        },
-                        "sourceId": {
-                            "type": "string"
-                        },
-                        "updatedByUserId": {
-                            "type": "null"
-                        },
-                        "isEncrypted": {
-                            "type": "null"
-                        },
-                        "persistenceTimestamp": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "versions",
-                        "value",
-                        "source",
-                        "timestamp",
-                        "sensitivityLevel",
-                        "sourceId",
-                        "updatedByUserId",
-                        "isEncrypted",
-                        "persistenceTimestamp"
-                    ]
-                },
-                "support_form_subject": {
-                    "type": "object",
-                    "properties": {
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "sourceLabel": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "persistenceTimestamp": {
-                                        "type": "integer"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "sourceId",
-                                    "sourceLabel",
-                                    "source",
-                                    "sourceVid",
-                                    "persistenceTimestamp"
-                                ]
-                            }
-                        },
-                        "value": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "sensitivityLevel": {
-                            "type": "string"
-                        },
-                        "sourceId": {
-                            "type": "string"
-                        },
-                        "updatedByUserId": {
-                            "type": "null"
-                        },
-                        "isEncrypted": {
-                            "type": "null"
-                        },
-                        "persistenceTimestamp": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "versions",
-                        "value",
-                        "source",
-                        "timestamp",
-                        "sensitivityLevel",
-                        "sourceId",
-                        "updatedByUserId",
-                        "isEncrypted",
-                        "persistenceTimestamp"
-                    ]
-                },
-                "support_form_topic": {
-                    "type": "object",
-                    "properties": {
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "sourceId": {
-                                        "type": "string"
-                                    },
-                                    "sourceLabel": {
-                                        "type": "string"
-                                    },
-                                    "source": {
-                                        "type": "string"
-                                    },
-                                    "persistenceTimestamp": {
-                                        "type": "integer"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "value",
-                                    "timestamp",
-                                    "sourceId",
-                                    "sourceLabel",
-                                    "source",
-                                    "sourceVid",
-                                    "persistenceTimestamp"
-                                ]
-                            }
-                        },
-                        "value": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "timestamp": {
-                            "type": "integer"
-                        },
-                        "sensitivityLevel": {
-                            "type": "string"
-                        },
-                        "sourceId": {
-                            "type": "string"
-                        },
-                        "updatedByUserId": {
-                            "type": "null"
-                        },
-                        "isEncrypted": {
-                            "type": "null"
-                        },
-                        "persistenceTimestamp": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "versions",
-                        "value",
-                        "source",
-                        "timestamp",
-                        "sensitivityLevel",
-                        "sourceId",
-                        "updatedByUserId",
-                        "isEncrypted",
-                        "persistenceTimestamp"
-                    ]
+                    }
                 }
             }
-        },
-        "isDeleted": {
-            "type": "boolean"
         }
     },
-    "version": 1
+    "version": 3
 }

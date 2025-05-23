@@ -23,9 +23,13 @@ import {
 	faBrain,
 	faCalculator,
 	faCalendar,
+	faCaretDown,
+	faCaretRight,
+	faCaretUp,
 	faChartBar,
 	faCheck,
 	faCheckCircle,
+	faCheckDouble,
 	faCheckSquare,
 	faChevronDown,
 	faChevronUp,
@@ -128,6 +132,7 @@ import {
 	faSearchPlus,
 	faServer,
 	faScrewdriver,
+	faShare,
 	faSmile,
 	faSignInAlt,
 	faSignOutAlt,
@@ -184,7 +189,12 @@ import {
 	statusCanceled,
 	statusNew,
 	statusUnknown,
+	statusWarning,
 	faPopOut,
+	faJSON,
+	faSchema,
+	faBinary,
+	faText,
 } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -216,9 +226,13 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faBrain);
 		addIcon(faCalculator);
 		addIcon(faCalendar);
+		addIcon(faCaretDown);
+		addIcon(faCaretRight);
+		addIcon(faCaretUp);
 		addIcon(faChartBar);
 		addIcon(faCheck);
 		addIcon(faCheckCircle);
+		addIcon(faCheckDouble);
 		addIcon(faCheckSquare);
 		addIcon(faChevronLeft);
 		addIcon(faChevronRight);
@@ -324,6 +338,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faSearchPlus);
 		addIcon(faServer);
 		addIcon(faScrewdriver);
+		addIcon(faShare);
 		addIcon(faSmile);
 		addIcon(faSignInAlt);
 		addIcon(faSignOutAlt);
@@ -377,8 +392,13 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(statusCanceled);
 		addIcon(statusNew);
 		addIcon(statusUnknown);
+		addIcon(statusWarning);
 
 		addIcon(faPopOut);
+		addIcon(faSchema);
+		addIcon(faJSON);
+		addIcon(faBinary);
+		addIcon(faText);
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},

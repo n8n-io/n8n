@@ -1,4 +1,4 @@
-import { NodeConnectionType, type INode, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode, type IRunData } from 'n8n-workflow';
 
 import type { DirectedGraph } from './directed-graph';
 
@@ -28,7 +28,7 @@ export function cleanRunData(
 			for (const subNodeConnection of subNodeConnections) {
 				// Sub nodes never use the Main connection type, so this filters out
 				// the connection that goes upstream of the node to clean.
-				if (subNodeConnection.type === NodeConnectionType.Main) {
+				if (subNodeConnection.type === NodeConnectionTypes.Main) {
 					continue;
 				}
 

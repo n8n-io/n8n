@@ -8,7 +8,7 @@ import {
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -130,7 +130,7 @@ function onTabSelect(tab: string) {
 			node_type: activeNode.value?.type,
 			workflow_id: workflowsStore.workflowId,
 			push_ref: props.pushRef,
-			pane: NodeConnectionType.Main,
+			pane: NodeConnectionTypes.Main,
 			type: 'docs',
 		});
 	}

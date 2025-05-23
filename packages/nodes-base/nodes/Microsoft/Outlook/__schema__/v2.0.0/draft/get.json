@@ -1,21 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "conversationId": {
-            "type": "string"
-        },
-        "subject": {
-            "type": "string"
-        },
-        "bodyPreview": {
-            "type": "string"
-        },
-        "hasAttachments": {
-            "type": "boolean"
-        },
         "@odata.context": {
             "type": "string"
         },
@@ -25,17 +10,28 @@
         "body": {
             "type": "object",
             "properties": {
-                "contentType": {
-                    "type": "string"
-                },
                 "content": {
                     "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
+            }
+        },
+        "bodyPreview": {
+            "type": "string"
+        },
+        "conversationId": {
+            "type": "string"
+        },
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
         }
     },
     "version": 1

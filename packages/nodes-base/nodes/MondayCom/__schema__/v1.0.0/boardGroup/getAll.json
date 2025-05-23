@@ -1,28 +1,21 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "title": {
-            "type": "string"
+        "archived": {
+            "type": "boolean"
         },
         "color": {
+            "type": "string"
+        },
+        "id": {
             "type": "string"
         },
         "position": {
             "type": "string"
         },
-        "archived": {
-            "type": "boolean"
+        "title": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "title",
-        "color",
-        "position",
-        "archived"
-    ],
     "version": 1
 }

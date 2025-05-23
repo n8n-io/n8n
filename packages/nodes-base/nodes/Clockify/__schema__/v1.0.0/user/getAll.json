@@ -1,58 +1,102 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "activeWorkspace": {
+            "type": "string"
+        },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customFieldId": {
+                        "type": "string"
+                    },
+                    "customFieldName": {
+                        "type": "string"
+                    },
+                    "customFieldType": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "defaultWorkspace": {
             "type": "string"
         },
         "email": {
             "type": "string"
         },
-        "activeWorkspace": {
-            "type": "string"
-        },
-        "defaultWorkspace": {
+        "id": {
             "type": "string"
         },
         "settings": {
             "type": "object",
             "properties": {
-                "weekStart": {
-                    "type": "string"
-                },
-                "timeZone": {
-                    "type": "string"
-                },
-                "timeFormat": {
-                    "type": "string"
-                },
-                "dateFormat": {
-                    "type": "string"
-                },
-                "sendNewsletter": {
-                    "type": "boolean"
-                },
-                "weeklyUpdates": {
-                    "type": "boolean"
-                },
-                "longRunning": {
-                    "type": "boolean"
-                },
-                "scheduledReports": {
+                "alerts": {
                     "type": "boolean"
                 },
                 "approval": {
                     "type": "boolean"
                 },
-                "pto": {
+                "collapseAllProjectLists": {
                     "type": "boolean"
                 },
-                "alerts": {
+                "dashboardPinToTop": {
+                    "type": "boolean"
+                },
+                "dashboardSelection": {
+                    "type": "string"
+                },
+                "dashboardViewType": {
+                    "type": "string"
+                },
+                "dateFormat": {
+                    "type": "string"
+                },
+                "groupSimilarEntriesDisabled": {
+                    "type": "boolean"
+                },
+                "isCompactViewOn": {
+                    "type": "boolean"
+                },
+                "lang": {
+                    "type": "string"
+                },
+                "longRunning": {
+                    "type": "boolean"
+                },
+                "multiFactorEnabled": {
+                    "type": "boolean"
+                },
+                "myStartOfDay": {
+                    "type": "string"
+                },
+                "onboarding": {
+                    "type": "boolean"
+                },
+                "projectPickerTaskFilter": {
+                    "type": "boolean"
+                },
+                "pto": {
                     "type": "boolean"
                 },
                 "reminders": {
                     "type": "boolean"
                 },
-                "timeTrackingManual": {
+                "scheduledReports": {
+                    "type": "boolean"
+                },
+                "scheduling": {
+                    "type": "boolean"
+                },
+                "sendNewsletter": {
+                    "type": "boolean"
+                },
+                "showOnlyWorkingDays": {
                     "type": "boolean"
                 },
                 "summaryReportSettings": {
@@ -64,129 +108,31 @@
                         "subgroup": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "group",
-                        "subgroup"
-                    ]
-                },
-                "isCompactViewOn": {
-                    "type": "boolean"
-                },
-                "dashboardSelection": {
-                    "type": "string"
-                },
-                "dashboardViewType": {
-                    "type": "string"
-                },
-                "dashboardPinToTop": {
-                    "type": "boolean"
-                },
-                "collapseAllProjectLists": {
-                    "type": "boolean"
-                },
-                "groupSimilarEntriesDisabled": {
-                    "type": "boolean"
-                },
-                "myStartOfDay": {
-                    "type": "string"
-                },
-                "projectPickerTaskFilter": {
-                    "type": "boolean"
-                },
-                "lang": {
-                    "type": "string"
-                },
-                "multiFactorEnabled": {
-                    "type": "boolean"
+                    }
                 },
                 "theme": {
                     "type": "string"
                 },
-                "scheduling": {
+                "timeFormat": {
+                    "type": "string"
+                },
+                "timeTrackingManual": {
                     "type": "boolean"
                 },
-                "onboarding": {
+                "timeZone": {
+                    "type": "string"
+                },
+                "weeklyUpdates": {
                     "type": "boolean"
                 },
-                "showOnlyWorkingDays": {
-                    "type": "boolean"
+                "weekStart": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "weekStart",
-                "timeZone",
-                "timeFormat",
-                "dateFormat",
-                "sendNewsletter",
-                "weeklyUpdates",
-                "longRunning",
-                "scheduledReports",
-                "approval",
-                "pto",
-                "alerts",
-                "reminders",
-                "timeTrackingManual",
-                "summaryReportSettings",
-                "isCompactViewOn",
-                "dashboardSelection",
-                "dashboardViewType",
-                "dashboardPinToTop",
-                "projectListCollapse",
-                "collapseAllProjectLists",
-                "groupSimilarEntriesDisabled",
-                "myStartOfDay",
-                "projectPickerTaskFilter",
-                "lang",
-                "multiFactorEnabled",
-                "theme",
-                "scheduling",
-                "onboarding",
-                "showOnlyWorkingDays"
-            ]
+            }
         },
         "status": {
             "type": "string"
-        },
-        "customFields": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "customFieldId": {
-                        "type": "string"
-                    },
-                    "userId": {
-                        "type": "string"
-                    },
-                    "customFieldName": {
-                        "type": "string"
-                    },
-                    "customFieldType": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "customFieldId",
-                    "userId",
-                    "value",
-                    "customFieldName",
-                    "customFieldType"
-                ]
-            }
         }
     },
-    "required": [
-        "id",
-        "email",
-        "name",
-        "memberships",
-        "profilePicture",
-        "activeWorkspace",
-        "defaultWorkspace",
-        "settings",
-        "status",
-        "customFields"
-    ],
     "version": 1
 }

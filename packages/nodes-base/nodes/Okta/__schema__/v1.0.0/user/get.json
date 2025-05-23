@@ -1,13 +1,10 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
         "created": {
+            "type": "string"
+        },
+        "id": {
             "type": "string"
         },
         "lastUpdated": {
@@ -16,6 +13,9 @@
         "profile": {
             "type": "object",
             "properties": {
+                "email": {
+                    "type": "string"
+                },
                 "firstName": {
                     "type": "string"
                 },
@@ -24,28 +24,12 @@
                 },
                 "login": {
                     "type": "string"
-                },
-                "email": {
-                    "type": "string"
                 }
-            },
-            "required": [
-                "firstName",
-                "lastName",
-                "login",
-                "email"
-            ]
+            }
+        },
+        "status": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "status",
-        "created",
-        "activated",
-        "lastLogin",
-        "lastUpdated",
-        "passwordChanged",
-        "profile"
-    ],
     "version": 1
 }

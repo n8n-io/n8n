@@ -19,18 +19,8 @@
                 "Positive": {
                     "type": "number"
                 }
-            },
-            "required": [
-                "Mixed",
-                "Negative",
-                "Neutral",
-                "Positive"
-            ]
+            }
         }
     },
-    "required": [
-        "Sentiment",
-        "SentimentScore"
-    ],
     "version": 1
 }

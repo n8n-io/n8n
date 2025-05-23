@@ -3,6 +3,9 @@ import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
+import { setActivePinia, type Pinia } from 'pinia';
+import { defaultSettings } from '../__tests__/defaults';
+import { useSettingsStore } from '../stores/settings.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -15,11 +18,21 @@ vi.mock('vue-router', () => {
 	};
 });
 
+vi.mock('@/composables/useWorkflowHelpers', async (importOriginal) => {
+	const actual: object = await importOriginal();
+	return { ...actual, resolveParameter: vi.fn(() => 123) };
+});
+
 const renderModal = createComponentRenderer(ExpressionEditModal);
 
 describe('ExpressionEditModal', () => {
+	let pinia: Pinia;
+
 	beforeEach(() => {
 		createAppModals();
+		pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+		useSettingsStore().setSettings(defaultSettings);
 	});
 
 	afterEach(() => {
@@ -28,8 +41,6 @@ describe('ExpressionEditModal', () => {
 	});
 
 	it('renders correctly', async () => {
-		const pinia = createTestingPinia();
-
 		const { getByTestId } = renderModal({
 			pinia,
 			props: {
@@ -52,8 +63,6 @@ describe('ExpressionEditModal', () => {
 	});
 
 	it('is read only', async () => {
-		const pinia = createTestingPinia();
-
 		const { getByTestId } = renderModal({
 			pinia,
 			props: {

@@ -20,7 +20,7 @@ export const mockSimplifiedNodeType = (
 	name: 'sampleName',
 	icon: 'fa:sampleIcon',
 	iconUrl: 'https://example.com/icon.png',
-	group: ['group1', 'group2'],
+	group: ['input', 'output'],
 	description: 'Sample description',
 	codex: {
 		categories: ['category1', 'category2'],

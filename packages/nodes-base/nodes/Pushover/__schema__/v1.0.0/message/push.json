@@ -1,16 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "status": {
-            "type": "integer"
-        },
         "request": {
             "type": "string"
+        },
+        "status": {
+            "type": "integer"
         }
     },
-    "required": [
-        "status",
-        "request"
-    ],
     "version": 1
 }

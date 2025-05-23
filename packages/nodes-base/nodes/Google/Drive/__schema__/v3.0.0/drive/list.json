@@ -4,17 +4,12 @@
         "id": {
             "type": "string"
         },
-        "name": {
+        "kind": {
             "type": "string"
         },
-        "kind": {
+        "name": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "kind"
-    ],
     "version": 1
 }

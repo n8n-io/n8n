@@ -5,6 +5,7 @@ import type {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	ITaskStartedData,
 	IWorkflowBase,
 	Workflow,
 	WorkflowExecuteMode,
@@ -12,7 +13,11 @@ import type {
 
 export type ExecutionLifecyleHookHandlers = {
 	nodeExecuteBefore: Array<
-		(this: ExecutionLifecycleHooks, nodeName: string) => Promise<void> | void
+		(
+			this: ExecutionLifecycleHooks,
+			nodeName: string,
+			data: ITaskStartedData,
+		) => Promise<void> | void
 	>;
 
 	nodeExecuteAfter: Array<

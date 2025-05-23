@@ -27,9 +27,11 @@ import type {
 	IObservableObject,
 	NodeParameterValueType,
 	INodeOutputConfiguration,
+	NodeConnectionType,
 } from './Interfaces';
-import { NodeConnectionType } from './Interfaces';
+import { NodeConnectionTypes } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
+import { applyAccessPatterns } from './NodeReferenceParserUtils';
 import * as ObservableObject from './ObservableObject';
 
 function dedupe<T>(arr: T[]): T[] {
@@ -111,6 +113,7 @@ export class Workflow {
 				true,
 				false,
 				node,
+				nodeType.description,
 			);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
@@ -331,43 +334,7 @@ export class Workflow {
 				typeof parameterValue === 'string' &&
 				(parameterValue.charAt(0) === '=' || hasRenamableContent)
 			) {
-				// Is expression so has to be rewritten
-				// To not run the "expensive" regex stuff when it is not needed
-				// make a simple check first if it really contains the node-name
-				if (parameterValue.includes(currentName)) {
-					// Really contains node-name (even though we do not know yet if really as $node-expression)
-
-					const escapedOldName = backslashEscape(currentName); // for match
-					const escapedNewName = dollarEscape(newName); // for replacement
-
-					const setNewName = (expression: string, oldPattern: string) =>
-						expression.replace(new RegExp(oldPattern, 'g'), `$1${escapedNewName}$2`);
-
-					if (parameterValue.includes('$(')) {
-						const oldPattern = String.raw`(\$\(['"])${escapedOldName}(['"]\))`;
-						parameterValue = setNewName(parameterValue, oldPattern);
-					}
-
-					if (parameterValue.includes('$node[')) {
-						const oldPattern = String.raw`(\$node\[['"])${escapedOldName}(['"]\])`;
-						parameterValue = setNewName(parameterValue, oldPattern);
-					}
-
-					if (parameterValue.includes('$node.')) {
-						const oldPattern = String.raw`(\$node\.)${escapedOldName}(\.?)`;
-						parameterValue = setNewName(parameterValue, oldPattern);
-
-						if (hasDotNotationBannedChar(newName)) {
-							const regex = new RegExp(`.${backslashEscape(newName)}( |\\.)`, 'g');
-							parameterValue = parameterValue.replace(regex, `["${escapedNewName}"]$1`);
-						}
-					}
-
-					if (parameterValue.includes('$items(')) {
-						const oldPattern = String.raw`(\$items\(['"])${escapedOldName}(['"],|['"]\))`;
-						parameterValue = setNewName(parameterValue, oldPattern);
-					}
-				}
+				parameterValue = applyAccessPatterns(parameterValue, currentName, newName);
 			}
 
 			return parameterValue;
@@ -495,7 +462,7 @@ export class Workflow {
 			return currentHighest;
 		}
 
-		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(NodeConnectionType.Main)) {
+		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(NodeConnectionTypes.Main)) {
 			// Node does not have incoming connections of given type
 			return currentHighest;
 		}
@@ -515,7 +482,8 @@ export class Workflow {
 		let connectionsByIndex: IConnection[] | null;
 		for (
 			let connectionIndex = 0;
-			connectionIndex < this.connectionsByDestinationNode[nodeName][NodeConnectionType.Main].length;
+			connectionIndex <
+			this.connectionsByDestinationNode[nodeName][NodeConnectionTypes.Main].length;
 			connectionIndex++
 		) {
 			if (nodeConnectionIndex !== undefined && nodeConnectionIndex !== connectionIndex) {
@@ -523,7 +491,7 @@ export class Workflow {
 				continue;
 			}
 			connectionsByIndex =
-				this.connectionsByDestinationNode[nodeName][NodeConnectionType.Main][connectionIndex];
+				this.connectionsByDestinationNode[nodeName][NodeConnectionTypes.Main][connectionIndex];
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			connectionsByIndex?.forEach((connection) => {
 				if (checkedNodes.includes(connection.node)) {
@@ -564,7 +532,7 @@ export class Workflow {
 	 */
 	getChildNodes(
 		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
+		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
@@ -578,7 +546,7 @@ export class Workflow {
 	 */
 	getParentNodes(
 		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
+		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
@@ -594,7 +562,7 @@ export class Workflow {
 	getConnectedNodes(
 		connections: IConnections,
 		nodeName: string,
-		connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
+		connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 		checkedNodesIncoming?: string[],
 	): string[] {
@@ -700,7 +668,7 @@ export class Workflow {
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
-		const type: NodeConnectionType = NodeConnectionType.Main;
+		const type: NodeConnectionType = NodeConnectionTypes.Main;
 		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
@@ -762,7 +730,7 @@ export class Workflow {
 			if (
 				!!outputs.find(
 					(output) =>
-						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionType.Main,
+						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionTypes.Main,
 				)
 			) {
 				// Get the first node which is connected to a non-main output
@@ -807,7 +775,7 @@ export class Workflow {
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
-		type: NodeConnectionType = NodeConnectionType.Main,
+		type: NodeConnectionType = NodeConnectionTypes.Main,
 		depth = -1,
 		checkedNodes?: string[],
 	): INodeConnection | undefined {
@@ -959,20 +927,4 @@ export class Workflow {
 
 		return this.__getStartNode(Object.keys(this.nodes));
 	}
-}
-
-function hasDotNotationBannedChar(nodeName: string) {
-	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
-
-	return DOT_NOTATION_BANNED_CHARS.test(nodeName);
-}
-
-function backslashEscape(nodeName: string) {
-	const BACKSLASH_ESCAPABLE_CHARS = /[.*+?^${}()|[\]\\]/g;
-
-	return nodeName.replace(BACKSLASH_ESCAPABLE_CHARS, (char) => `\\${char}`);
-}
-
-function dollarEscape(nodeName: string) {
-	return nodeName.replace(new RegExp('\\$', 'g'), '$$$$');
 }

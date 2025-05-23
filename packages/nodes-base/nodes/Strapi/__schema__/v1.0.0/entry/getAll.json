@@ -1,29 +1,20 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
         "attributes": {
             "type": "object",
             "properties": {
-                "scene_id": {
-                    "type": "integer"
-                },
                 "createdAt": {
                     "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "locale": {
-                    "type": "string"
                 }
             }
+        },
+        "id": {
+            "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

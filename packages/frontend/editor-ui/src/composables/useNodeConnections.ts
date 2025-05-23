@@ -2,7 +2,7 @@ import type { CanvasNodeData } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { Connection } from '@vue-flow/core';
 import { parseCanvasConnectionHandleString } from '@/utils/canvasUtils';
 
@@ -20,11 +20,11 @@ export function useNodeConnections({
 	 */
 
 	const mainInputs = computed(() =>
-		unref(inputs).filter((input) => input.type === NodeConnectionType.Main),
+		unref(inputs).filter((input) => input.type === NodeConnectionTypes.Main),
 	);
 
 	const nonMainInputs = computed(() =>
-		unref(inputs).filter((input) => input.type !== NodeConnectionType.Main),
+		unref(inputs).filter((input) => input.type !== NodeConnectionTypes.Main),
 	);
 
 	const requiredNonMainInputs = computed(() =>
@@ -32,7 +32,7 @@ export function useNodeConnections({
 	);
 
 	const mainInputConnections = computed(
-		() => unref(connections)[CanvasConnectionMode.Input][NodeConnectionType.Main] ?? [],
+		() => unref(connections)[CanvasConnectionMode.Input][NodeConnectionTypes.Main] ?? [],
 	);
 
 	/**
@@ -40,15 +40,15 @@ export function useNodeConnections({
 	 */
 
 	const mainOutputs = computed(() =>
-		unref(outputs).filter((output) => output.type === NodeConnectionType.Main),
+		unref(outputs).filter((output) => output.type === NodeConnectionTypes.Main),
 	);
 
 	const nonMainOutputs = computed(() =>
-		unref(outputs).filter((output) => output.type !== NodeConnectionType.Main),
+		unref(outputs).filter((output) => output.type !== NodeConnectionTypes.Main),
 	);
 
 	const mainOutputConnections = computed(
-		() => unref(connections)[CanvasConnectionMode.Output][NodeConnectionType.Main] ?? [],
+		() => unref(connections)[CanvasConnectionMode.Output][NodeConnectionTypes.Main] ?? [],
 	);
 
 	/**

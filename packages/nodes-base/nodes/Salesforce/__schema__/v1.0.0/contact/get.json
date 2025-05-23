@@ -10,11 +10,16 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "type",
-                "url"
-            ]
+            }
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "HomePhone": {
+            "type": "null"
         },
         "Id": {
             "type": "string"
@@ -22,40 +27,10 @@
         "IsDeleted": {
             "type": "boolean"
         },
-        "MasterRecordId": {
-            "type": "null"
-        },
-        "LastName": {
-            "type": "string"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "OwnerId": {
-            "type": "string"
-        },
-        "CreatedDate": {
-            "type": "string"
-        },
-        "CreatedById": {
-            "type": "string"
-        },
-        "LastModifiedDate": {
-            "type": "string"
-        },
-        "LastModifiedById": {
-            "type": "string"
-        },
-        "SystemModstamp": {
-            "type": "string"
-        },
-        "LastCURequestDate": {
-            "type": "null"
-        },
-        "LastCUUpdateDate": {
-            "type": "null"
-        },
         "IsEmailBounced": {
+            "type": "boolean"
+        },
+        "IsPriorityRecord": {
             "type": "boolean"
         },
         "Jigsaw": {
@@ -64,23 +39,41 @@
         "JigsawContactId": {
             "type": "null"
         },
-        "IsPriorityRecord": {
-            "type": "boolean"
+        "LastCURequestDate": {
+            "type": "null"
+        },
+        "LastCUUpdateDate": {
+            "type": "null"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "LastName": {
+            "type": "string"
+        },
+        "MasterRecordId": {
+            "type": "null"
         },
         "MiddleName": {
             "type": "null"
         },
+        "Name": {
+            "type": "string"
+        },
+        "OtherPhone": {
+            "type": "null"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
         "Suffix": {
             "type": "null"
         },
-        "LID__LinkedIn_Company_Id__c": {
-            "type": "null"
-        },
-        "LID__LinkedIn_Member_Token__c": {
-            "type": "null"
-        },
-        "LID__No_longer_at_Company__c": {
-            "type": "null"
+        "SystemModstamp": {
+            "type": "string"
         }
     },
     "version": 1

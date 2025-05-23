@@ -1,40 +1,136 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "article_count": {
             "type": "integer"
         },
-        "group_id": {
+        "articles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "attachments": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "filename": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "preferences": {
+                                    "type": "object",
+                                    "properties": {
+                                        "Content-Disposition": {
+                                            "type": "string"
+                                        },
+                                        "Content-ID": {
+                                            "type": "string"
+                                        },
+                                        "Content-Type": {
+                                            "type": "string"
+                                        },
+                                        "Mime-Type": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "size": {
+                                    "type": "string"
+                                },
+                                "store_file_id": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "content_type": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "created_by_id": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "internal": {
+                        "type": "boolean"
+                    },
+                    "sender": {
+                        "type": "string"
+                    },
+                    "sender_id": {
+                        "type": "integer"
+                    },
+                    "ticket_id": {
+                        "type": "integer"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "type_id": {
+                        "type": "integer"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    },
+                    "updated_by_id": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "checklist_id": {
+            "type": "null"
+        },
+        "create_article_sender_id": {
             "type": "integer"
         },
-        "priority_id": {
+        "create_article_type_id": {
             "type": "integer"
         },
-        "state_id": {
-            "type": "integer"
-        },
-        "number": {
+        "created_at": {
             "type": "string"
         },
-        "title": {
-            "type": "string"
-        },
-        "owner_id": {
+        "created_by_id": {
             "type": "integer"
         },
         "customer_id": {
             "type": "integer"
         },
+        "group_id": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "internal_issue_type": {
+            "type": "null"
+        },
+        "internal_ticket": {
+            "type": "boolean"
+        },
         "note": {
             "type": "null"
         },
-        "create_article_type_id": {
-            "type": "integer"
+        "number": {
+            "type": "string"
         },
-        "create_article_sender_id": {
-            "type": "integer"
-        },
-        "article_count": {
+        "owner_id": {
             "type": "integer"
         },
         "preferences": {
@@ -43,21 +139,6 @@
                 "escalation_calculation": {
                     "type": "object",
                     "properties": {
-                        "first_response_at": {
-                            "type": "string"
-                        },
-                        "last_update_at": {
-                            "type": "string"
-                        },
-                        "last_contact_at": {
-                            "type": "string"
-                        },
-                        "sla_id": {
-                            "type": "integer"
-                        },
-                        "sla_updated_at": {
-                            "type": "string"
-                        },
                         "calendar_id": {
                             "type": "integer"
                         },
@@ -66,176 +147,58 @@
                         },
                         "escalation_disabled": {
                             "type": "boolean"
+                        },
+                        "first_response_at": {
+                            "type": "string"
+                        },
+                        "last_contact_at": {
+                            "type": "string"
+                        },
+                        "last_update_at": {
+                            "type": "string"
+                        },
+                        "sla_id": {
+                            "type": "integer"
+                        },
+                        "sla_updated_at": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "escalation_disabled"
-                    ]
+                    }
                 }
             }
         },
-        "updated_by_id": {
+        "priority_id": {
             "type": "integer"
-        },
-        "created_by_id": {
-            "type": "integer"
-        },
-        "created_at": {
-            "type": "string"
-        },
-        "updated_at": {
-            "type": "string"
-        },
-        "checklist_id": {
-            "type": "null"
         },
         "product": {
-            "type": "string"
-        },
-        "ticket_severity": {
-            "type": "string"
-        },
-        "sub_priority": {
             "type": "string"
         },
         "resolution": {
             "type": "string"
         },
+        "state_id": {
+            "type": "integer"
+        },
+        "sub_priority": {
+            "type": "string"
+        },
+        "ticket_severity": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
         "type_from_ahlsell": {
             "type": "string"
         },
-        "wait_for_3rd_party": {
+        "updated_at": {
             "type": "string"
         },
-        "internal_ticket": {
-            "type": "boolean"
+        "updated_by_id": {
+            "type": "integer"
         },
-        "internal_issue_type": {
-            "type": "null"
-        },
-        "articles": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "ticket_id": {
-                        "type": "integer"
-                    },
-                    "type_id": {
-                        "type": "integer"
-                    },
-                    "sender_id": {
-                        "type": "integer"
-                    },
-                    "content_type": {
-                        "type": "string"
-                    },
-                    "body": {
-                        "type": "string"
-                    },
-                    "internal": {
-                        "type": "boolean"
-                    },
-                    "updated_by_id": {
-                        "type": "integer"
-                    },
-                    "created_by_id": {
-                        "type": "integer"
-                    },
-                    "created_at": {
-                        "type": "string"
-                    },
-                    "updated_at": {
-                        "type": "string"
-                    },
-                    "attachments": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {
-                                    "type": "integer"
-                                },
-                                "store_file_id": {
-                                    "type": "integer"
-                                },
-                                "filename": {
-                                    "type": "string"
-                                },
-                                "size": {
-                                    "type": "string"
-                                },
-                                "preferences": {
-                                    "type": "object",
-                                    "properties": {
-                                        "Content-Type": {
-                                            "type": "string"
-                                        },
-                                        "Mime-Type": {
-                                            "type": "string"
-                                        },
-                                        "Content-ID": {
-                                            "type": "string"
-                                        },
-                                        "Content-Disposition": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            },
-                            "required": [
-                                "id",
-                                "filename",
-                                "size",
-                                "preferences"
-                            ]
-                        }
-                    },
-                    "created_by": {
-                        "type": "string"
-                    },
-                    "updated_by": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "sender": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "ticket_id",
-                    "type_id",
-                    "sender_id",
-                    "from",
-                    "to",
-                    "cc",
-                    "subject",
-                    "reply_to",
-                    "message_id",
-                    "message_id_md5",
-                    "in_reply_to",
-                    "content_type",
-                    "body",
-                    "internal",
-                    "preferences",
-                    "updated_by_id",
-                    "created_by_id",
-                    "origin_by_id",
-                    "created_at",
-                    "updated_at",
-                    "attachments",
-                    "created_by",
-                    "updated_by",
-                    "type",
-                    "sender"
-                ]
-            }
+        "wait_for_3rd_party": {
+            "type": "string"
         }
     },
     "version": 1

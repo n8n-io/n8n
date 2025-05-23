@@ -1,69 +1,79 @@
 {
     "type": "object",
     "properties": {
-        "DueDate": {
+        "APAccountRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "DocNumber": {
             "type": "string"
         },
         "domain": {
             "type": "string"
         },
-        "sparse": {
-            "type": "boolean"
+        "DueDate": {
+            "type": "string"
         },
         "Id": {
             "type": "string"
-        },
-        "SyncToken": {
-            "type": "string"
-        },
-        "MetaData": {
-            "type": "object",
-            "properties": {
-                "CreateTime": {
-                    "type": "string"
-                },
-                "LastUpdatedTime": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "CreateTime",
-                "LastUpdatedTime"
-            ]
-        },
-        "TxnDate": {
-            "type": "string"
-        },
-        "CurrencyRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
         },
         "Line": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "Id": {
-                        "type": "string"
-                    },
-                    "LineNum": {
-                        "type": "integer"
+                    "AccountBasedExpenseLineDetail": {
+                        "type": "object",
+                        "properties": {
+                            "AccountRef": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "BillableStatus": {
+                                "type": "string"
+                            },
+                            "TaxCodeRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
                     },
                     "Description": {
                         "type": "string"
                     },
                     "DetailType": {
+                        "type": "string"
+                    },
+                    "Id": {
                         "type": "string"
                     },
                     "ItemBasedExpenseLineDetail": {
@@ -75,17 +85,13 @@
                             "ItemRef": {
                                 "type": "object",
                                 "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    },
                                     "name": {
                                         "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "value",
-                                    "name"
-                                ]
+                                }
                             },
                             "Qty": {
                                 "type": "integer"
@@ -96,108 +102,15 @@
                                     "value": {
                                         "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "value"
-                                ]
+                                }
                             }
-                        },
-                        "required": [
-                            "BillableStatus",
-                            "ItemRef",
-                            "UnitPrice",
-                            "Qty",
-                            "TaxCodeRef"
-                        ]
+                        }
                     },
-                    "AccountBasedExpenseLineDetail": {
-                        "type": "object",
-                        "properties": {
-                            "AccountRef": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    },
-                                    "name": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "value",
-                                    "name"
-                                ]
-                            },
-                            "BillableStatus": {
-                                "type": "string"
-                            },
-                            "TaxCodeRef": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "value"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "AccountRef",
-                            "BillableStatus",
-                            "TaxCodeRef"
-                        ]
+                    "LineNum": {
+                        "type": "integer"
                     }
-                },
-                "required": [
-                    "Id",
-                    "LineNum",
-                    "Amount",
-                    "DetailType"
-                ]
+                }
             }
-        },
-        "VendorRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
-        },
-        "APAccountRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value",
-                "name"
-            ]
-        },
-        "SalesTermRef": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "value"
-            ]
         },
         "LinkedTxn": {
             "type": "array",
@@ -210,31 +123,48 @@
                     "TxnType": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "TxnId",
-                    "TxnType"
-                ]
+                }
             }
         },
-        "DocNumber": {
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "SalesTermRef": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
             "type": "string"
+        },
+        "TxnDate": {
+            "type": "string"
+        },
+        "VendorRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "required": [
-        "DueDate",
-        "Balance",
-        "domain",
-        "sparse",
-        "Id",
-        "SyncToken",
-        "MetaData",
-        "TxnDate",
-        "CurrencyRef",
-        "Line",
-        "VendorRef",
-        "APAccountRef",
-        "TotalAmt"
-    ],
     "version": 1
 }

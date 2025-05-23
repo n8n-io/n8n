@@ -1,11 +1,19 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "@odata.etag": {
             "type": "string"
         },
-        "conversationId": {
-            "type": "string"
+        "body": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                }
+            }
         },
         "bodyPreview": {
             "type": "string"
@@ -16,143 +24,47 @@
                 "type": "string"
             }
         },
-        "hasAttachments": {
-            "type": "boolean"
-        },
-        "@odata.etag": {
+        "conversationId": {
             "type": "string"
         },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "lastModifiedDateTime": {
-            "type": "string"
-        },
-        "changeKey": {
-            "type": "string"
-        },
-        "receivedDateTime": {
-            "type": "string"
-        },
-        "sentDateTime": {
-            "type": "string"
-        },
-        "internetMessageId": {
-            "type": "string"
-        },
-        "importance": {
-            "type": "string"
-        },
-        "parentFolderId": {
-            "type": "string"
-        },
-        "conversationIndex": {
-            "type": "string"
-        },
-        "isReadReceiptRequested": {
-            "type": "boolean"
-        },
-        "isRead": {
-            "type": "boolean"
-        },
-        "isDraft": {
-            "type": "boolean"
-        },
-        "webLink": {
-            "type": "string"
-        },
-        "inferenceClassification": {
-            "type": "string"
-        },
-        "body": {
+        "flag": {
             "type": "object",
             "properties": {
-                "contentType": {
-                    "type": "string"
-                },
-                "content": {
+                "flagStatus": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "contentType",
-                "content"
-            ]
+            }
         },
-        "sender": {
+        "from": {
             "type": "object",
             "properties": {
                 "emailAddress": {
                     "type": "object",
                     "properties": {
-                        "name": {
-                            "type": "string"
-                        },
                         "address": {
                             "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "name",
-                        "address"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "emailAddress"
-            ]
-        },
-        "toRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "emailAddress"
-                ]
             }
         },
-        "ccRecipients": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "emailAddress": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "address": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
-                    }
-                },
-                "required": [
-                    "emailAddress"
-                ]
-            }
+        "hasAttachments": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "importance": {
+            "type": "string"
+        },
+        "isRead": {
+            "type": "boolean"
+        },
+        "receivedDateTime": {
+            "type": "string"
         },
         "replyTo": {
             "type": "array",
@@ -162,38 +74,55 @@
                     "emailAddress": {
                         "type": "object",
                         "properties": {
-                            "name": {
-                                "type": "string"
-                            },
                             "address": {
                                 "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "name",
-                            "address"
-                        ]
+                        }
                     }
-                },
-                "required": [
-                    "emailAddress"
-                ]
+                }
             }
         },
-        "flag": {
+        "sender": {
             "type": "object",
             "properties": {
-                "flagStatus": {
-                    "type": "string"
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
                 }
-            },
-            "required": [
-                "flagStatus"
-            ]
+            }
+        },
+        "subject": {
+            "type": "string"
+        },
+        "toRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "required": [
-        "id"
-    ],
-    "version": 1
+    "version": 3
 }

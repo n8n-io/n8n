@@ -1,6 +1,9 @@
 import { Pinecone } from '@pinecone-database/pinecone';
-import { QdrantClient } from '@qdrant/js-client-rest';
+import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import { ApplicationError, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
+
+import type { QdrantCredential } from '../../../VectorStoreQdrant/Qdrant.utils';
+import { createQdrantClient } from '../../../VectorStoreQdrant/Qdrant.utils';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');
@@ -53,14 +56,33 @@ export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 export async function qdrantCollectionsSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('qdrantApi');
 
-	const client = new QdrantClient({
-		url: credentials.qdrantUrl as string,
-		apiKey: credentials.apiKey as string,
-	});
+	const client = createQdrantClient(credentials as QdrantCredential);
 
 	const response = await client.getCollections();
 
 	const results = response.collections.map((collection) => ({
+		name: collection.name,
+		value: collection.name,
+	}));
+
+	return { results };
+}
+
+export async function milvusCollectionsSearch(this: ILoadOptionsFunctions) {
+	const credentials = await this.getCredentials<{
+		baseUrl: string;
+		username: string;
+		password: string;
+	}>('milvusApi');
+
+	const client = new MilvusClient({
+		address: credentials.baseUrl,
+		token: `${credentials.username}:${credentials.password}`,
+	});
+
+	const response = await client.listCollections();
+
+	const results = response.data.map((collection) => ({
 		name: collection.name,
 		value: collection.name,
 	}));

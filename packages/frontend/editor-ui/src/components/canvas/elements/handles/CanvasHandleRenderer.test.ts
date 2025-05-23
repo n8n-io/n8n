@@ -1,5 +1,5 @@
 import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { CanvasNodeHandleKey } from '@/constants';
 import { ref } from 'vue';
@@ -16,7 +16,7 @@ describe('CanvasHandleRenderer', () => {
 		const { container } = renderComponent({
 			props: {
 				mode: CanvasConnectionMode.Input,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				index: 0,
 				position: 'left',
 				offset: { left: '10px', top: '10px' },
@@ -37,7 +37,7 @@ describe('CanvasHandleRenderer', () => {
 		const { container } = renderComponent({
 			props: {
 				mode: CanvasConnectionMode.Output,
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				index: 0,
 				position: 'right',
 				offset: { right: '10px', bottom: '10px' },
@@ -58,7 +58,7 @@ describe('CanvasHandleRenderer', () => {
 		const { container } = renderComponent({
 			props: {
 				mode: CanvasConnectionMode.Input,
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				index: 0,
 				position: 'top',
 				offset: { top: '10px', left: '5px' },
@@ -80,7 +80,7 @@ describe('CanvasHandleRenderer', () => {
 		const { getByText } = renderComponent({
 			props: {
 				mode: 'input',
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				index: 0,
 				position: 'top',
 				offset: { top: '10px', left: '5px' },

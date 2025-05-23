@@ -1,8 +1,55 @@
 {
     "type": "object",
     "properties": {
+        "approval_id": {
+            "type": "null"
+        },
+        "at": {
+            "type": "string"
+        },
+        "billable": {
+            "type": "boolean"
+        },
+        "description": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "string"
+        },
+        "end": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
+        },
+        "is_locked": {
+            "type": "boolean"
+        },
+        "source": {
+            "type": "string"
+        },
+        "start": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "creator": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "tag_bg": {
+                        "type": "string"
+                    },
+                    "tag_fg": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "task": {
             "type": "object",
@@ -16,158 +63,62 @@
                 "status": {
                     "type": "object",
                     "properties": {
-                        "status": {
-                            "type": "string"
-                        },
                         "color": {
-                            "type": "string"
-                        },
-                        "type": {
                             "type": "string"
                         },
                         "orderindex": {
                             "type": "integer"
+                        },
+                        "status": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "status",
-                        "color",
-                        "type",
-                        "orderindex"
-                    ]
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "status",
-                "custom_type"
-            ]
-        },
-        "wid": {
-            "type": "string"
-        },
-        "user": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "color": {
-                    "type": "string"
-                },
-                "initials": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id",
-                "username",
-                "email",
-                "color",
-                "initials",
-                "profilePicture"
-            ]
-        },
-        "billable": {
-            "type": "boolean"
-        },
-        "start": {
-            "type": "string"
-        },
-        "end": {
-            "type": "string"
-        },
-        "duration": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "tag_bg": {
-                        "type": "string"
-                    },
-                    "tag_fg": {
-                        "type": "string"
-                    },
-                    "creator": {
-                        "type": "integer"
                     }
-                },
-                "required": [
-                    "name",
-                    "tag_bg",
-                    "tag_fg",
-                    "creator"
-                ]
+                }
             }
-        },
-        "source": {
-            "type": "string"
-        },
-        "at": {
-            "type": "string"
-        },
-        "is_locked": {
-            "type": "boolean"
-        },
-        "approval_id": {
-            "type": "null"
         },
         "task_location": {
             "type": "object",
             "properties": {
-                "list_id": {
+                "folder_id": {
                     "type": "string"
                 },
-                "folder_id": {
+                "list_id": {
                     "type": "string"
                 },
                 "space_id": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "list_id",
-                "folder_id",
-                "space_id"
-            ]
+            }
         },
         "task_url": {
             "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "initials": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "wid": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "task",
-        "wid",
-        "user",
-        "billable",
-        "start",
-        "end",
-        "duration",
-        "description",
-        "tags",
-        "source",
-        "at",
-        "is_locked",
-        "approval_id",
-        "task_location",
-        "task_url"
-    ],
     "version": 1
 }

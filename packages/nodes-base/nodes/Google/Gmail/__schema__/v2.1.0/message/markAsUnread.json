@@ -1,10 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "historyId": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
-        "threadId": {
+        "internalDate": {
             "type": "string"
         },
         "labelIds": {
@@ -13,23 +16,15 @@
                 "type": "string"
             }
         },
-        "snippet": {
-            "type": "string"
-        },
         "sizeEstimate": {
             "type": "integer"
         },
-        "historyId": {
+        "snippet": {
             "type": "string"
         },
-        "internalDate": {
+        "threadId": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "threadId",
-        "labelIds"
-    ],
     "version": 1
 }

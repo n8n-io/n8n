@@ -30,13 +30,7 @@
                                     "Width": {
                                         "type": "number"
                                     }
-                                },
-                                "required": [
-                                    "Height",
-                                    "Left",
-                                    "Top",
-                                    "Width"
-                                ]
+                                }
                             },
                             "Polygon": {
                                 "type": "array",
@@ -49,36 +43,21 @@
                                         "Y": {
                                             "type": "number"
                                         }
-                                    },
-                                    "required": [
-                                        "X",
-                                        "Y"
-                                    ]
+                                    }
                                 }
                             }
-                        },
-                        "required": [
-                            "BoundingBox",
-                            "Polygon"
-                        ]
+                        }
                     },
                     "Id": {
                         "type": "integer"
                     },
-                    "Type": {
-                        "type": "string"
-                    },
                     "ParentId": {
                         "type": "integer"
+                    },
+                    "Type": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "Confidence",
-                    "DetectedText",
-                    "Geometry",
-                    "Id",
-                    "Type"
-                ]
+                }
             }
         },
         "TextModelVersion": {

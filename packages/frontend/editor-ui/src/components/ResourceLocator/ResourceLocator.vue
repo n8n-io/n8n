@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ResourceLocatorRequestDto } from '@n8n/api-types';
+import type { ResourceLocatorRequestDto, ActionResultRequestDto } from '@n8n/api-types';
 import type { IResourceLocatorResultExpanded, IUpdateInformation } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
@@ -10,7 +10,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
@@ -18,19 +18,19 @@ import {
 	getMainAuthField,
 	hasOnlyListMode as hasOnlyListModeUtil,
 } from '@/utils/nodeTypesUtils';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type {
-	INode,
-	INodeListSearchItems,
-	INodeParameterResourceLocator,
-	INodeParameters,
-	INodeProperties,
-	INodePropertyMode,
-	INodePropertyModeTypeOptions,
-	NodeParameterValue,
+import {
+	isResourceLocatorValue,
+	type INode,
+	type INodeListSearchItems,
+	type INodeParameterResourceLocator,
+	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyMode,
+	type INodePropertyModeTypeOptions,
+	type NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	computed,
@@ -54,6 +54,8 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
+import { completeExpressionSyntax } from '@/utils/expressions';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.
@@ -345,6 +347,70 @@ const showOverrideButton = computed(
 	() => canBeContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
 
+const allowNewResources = computed(() => {
+	if (!props.node) {
+		return undefined;
+	}
+
+	const addNewResourceOptions = getPropertyArgument(currentMode.value, 'allowNewResource');
+
+	if (!addNewResourceOptions || typeof addNewResourceOptions !== 'object') {
+		return undefined;
+	}
+
+	return {
+		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
+			interpolate: {
+				resourceName: !!searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+			},
+		}),
+		method: addNewResourceOptions.method,
+	};
+});
+
+const handleAddResourceClick = async () => {
+	if (!props.node || !allowNewResources.value) {
+		return;
+	}
+
+	const { method: addNewResourceMethodName } = allowNewResources.value;
+	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		props.parameter,
+		currentRequestParams.value.parameters,
+	);
+
+	if (!resolvedNodeParameters || !addNewResourceMethodName) {
+		return;
+	}
+
+	const requestParams: ActionResultRequestDto = {
+		nodeTypeAndVersion: {
+			name: props.node.type,
+			version: props.node.typeVersion,
+		},
+		path: props.path,
+		currentNodeParameters: resolvedNodeParameters,
+		credentials: props.node.credentials,
+		handler: addNewResourceMethodName,
+		payload: {
+			name: searchFilter.value,
+		},
+	};
+
+	const newResource = (await nodeTypesStore.getNodeParameterActionResult(
+		requestParams,
+	)) as NodeParameterValue;
+
+	refreshList();
+	await loadResources();
+	searchFilter.value = '';
+	onListItemSelected(newResource);
+};
+
+const onAddResourceClicked = computed(() =>
+	allowNewResources.value ? handleAddResourceClick : undefined,
+);
+
 watch(currentQueryError, (curr, prev) => {
 	if (resourceDropdownVisible.value && curr && !prev) {
 		if (inputRef.value) {
@@ -355,10 +421,12 @@ watch(currentQueryError, (curr, prev) => {
 
 watch(
 	() => props.isValueExpression,
-	(newValue) => {
+	async (newValue) => {
 		if (newValue) {
 			switchFromListMode();
 		}
+		await nextTick();
+		inputRef.value?.focus();
 	},
 );
 
@@ -450,7 +518,7 @@ function openResource(url: string) {
 function getPropertyArgument(
 	parameter: INodePropertyMode,
 	argumentName: keyof INodePropertyModeTypeOptions,
-): string | number | boolean | undefined {
+): string | number | boolean | INodePropertyModeTypeOptions['allowNewResource'] | undefined {
 	return parameter.typeOptions?.[argumentName];
 }
 
@@ -516,6 +584,8 @@ function onInputChange(value: NodeParameterValue): void {
 		if (resource?.url) {
 			params.cachedResultUrl = resource.url;
 		}
+	} else {
+		params.value = completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }
@@ -833,9 +903,11 @@ function removeOverride() {
 			:error-view="currentQueryError"
 			:width="width"
 			:event-bus="eventBus"
+			:allow-new-resources="allowNewResources"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="loadResourcesDebounced"
+			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>
 				<div :class="$style.errorContainer" data-test-id="rlc-error-container">

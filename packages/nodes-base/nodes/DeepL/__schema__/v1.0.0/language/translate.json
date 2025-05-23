@@ -8,9 +8,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "detected_source_language",
-        "text"
-    ],
     "version": 1
 }

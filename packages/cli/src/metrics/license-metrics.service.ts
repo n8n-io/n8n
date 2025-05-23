@@ -1,7 +1,5 @@
+import { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @Service()
 export class LicenseMetricsService {
@@ -18,6 +16,7 @@ export class LicenseMetricsService {
 			totalUsers,
 			totalCredentials,
 			productionExecutions,
+			productionRootExecutions,
 			manualExecutions,
 		} = await this.licenseMetricsRepository.getLicenseRenewalMetrics();
 
@@ -30,6 +29,7 @@ export class LicenseMetricsService {
 			{ name: 'totalUsers', value: totalUsers },
 			{ name: 'totalCredentials', value: totalCredentials },
 			{ name: 'productionExecutions', value: productionExecutions },
+			{ name: 'productionRootExecutions', value: productionRootExecutions },
 			{ name: 'manualExecutions', value: manualExecutions },
 			{ name: 'activeWorkflowTriggers', value: activeTriggerCount },
 		];

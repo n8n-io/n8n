@@ -1,20 +1,15 @@
 {
     "type": "object",
     "properties": {
-        "_id": {
+        "_ctime": {
             "type": "string"
         },
-        "_ctime": {
+        "_id": {
             "type": "string"
         },
         "_mtime": {
             "type": "string"
         }
     },
-    "required": [
-        "_id",
-        "_ctime",
-        "_mtime"
-    ],
     "version": 1
 }

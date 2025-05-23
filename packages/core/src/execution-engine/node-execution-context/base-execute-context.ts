@@ -20,11 +20,12 @@ import type {
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
 	NodeHelpers,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
 } from 'n8n-workflow';
@@ -159,7 +160,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		return allItems;
 	}
 
-	getInputSourceData(inputIndex = 0, connectionType = NodeConnectionType.Main): ISourceData {
+	getInputSourceData(inputIndex = 0, connectionType = NodeConnectionTypes.Main): ISourceData {
 		if (this.executeData?.source === null) {
 			// Should never happen as n8n sets it automatically
 			throw new ApplicationError('Source data is missing');

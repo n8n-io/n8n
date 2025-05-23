@@ -1,25 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "tagType": {
+        "created_timestamp": {
             "type": "string"
         },
-        "tag": {
+        "deleted": {
             "type": "string"
         },
         "description": {
             "type": "string"
         },
-        "subscriber_count": {
-            "type": "string"
-        },
-        "created_timestamp": {
-            "type": "string"
-        },
-        "updated_timestamp": {
-            "type": "string"
-        },
-        "deleted": {
+        "id": {
             "type": "string"
         },
         "links": {
@@ -31,13 +22,18 @@
                 "templateTags": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "contactGoalTags",
-                "templateTags"
-            ]
+            }
         },
-        "id": {
+        "subscriber_count": {
+            "type": "string"
+        },
+        "tag": {
+            "type": "string"
+        },
+        "tagType": {
+            "type": "string"
+        },
+        "updated_timestamp": {
             "type": "string"
         }
     },

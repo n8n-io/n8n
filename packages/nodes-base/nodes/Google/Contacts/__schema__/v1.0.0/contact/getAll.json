@@ -1,31 +1,35 @@
 {
     "type": "object",
     "properties": {
-        "resourceName": {
+        "contactId": {
             "type": "string"
         },
         "etag": {
             "type": "string"
         },
-        "contactId": {
-            "type": "string"
-        },
-        "emailAddresses": {
+        "names": {
             "type": "object",
             "properties": {
-                "undefined": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "displayName": {
+                    "type": "string"
+                },
+                "displayNameLastFirst": {
+                    "type": "string"
+                },
+                "familyName": {
+                    "type": "string"
+                },
+                "givenName": {
+                    "type": "string"
+                },
+                "unstructuredName": {
+                    "type": "string"
                 }
             }
+        },
+        "resourceName": {
+            "type": "string"
         }
     },
-    "required": [
-        "resourceName",
-        "etag",
-        "contactId"
-    ],
-    "version": 1
+    "version": 2
 }

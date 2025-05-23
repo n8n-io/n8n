@@ -1,20 +1,8 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "lastUpdated": {
-            "type": "string"
-        },
         "createdOn": {
             "type": "string"
-        },
-        "isArchived": {
-            "type": "boolean"
-        },
-        "isDraft": {
-            "type": "boolean"
         },
         "fieldData": {
             "type": "object",
@@ -25,11 +13,19 @@
                 "slug": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "name",
-                "slug"
-            ]
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "isDraft": {
+            "type": "boolean"
+        },
+        "lastUpdated": {
+            "type": "string"
         }
     },
     "version": 1

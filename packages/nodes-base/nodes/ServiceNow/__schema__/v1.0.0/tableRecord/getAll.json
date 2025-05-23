@@ -4,12 +4,30 @@
         "number": {
             "type": "string"
         },
-        "sys_id": {
+        "state": {
             "type": "string"
         },
-        "short_description": {
+        "sys_class_name": {
+            "type": "string"
+        },
+        "sys_created_by": {
+            "type": "string"
+        },
+        "sys_created_on": {
+            "type": "string"
+        },
+        "sys_mod_count": {
+            "type": "string"
+        },
+        "sys_tags": {
+            "type": "string"
+        },
+        "sys_updated_by": {
+            "type": "string"
+        },
+        "sys_updated_on": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

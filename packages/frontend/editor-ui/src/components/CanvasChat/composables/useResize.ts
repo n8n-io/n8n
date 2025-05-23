@@ -5,8 +5,9 @@ import type { IChatResizeStyles } from '../types/chat';
 import { useStorage } from '@/composables/useStorage';
 import { type ResizeData } from '@n8n/design-system';
 
-const LOCAL_STORAGE_PANEL_HEIGHT = 'N8N_CANVAS_CHAT_HEIGHT';
-const LOCAL_STORAGE_PANEL_WIDTH = 'N8N_CANVAS_CHAT_WIDTH';
+export const LOCAL_STORAGE_PANEL_HEIGHT = 'N8N_CANVAS_CHAT_HEIGHT';
+export const LOCAL_STORAGE_PANEL_WIDTH = 'N8N_CANVAS_CHAT_WIDTH';
+export const LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH = 'N8N_LOGS_OVERVIEW_PANEL_WIDTH';
 
 // Percentage of container width for chat panel constraints
 const MAX_WIDTH_PERCENTAGE = 0.8;

@@ -1,32 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "userId": {
-            "type": "string"
-        },
         "billable": {
-            "type": "boolean"
-        },
-        "timeInterval": {
-            "type": "object",
-            "properties": {
-                "start": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "start",
-                "end",
-                "duration"
-            ]
-        },
-        "workspaceId": {
-            "type": "string"
-        },
-        "isLocked": {
             "type": "boolean"
         },
         "customFieldValues": {
@@ -37,49 +12,47 @@
                     "customFieldId": {
                         "type": "string"
                     },
-                    "timeEntryId": {
+                    "name": {
                         "type": "string"
                     },
-                    "value": {
-                        "type": "null"
-                    },
-                    "name": {
+                    "timeEntryId": {
                         "type": "string"
                     },
                     "type": {
                         "type": "string"
+                    },
+                    "value": {
+                        "type": "null"
                     }
-                },
-                "required": [
-                    "customFieldId",
-                    "timeEntryId",
-                    "value",
-                    "name",
-                    "type"
-                ]
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "isLocked": {
+            "type": "boolean"
+        },
+        "kioskId": {
+            "type": "null"
+        },
+        "timeInterval": {
+            "type": "object",
+            "properties": {
+                "start": {
+                    "type": "string"
+                }
             }
         },
         "type": {
             "type": "string"
         },
-        "kioskId": {
-            "type": "null"
+        "userId": {
+            "type": "string"
+        },
+        "workspaceId": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "description",
-        "tagIds",
-        "userId",
-        "billable",
-        "taskId",
-        "projectId",
-        "timeInterval",
-        "workspaceId",
-        "isLocked",
-        "customFieldValues",
-        "type",
-        "kioskId"
-    ],
     "version": 1
 }

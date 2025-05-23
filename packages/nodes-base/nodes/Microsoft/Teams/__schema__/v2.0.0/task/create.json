@@ -7,58 +7,25 @@
         "@odata.etag": {
             "type": "string"
         },
-        "planId": {
+        "activeChecklistItemCount": {
+            "type": "integer"
+        },
+        "assigneePriority": {
             "type": "string"
         },
         "bucketId": {
             "type": "string"
         },
-        "title": {
-            "type": "string"
-        },
-        "orderHint": {
-            "type": "string"
-        },
-        "assigneePriority": {
-            "type": "string"
-        },
-        "percentComplete": {
+        "checklistItemCount": {
             "type": "integer"
         },
-        "startDateTime": {
+        "completedBy": {
             "type": "null"
-        },
-        "createdDateTime": {
-            "type": "string"
-        },
-        "hasDescription": {
-            "type": "boolean"
-        },
-        "previewType": {
-            "type": "string"
         },
         "completedDateTime": {
             "type": "null"
         },
-        "referenceCount": {
-            "type": "integer"
-        },
-        "checklistItemCount": {
-            "type": "integer"
-        },
-        "activeChecklistItemCount": {
-            "type": "integer"
-        },
         "conversationThreadId": {
-            "type": "null"
-        },
-        "priority": {
-            "type": "integer"
-        },
-        "id": {
-            "type": "string"
-        },
-        "completedBy": {
             "type": "null"
         },
         "createdBy": {
@@ -73,11 +40,7 @@
                         "id": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName",
-                        "id"
-                    ]
+                    }
                 },
                 "user": {
                     "type": "object",
@@ -88,44 +51,43 @@
                         "id": {
                             "type": "string"
                         }
-                    },
-                    "required": [
-                        "displayName",
-                        "id"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "application",
-                "user"
-            ]
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "hasDescription": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "orderHint": {
+            "type": "string"
+        },
+        "percentComplete": {
+            "type": "integer"
+        },
+        "planId": {
+            "type": "string"
+        },
+        "previewType": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "referenceCount": {
+            "type": "integer"
+        },
+        "startDateTime": {
+            "type": "null"
+        },
+        "title": {
+            "type": "string"
         }
     },
-    "required": [
-        "@odata.context",
-        "@odata.etag",
-        "planId",
-        "bucketId",
-        "title",
-        "orderHint",
-        "assigneePriority",
-        "percentComplete",
-        "startDateTime",
-        "createdDateTime",
-        "dueDateTime",
-        "hasDescription",
-        "previewType",
-        "completedDateTime",
-        "referenceCount",
-        "checklistItemCount",
-        "activeChecklistItemCount",
-        "conversationThreadId",
-        "priority",
-        "id",
-        "completedBy",
-        "createdBy",
-        "appliedCategories",
-        "assignments"
-    ],
     "version": 1
 }

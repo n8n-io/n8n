@@ -12,30 +12,17 @@
                     "text": {
                         "type": "object",
                         "properties": {
-                            "content": {
-                                "type": "string"
-                            },
                             "beginOffset": {
                                 "type": "integer"
+                            },
+                            "content": {
+                                "type": "string"
                             }
-                        },
-                        "required": [
-                            "content",
-                            "beginOffset"
-                        ]
+                        }
                     }
-                },
-                "required": [
-                    "text",
-                    "sentiment"
-                ]
+                }
             }
         }
     },
-    "required": [
-        "documentSentiment",
-        "language",
-        "sentences"
-    ],
     "version": 1
 }

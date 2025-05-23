@@ -1,25 +1,16 @@
 {
     "type": "object",
     "properties": {
-        "resourceName": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
         "advertisingChannelType": {
             "type": "string"
         },
-        "name": {
-            "type": "string"
-        },
-        "id": {
-            "type": "string"
-        },
-        "videoViews": {
+        "amountMicros": {
             "type": "string"
         },
         "costMicros": {
+            "type": "string"
+        },
+        "id": {
             "type": "string"
         },
         "impressions": {
@@ -28,26 +19,21 @@
         "interactions": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
         "period": {
             "type": "string"
         },
-        "amountMicros": {
+        "resourceName": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "videoViews": {
             "type": "string"
         }
     },
-    "required": [
-        "resourceName",
-        "status",
-        "advertisingChannelType",
-        "name",
-        "id",
-        "videoViews",
-        "conversions",
-        "costMicros",
-        "impressions",
-        "interactions",
-        "period",
-        "amountMicros"
-    ],
     "version": 1
 }

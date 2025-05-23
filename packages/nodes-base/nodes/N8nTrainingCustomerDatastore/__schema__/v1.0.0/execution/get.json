@@ -1,11 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "id": {
+        "createdAt": {
             "type": "string"
+        },
+        "deletedAt": {
+            "type": "null"
         },
         "finished": {
             "type": "boolean"
+        },
+        "id": {
+            "type": "string"
         },
         "mode": {
             "type": "string"
@@ -13,17 +19,11 @@
         "retrySuccessId": {
             "type": "null"
         },
-        "status": {
-            "type": "string"
-        },
-        "createdAt": {
-            "type": "string"
-        },
         "startedAt": {
             "type": "string"
         },
-        "deletedAt": {
-            "type": "null"
+        "status": {
+            "type": "string"
         },
         "workflowId": {
             "type": "string"

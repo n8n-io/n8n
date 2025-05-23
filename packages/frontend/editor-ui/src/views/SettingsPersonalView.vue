@@ -16,6 +16,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 type UserBasicDetailsForm = {
 	firstName: string;
@@ -36,7 +37,7 @@ const formInputs = ref<null | IFormInputs>(null);
 const formBus = createFormEventBus();
 const readyToSubmit = ref(false);
 const currentSelectedTheme = ref(useUIStore().theme);
-const themeOptions = ref<Array<{ name: ThemeOption; label: string }>>([
+const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 	{
 		name: 'system',
 		label: 'settings.personal.theme.systemDefault',
@@ -150,24 +151,25 @@ async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 }
 
 async function onSubmit(form: UserBasicDetailsForm) {
-	if (!usersStore.currentUser?.mfaEnabled) {
-		await saveUserSettings(form);
-		return;
-	}
+	const emailChanged = usersStore.currentUser?.email !== form.email;
 
-	uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
+	if (usersStore.currentUser?.mfaEnabled && emailChanged) {
+		uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
 
-	promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
-		if (!payload) {
-			// User closed the modal without submitting the form
-			return;
-		}
+		promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
+			if (!payload) {
+				// User closed the modal without submitting the form
+				return;
+			}
 
-		await saveUserSettings({
-			...form,
-			mfaCode: payload.mfaCode,
+			await saveUserSettings({
+				...form,
+				mfaCode: payload.mfaCode,
+			});
 		});
-	});
+	} else {
+		await saveUserSettings(form);
+	}
 }
 
 async function updateUserBasicInfo(userBasicInfo: UserBasicDetailsWithMfa) {
@@ -345,7 +347,7 @@ onBeforeUnmount(() => {
 						<n8n-option
 							v-for="item in themeOptions"
 							:key="item.name"
-							:label="$t(item.label)"
+							:label="i18n.baseText(item.label)"
 							:value="item.name"
 						>
 						</n8n-option>

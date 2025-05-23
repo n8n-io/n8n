@@ -1,71 +1,33 @@
 {
     "type": "object",
     "properties": {
-        "ContactID": {
-            "type": "string"
-        },
-        "ContactStatus": {
-            "type": "string"
-        },
-        "Name": {
-            "type": "string"
-        },
-        "EmailAddress": {
-            "type": "string"
-        },
         "Addresses": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
+                    "AddressLine1": {
+                        "type": "string"
+                    },
                     "AddressType": {
                         "type": "string"
                     },
                     "City": {
                         "type": "string"
                     },
-                    "Region": {
+                    "Country": {
                         "type": "string"
                     },
                     "PostalCode": {
                         "type": "string"
                     },
-                    "Country": {
-                        "type": "string"
-                    },
-                    "AddressLine1": {
+                    "Region": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "AddressType"
-                ]
+                }
             }
         },
-        "Phones": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "PhoneType": {
-                        "type": "string"
-                    },
-                    "PhoneNumber": {
-                        "type": "string"
-                    },
-                    "PhoneAreaCode": {
-                        "type": "string"
-                    },
-                    "PhoneCountryCode": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "PhoneType"
-                ]
-            }
-        },
-        "UpdatedDateUTC": {
+        "BankAccountDetails": {
             "type": "string"
         },
         "ContactGroups": {
@@ -76,79 +38,46 @@
                     "ContactGroupID": {
                         "type": "string"
                     },
+                    "HasValidationErrors": {
+                        "type": "boolean"
+                    },
                     "Name": {
                         "type": "string"
                     },
                     "Status": {
                         "type": "string"
-                    },
-                    "HasValidationErrors": {
-                        "type": "boolean"
                     }
-                },
-                "required": [
-                    "ContactGroupID",
-                    "Name",
-                    "Status",
-                    "Contacts",
-                    "HasValidationErrors"
-                ]
+                }
             }
         },
-        "IsSupplier": {
-            "type": "boolean"
-        },
-        "IsCustomer": {
-            "type": "boolean"
-        },
-        "Balances": {
-            "type": "object",
-            "properties": {
-                "AccountsReceivable": {
-                    "type": "object",
-                    "properties": {
-                        "Outstanding": {
-                            "type": "integer"
-                        },
-                        "Overdue": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "Outstanding",
-                        "Overdue"
-                    ]
-                }
-            },
-            "required": [
-                "AccountsReceivable",
-                "AccountsPayable"
-            ]
+        "ContactID": {
+            "type": "string"
         },
         "ContactPersons": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "FirstName": {
-                        "type": "string"
-                    },
-                    "LastName": {
-                        "type": "string"
-                    },
                     "EmailAddress": {
+                        "type": "string"
+                    },
+                    "FirstName": {
                         "type": "string"
                     },
                     "IncludeInEmails": {
                         "type": "boolean"
+                    },
+                    "LastName": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "FirstName",
-                    "EmailAddress",
-                    "IncludeInEmails"
-                ]
+                }
             }
+        },
+        "ContactStatus": {
+            "type": "string"
+        },
+        "EmailAddress": {
+            "type": "string"
         },
         "HasAttachments": {
             "type": "boolean"
@@ -156,23 +85,38 @@
         "HasValidationErrors": {
             "type": "boolean"
         },
-        "BankAccountDetails": {
+        "IsCustomer": {
+            "type": "boolean"
+        },
+        "IsSupplier": {
+            "type": "boolean"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "Phones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "PhoneAreaCode": {
+                        "type": "string"
+                    },
+                    "PhoneCountryCode": {
+                        "type": "string"
+                    },
+                    "PhoneNumber": {
+                        "type": "string"
+                    },
+                    "PhoneType": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "UpdatedDateUTC": {
             "type": "string"
         }
     },
-    "required": [
-        "ContactID",
-        "ContactStatus",
-        "Name",
-        "Addresses",
-        "Phones",
-        "UpdatedDateUTC",
-        "ContactGroups",
-        "IsSupplier",
-        "IsCustomer",
-        "ContactPersons",
-        "HasAttachments",
-        "HasValidationErrors"
-    ],
     "version": 1
 }

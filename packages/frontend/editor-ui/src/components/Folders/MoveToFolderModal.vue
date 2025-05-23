@@ -48,7 +48,7 @@ const currentFolder = computed(() => {
 	};
 });
 
-const onFolderSelected = (payload: { id: string; name: string }) => {
+const onFolderSelected = (payload: { id: string; name: string; type: string }) => {
 	selectedFolder.value = payload;
 };
 
@@ -81,7 +81,7 @@ const onSubmit = () => {
 				:current-project-id="projectsStore.currentProject?.id"
 				:parent-folder-id="props.data.resource.parentFolderId"
 				:exclude-only-parent="props.data.resourceType === 'workflow'"
-				@folder:selected="onFolderSelected"
+				@location:selected="onFolderSelected"
 			/>
 			<p
 				v-if="props.data.resourceType === 'folder'"

@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as calendar from './calendar';
 import * as contact from './contact';
@@ -22,8 +22,8 @@ export const description: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft Outlook',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{

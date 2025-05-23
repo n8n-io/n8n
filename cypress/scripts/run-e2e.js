@@ -47,7 +47,6 @@ switch (scenario) {
 			testCommand: 'cypress open',
 			customEnv: {
 				CYPRESS_NODE_VIEW_VERSION: 2,
-				N8N_FOLDERS_ENABLED: true,
 			},
 		});
 		break;
@@ -59,7 +58,6 @@ switch (scenario) {
 			customEnv: {
 				CYPRESS_NODE_VIEW_VERSION: 1,
 				CYPRESS_BASE_URL: 'http://localhost:8080',
-				N8N_FOLDERS_ENABLED: true,
 			},
 		});
 		break;
@@ -71,7 +69,6 @@ switch (scenario) {
 			customEnv: {
 				CYPRESS_NODE_VIEW_VERSION: 2,
 				CYPRESS_BASE_URL: 'http://localhost:8080',
-				N8N_FOLDERS_ENABLED: true,
 			},
 		});
 		break;
@@ -85,10 +82,36 @@ switch (scenario) {
 			testCommand: `cypress run --headless ${specParam}`,
 			customEnv: {
 				CYPRESS_NODE_VIEW_VERSION: 2,
-				N8N_FOLDERS_ENABLED: true,
 			},
 		});
 		break;
+	case 'debugFlaky': {
+		const filter = process.argv[3];
+		const burnCount = process.argv[4] || 5;
+
+		const envArgs = [`burn=${burnCount}`];
+
+		if (filter) {
+			envArgs.push(`grep=${filter}`);
+			envArgs.push(`grepFilterSpecs=true`);
+		}
+
+		const envString = envArgs.join(',');
+		const testCommand = `cypress run --headless --env "${envString}"`;
+
+		console.log(`Executing test command: ${testCommand}`);
+
+		runTests({
+			startCommand: 'start',
+			url: 'http://localhost:5678/favicon.ico',
+			testCommand: testCommand,
+			customEnv: {
+				CYPRESS_NODE_VIEW_VERSION: 2,
+			},
+			failFast: true,
+		});
+		break;
+	}
 	default:
 		console.error('Unknown scenario');
 		process.exit(1);

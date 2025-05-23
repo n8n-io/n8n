@@ -1,83 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "string"
-        },
-        "dateAdded": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
-        },
-        "locationId": {
-            "type": "string"
-        },
-        "firstName": {
-            "type": "string"
-        },
-        "firstNameLowerCase": {
-            "type": "string"
-        },
-        "fullNameLowerCase": {
-            "type": "string"
-        },
-        "lastName": {
-            "type": "string"
-        },
-        "lastNameLowerCase": {
-            "type": "string"
-        },
-        "country": {
-            "type": "string"
-        },
-        "attributionSource": {
-            "type": "object",
-            "properties": {
-                "sessionSource": {
-                    "type": "string"
-                },
-                "medium": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "sessionSource",
-                "medium"
-            ]
-        },
-        "createdBy": {
-            "type": "object",
-            "properties": {
-                "source": {
-                    "type": "string"
-                },
-                "channel": {
-                    "type": "string"
-                },
-                "sourceId": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "source",
-                "channel",
-                "sourceId",
-                "timestamp"
-            ]
-        },
-        "emailLowerCase": {
-            "type": "string"
-        },
-        "email": {
-            "type": "string"
-        },
-        "phone": {
-            "type": "string"
-        },
         "additionalPhones": {
             "type": "array",
             "items": {
@@ -89,21 +12,39 @@
                     "phoneLabel": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "attributionSource": {
+            "type": "object",
+            "properties": {
+                "medium": {
+                    "type": "string"
                 },
-                "required": [
-                    "phone",
-                    "phoneLabel"
-                ]
+                "sessionSource": {
+                    "type": "string"
+                }
             }
         },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "dateUpdated": {
+        "country": {
             "type": "string"
+        },
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "sourceId": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
         },
         "customFields": {
             "type": "array",
@@ -113,12 +54,53 @@
                     "id": {
                         "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "value"
-                ]
+                }
             }
+        },
+        "dateAdded": {
+            "type": "string"
+        },
+        "dateUpdated": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailLowerCase": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "firstNameLowerCase": {
+            "type": "string"
+        },
+        "fullNameLowerCase": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "lastNameLowerCase": {
+            "type": "string"
+        },
+        "locationId": {
+            "type": "string"
+        },
+        "phone": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "type": {
+            "type": "string"
         }
     },
     "version": 1

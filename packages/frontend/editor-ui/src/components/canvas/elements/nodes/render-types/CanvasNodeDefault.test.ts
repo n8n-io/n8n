@@ -1,6 +1,6 @@
 import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/CanvasNodeDefault.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { createCanvasNodeProvide, createCanvasProvide } from '@/__tests__/data';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -40,7 +40,7 @@ describe('CanvasNodeDefault', () => {
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
-								inputs: [{ type: NodeConnectionType.Main, index: 0 }],
+								inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
 							},
 						}),
 					},
@@ -58,9 +58,9 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								inputs: [
-									{ type: NodeConnectionType.Main, index: 0 },
-									{ type: NodeConnectionType.Main, index: 0 },
-									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionTypes.Main, index: 0 },
+									{ type: NodeConnectionTypes.Main, index: 0 },
+									{ type: NodeConnectionTypes.Main, index: 0 },
 								],
 							},
 						}),
@@ -80,7 +80,7 @@ describe('CanvasNodeDefault', () => {
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
-								outputs: [{ type: NodeConnectionType.Main, index: 0 }],
+								outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
 							},
 						}),
 					},
@@ -98,9 +98,9 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								outputs: [
-									{ type: NodeConnectionType.Main, index: 0 },
-									{ type: NodeConnectionType.Main, index: 0 },
-									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionTypes.Main, index: 0 },
+									{ type: NodeConnectionTypes.Main, index: 0 },
+									{ type: NodeConnectionTypes.Main, index: 0 },
 								],
 							},
 						}),
@@ -173,17 +173,17 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								disabled: true,
-								inputs: [{ type: NodeConnectionType.Main, index: 0 }],
-								outputs: [{ type: NodeConnectionType.Main, index: 0 }],
+								inputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
+								outputs: [{ type: NodeConnectionTypes.Main, index: 0 }],
 								connections: {
 									[CanvasConnectionMode.Input]: {
-										[NodeConnectionType.Main]: [
-											[{ node: 'node', type: NodeConnectionType.Main, index: 0 }],
+										[NodeConnectionTypes.Main]: [
+											[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
 										],
 									},
 									[CanvasConnectionMode.Output]: {
-										[NodeConnectionType.Main]: [
-											[{ node: 'node', type: NodeConnectionType.Main, index: 0 }],
+										[NodeConnectionTypes.Main]: [
+											[{ node: 'node', type: NodeConnectionTypes.Main, index: 0 }],
 										],
 									},
 								},
@@ -251,10 +251,10 @@ describe('CanvasNodeDefault', () => {
 							...createCanvasNodeProvide({
 								data: {
 									inputs: [
-										{ type: NodeConnectionType.Main, index: 0 },
-										{ type: NodeConnectionType.AiTool, index: 0 },
-										{ type: NodeConnectionType.AiDocument, index: 0, required: true },
-										{ type: NodeConnectionType.AiMemory, index: 0, required: true },
+										{ type: NodeConnectionTypes.Main, index: 0 },
+										{ type: NodeConnectionTypes.AiTool, index: 0 },
+										{ type: NodeConnectionTypes.AiDocument, index: 0, required: true },
+										{ type: NodeConnectionTypes.AiMemory, index: 0, required: true },
 									],
 									render: {
 										type: CanvasNodeRenderType.Default,

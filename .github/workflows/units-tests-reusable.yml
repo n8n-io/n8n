@@ -38,7 +38,7 @@ on:
 jobs:
   unit-test:
     name: Unit tests
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
       TURBO_FORCE: ${{ inputs.ignoreTurboCache }}
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
@@ -84,6 +84,12 @@ jobs:
       - name: Test Frontend
         if: ${{ !inputs.skipFrontendTests }}
         run: pnpm test:frontend
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }} # Run even if tests fail
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage to Codecov
         if: inputs.collectCoverage

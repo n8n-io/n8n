@@ -6,8 +6,8 @@ import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@/composables/useI18n';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useRoute } from 'vue-router';
-import type { FolderListItem } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
+import { ProjectTypes } from '@/types/projects.types';
 
 const props = defineProps<{
 	modalName: string;
@@ -32,12 +32,7 @@ const projectsStore = useProjectsStore();
 const loading = ref(false);
 const operation = ref('');
 const deleteConfirmText = ref('');
-const selectedFolder = ref<{ id: string; name: string } | null>(null);
-const projectFolders = ref<FolderListItem[]>([]);
-
-const currentFolder = computed(() => {
-	return projectFolders.value.find((folder) => folder.id === props.activeId);
-});
+const selectedFolder = ref<{ id: string; name: string; type: 'folder' | 'project' } | null>(null);
 
 const folderToDelete = computed(() => {
 	if (!props.activeId) return null;
@@ -72,6 +67,14 @@ const enabled = computed(() => {
 	return false;
 });
 
+const currentProjectName = computed(() => {
+	const currentProject = projectsStore.currentProject;
+	if (currentProject?.type === ProjectTypes.Personal) {
+		return i18n.baseText('projects.menu.personal');
+	}
+	return currentProject?.name;
+});
+
 const folderContentWarningMessage = computed(() => {
 	const folderCount = props.data.content.subFolderCount ?? 0;
 	const workflowCount = props.data.content.workflowCount ?? 0;
@@ -102,11 +105,10 @@ async function onSubmit() {
 	try {
 		loading.value = true;
 
-		await foldersStore.deleteFolder(
-			route.params.projectId as string,
-			props.activeId,
-			selectedFolder.value?.id ?? undefined,
-		);
+		const newParentId =
+			selectedFolder.value?.type === 'project' ? '0' : (selectedFolder.value?.id ?? undefined);
+
+		await foldersStore.deleteFolder(route.params.projectId as string, props.activeId, newParentId);
 
 		let message = '';
 		if (selectedFolder.value) {
@@ -132,7 +134,7 @@ async function onSubmit() {
 	}
 }
 
-const onFolderSelected = (payload: { id: string; name: string }) => {
+const onFolderSelected = (payload: { id: string; name: string; type: 'folder' | 'project' }) => {
 	selectedFolder.value = payload;
 };
 </script>
@@ -142,7 +144,7 @@ const onFolderSelected = (payload: { id: string; name: string }) => {
 		:name="modalName"
 		:title="title"
 		:center="true"
-		width="520"
+		width="600"
 		:event-bus="modalBus"
 		@enter="onSubmit"
 	>
@@ -163,7 +165,14 @@ const onFolderSelected = (payload: { id: string; name: string }) => {
 						label="transfer"
 						@update:model-value="operation = 'transfer'"
 					>
-						<n8n-text color="text-dark">{{ i18n.baseText('folders.transfer.action') }}</n8n-text>
+						<n8n-text v-if="currentProjectName">{{
+							i18n.baseText('folders.transfer.action', {
+								interpolate: { projectName: currentProjectName },
+							})
+						}}</n8n-text>
+						<n8n-text v-else color="text-dark">{{
+							i18n.baseText('folders.transfer.action.noProject')
+						}}</n8n-text>
 					</el-radio>
 					<div v-if="operation === 'transfer'" :class="$style.optionInput">
 						<n8n-text color="text-dark">{{
@@ -173,8 +182,8 @@ const onFolderSelected = (payload: { id: string; name: string }) => {
 							v-if="projectsStore.currentProject"
 							:current-folder-id="props.activeId"
 							:current-project-id="projectsStore.currentProject?.id"
-							:parent-folder-id="currentFolder?.parentFolder?.id"
-							@folder:selected="onFolderSelected"
+							:parent-folder-id="folderToDelete?.parentFolder"
+							@location:selected="onFolderSelected"
 						/>
 					</div>
 					<el-radio

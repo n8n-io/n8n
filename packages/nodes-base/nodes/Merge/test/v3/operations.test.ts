@@ -1,6 +1,7 @@
 import type { IDataObject, INode } from 'n8n-workflow';
 
-import { createMockExecuteFunction } from '../../../../test/nodes/Helpers';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
+
 import * as mode from '../../v3/actions/mode';
 
 const node: INode = {
@@ -394,6 +395,59 @@ describe('Test MergeV3, combineBySql operation', () => {
 				},
 			],
 		]);
+	});
+
+	it('Empty successful query should return [{ success: true }] at version <= 3.1', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT id from input1',
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.1 }),
+			[[]],
+		);
+
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(1);
+		expect(returnData[0][0].json).toEqual({
+			success: true,
+		});
+	});
+
+	it('Empty successful query should return [] at version >= 3.2 if no option set', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT id from input1',
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+			[[]],
+		);
+
+		expect(returnData).toEqual([[]]);
+	});
+
+	it('Empty successful query should return [{ success: true }] at version >= 3.2 if option set', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'combineBySql',
+			query: 'SELECT id from input1',
+			options: {
+				emptyQueryResult: 'success',
+			},
+		};
+
+		const returnData = await mode.combineBySql.execute.call(
+			createMockExecuteFunction(nodeParameters, { ...node, typeVersion: 3.2 }),
+			[[]],
+		);
+
+		expect(returnData.length).toEqual(1);
+		expect(returnData[0].length).toEqual(1);
+		expect(returnData[0][0].json).toEqual({
+			success: true,
+		});
 	});
 });
 

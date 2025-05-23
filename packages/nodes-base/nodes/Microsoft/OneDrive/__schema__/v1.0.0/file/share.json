@@ -4,8 +4,28 @@
         "@odata.context": {
             "type": "string"
         },
+        "hasPassword": {
+            "type": "boolean"
+        },
         "id": {
             "type": "string"
+        },
+        "link": {
+            "type": "object",
+            "properties": {
+                "preventsDownload": {
+                    "type": "boolean"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "webUrl": {
+                    "type": "string"
+                }
+            }
         },
         "roles": {
             "type": "array",
@@ -15,30 +35,6 @@
         },
         "shareId": {
             "type": "string"
-        },
-        "hasPassword": {
-            "type": "boolean"
-        },
-        "link": {
-            "type": "object",
-            "properties": {
-                "scope": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "webUrl": {
-                    "type": "string"
-                },
-                "preventsDownload": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "type",
-                "webUrl"
-            ]
         }
     },
     "version": 1

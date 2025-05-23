@@ -13,7 +13,7 @@ import type {
 	ResourceMapperFields,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
@@ -407,6 +407,7 @@ function updateNodeIssues(): void {
 		const parameterIssues = NodeHelpers.getNodeParametersIssues(
 			nodeType.value?.properties ?? [],
 			props.node,
+			nodeType.value,
 		);
 		if (parameterIssues) {
 			ndvStore.updateNodeParameterIssues(parameterIssues);
@@ -536,7 +537,9 @@ function emitValueChanged(): void {
 	pruneParamValues();
 	emit('valueChanged', {
 		name: `${props.path}`,
-		value: state.paramValue,
+		// deepCopy ensures that mutations to state.paramValue that occur in
+		// this component are never visible to the store without explicit event emits
+		value: deepCopy(state.paramValue),
 		node: props.node?.name,
 	});
 	updateNodeIssues();
@@ -665,6 +668,7 @@ defineExpose({
 					displayName: locale.baseText('resourceMapper.attemptToConvertTypes.displayName'),
 					default: false,
 					description: locale.baseText('resourceMapper.attemptToConvertTypes.description'),
+					noDataExpression: true,
 				}"
 				:path="props.path + '.attemptToConvertTypes'"
 				:value="state.paramValue.attemptToConvertTypes"

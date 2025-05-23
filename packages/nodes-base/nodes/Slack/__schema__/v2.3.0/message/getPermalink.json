@@ -1,13 +1,13 @@
 {
     "type": "object",
     "properties": {
+        "channel": {
+            "type": "string"
+        },
         "ok": {
             "type": "boolean"
         },
         "permalink": {
-            "type": "string"
-        },
-        "channel": {
             "type": "string"
         }
     },

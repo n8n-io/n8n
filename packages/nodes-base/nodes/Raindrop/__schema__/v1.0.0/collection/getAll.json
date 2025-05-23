@@ -4,31 +4,27 @@
         "_id": {
             "type": "integer"
         },
-        "title": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "user": {
+        "access": {
             "type": "object",
             "properties": {
-                "$ref": {
-                    "type": "string"
+                "draggable": {
+                    "type": "boolean"
                 },
-                "$id": {
+                "for": {
                     "type": "integer"
+                },
+                "level": {
+                    "type": "integer"
+                },
+                "root": {
+                    "type": "boolean"
                 }
-            },
-            "required": [
-                "$ref",
-                "$id"
-            ]
+            }
         },
-        "public": {
+        "author": {
             "type": "boolean"
         },
-        "view": {
+        "color": {
             "type": "string"
         },
         "count": {
@@ -40,8 +36,8 @@
                 "type": "string"
             }
         },
-        "expanded": {
-            "type": "boolean"
+        "created": {
+            "type": "string"
         },
         "creatorRef": {
             "type": "object",
@@ -49,81 +45,52 @@
                 "_id": {
                     "type": "integer"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "email": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "_id",
-                "name",
-                "email"
-            ]
+            }
         },
-        "lastAction": {
+        "description": {
             "type": "string"
         },
-        "created": {
+        "expanded": {
+            "type": "boolean"
+        },
+        "lastAction": {
             "type": "string"
         },
         "lastUpdate": {
             "type": "string"
         },
-        "sort": {
-            "type": "integer"
+        "public": {
+            "type": "boolean"
         },
         "slug": {
             "type": "string"
         },
-        "access": {
+        "sort": {
+            "type": "integer"
+        },
+        "title": {
+            "type": "string"
+        },
+        "user": {
             "type": "object",
             "properties": {
-                "for": {
+                "$id": {
                     "type": "integer"
                 },
-                "level": {
-                    "type": "integer"
-                },
-                "root": {
-                    "type": "boolean"
-                },
-                "draggable": {
-                    "type": "boolean"
+                "$ref": {
+                    "type": "string"
                 }
-            },
-            "required": [
-                "for",
-                "level",
-                "root",
-                "draggable"
-            ]
+            }
         },
-        "author": {
-            "type": "boolean"
-        },
-        "color": {
+        "view": {
             "type": "string"
         }
     },
-    "required": [
-        "_id",
-        "title",
-        "description",
-        "user",
-        "public",
-        "view",
-        "count",
-        "cover",
-        "expanded",
-        "lastAction",
-        "created",
-        "lastUpdate",
-        "sort",
-        "slug",
-        "access",
-        "author"
-    ],
     "version": 1
 }

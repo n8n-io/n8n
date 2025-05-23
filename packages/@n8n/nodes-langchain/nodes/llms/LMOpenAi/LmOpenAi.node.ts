@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { OpenAI, type ClientOptions } from '@langchain/openai';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -8,6 +8,8 @@ import type {
 	SupplyData,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
+
+import { getHttpProxyAgent } from '@utils/httpProxyAgent';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -53,7 +55,7 @@ export class LmOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -248,7 +250,9 @@ export class LmOpenAi implements INodeType {
 			topP?: number;
 		};
 
-		const configuration: ClientOptions = {};
+		const configuration: ClientOptions = {
+			httpAgent: getHttpProxyAgent(),
+		};
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
 		}

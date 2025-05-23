@@ -1,5 +1,5 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { blobFields, blobOperations, containerFields, containerOperations } from './descriptions';
 import { getBlobs, getContainers } from './GenericFunctions';
@@ -19,8 +19,8 @@ export class AzureStorage implements INodeType {
 		defaults: {
 			name: 'Azure Storage',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'azureStorageOAuth2Api',

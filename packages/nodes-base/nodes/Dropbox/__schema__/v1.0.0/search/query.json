@@ -38,9 +38,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "highlight_spans",
-        "match_type"
-    ],
     "version": 1
 }

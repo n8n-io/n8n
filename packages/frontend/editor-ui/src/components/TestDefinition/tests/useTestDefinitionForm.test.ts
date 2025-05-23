@@ -48,20 +48,12 @@ describe('useTestDefinitionForm', () => {
 		expect(state.value.description.value).toBe('');
 		expect(state.value.name.value).toContain('My Test');
 		expect(state.value.tags.value).toEqual([]);
-		expect(state.value.metrics).toEqual([]);
 		expect(state.value.evaluationWorkflow.value).toBe('');
 	});
 
 	it('should load test data', async () => {
 		const { loadTestData, state } = useTestDefinitionForm();
 		const fetchSpy = vi.spyOn(useTestDefinitionStore(), 'fetchAll');
-		const fetchMetricsSpy = vi.spyOn(useTestDefinitionStore(), 'fetchMetrics').mockResolvedValue([
-			{
-				id: 'metric1',
-				name: 'Metric 1',
-				testDefinitionId: TEST_DEF_A.id,
-			},
-		]);
 		const evaluationsStore = mockedStore(useTestDefinitionStore);
 
 		evaluationsStore.testDefinitionsById = {
@@ -71,14 +63,10 @@ describe('useTestDefinitionForm', () => {
 
 		await loadTestData(TEST_DEF_A.id, '123');
 		expect(fetchSpy).toBeCalled();
-		expect(fetchMetricsSpy).toBeCalledWith(TEST_DEF_A.id);
 		expect(state.value.name.value).toEqual(TEST_DEF_A.name);
 		expect(state.value.description.value).toEqual(TEST_DEF_A.description);
 		expect(state.value.tags.value).toEqual([TEST_DEF_A.annotationTagId]);
 		expect(state.value.evaluationWorkflow.value).toEqual(TEST_DEF_A.evaluationWorkflowId);
-		expect(state.value.metrics).toEqual([
-			{ id: 'metric1', name: 'Metric 1', testDefinitionId: TEST_DEF_A.id },
-		]);
 	});
 
 	it('should gracefully handle loadTestData when no test definition found', async () => {
@@ -94,7 +82,6 @@ describe('useTestDefinitionForm', () => {
 		expect(state.value.description.value).toBe('');
 		expect(state.value.name.value).toContain('My Test');
 		expect(state.value.tags.value).toEqual([]);
-		expect(state.value.metrics).toEqual([]);
 	});
 
 	it('should handle errors while loading test data', async () => {
@@ -174,68 +161,6 @@ describe('useTestDefinitionForm', () => {
 
 		await expect(updateTest(TEST_DEF_A.id)).rejects.toThrow('Update Failed');
 		expect(updateSpy).toBeCalled();
-	});
-
-	it('should delete a metric', async () => {
-		const { state, deleteMetric } = useTestDefinitionForm();
-		const evaluationsStore = mockedStore(useTestDefinitionStore);
-		const deleteMetricSpy = vi.spyOn(evaluationsStore, 'deleteMetric');
-
-		state.value.metrics = [
-			{
-				id: 'metric1',
-				name: 'Metric 1',
-				testDefinitionId: '1',
-			},
-			{
-				id: 'metric2',
-				name: 'Metric 2',
-				testDefinitionId: '1',
-			},
-		];
-
-		await deleteMetric('metric1', TEST_DEF_A.id);
-		expect(deleteMetricSpy).toBeCalledWith({ id: 'metric1', testDefinitionId: TEST_DEF_A.id });
-		expect(state.value.metrics).toEqual([
-			{ id: 'metric2', name: 'Metric 2', testDefinitionId: '1' },
-		]);
-	});
-
-	it('should update metrics', async () => {
-		const { state, updateMetrics } = useTestDefinitionForm();
-		const evaluationsStore = mockedStore(useTestDefinitionStore);
-		const updateMetricSpy = vi.spyOn(evaluationsStore, 'updateMetric');
-		const createMetricSpy = vi
-			.spyOn(evaluationsStore, 'createMetric')
-			.mockResolvedValue({ id: 'metric_new', name: 'Metric 2', testDefinitionId: TEST_DEF_A.id });
-
-		state.value.metrics = [
-			{
-				id: 'metric1',
-				name: 'Metric 1',
-				testDefinitionId: TEST_DEF_A.id,
-			},
-			{
-				id: '',
-				name: 'Metric 2',
-				testDefinitionId: TEST_DEF_A.id,
-			}, // New metric that needs creation
-		];
-
-		await updateMetrics(TEST_DEF_A.id);
-		expect(createMetricSpy).toHaveBeenCalledWith({
-			name: 'Metric 2',
-			testDefinitionId: TEST_DEF_A.id,
-		});
-		expect(updateMetricSpy).toHaveBeenCalledWith({
-			name: 'Metric 1',
-			id: 'metric1',
-			testDefinitionId: TEST_DEF_A.id,
-		});
-		expect(state.value.metrics).toEqual([
-			{ id: 'metric1', name: 'Metric 1', testDefinitionId: TEST_DEF_A.id },
-			{ id: 'metric_new', name: 'Metric 2', testDefinitionId: TEST_DEF_A.id },
-		]);
 	});
 
 	it('should start editing a field', () => {

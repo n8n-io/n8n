@@ -1,11 +1,12 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDataCreate } from './Interface';
 
+export const SAMPLE_SUBWORKFLOW_TRIGGER_ID = 'c055762a-8fe7-4141-a639-df2372f30060';
 export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 	name: 'My Sub-Workflow',
 	nodes: [
 		{
-			id: 'c055762a-8fe7-4141-a639-df2372f30060',
+			id: SAMPLE_SUBWORKFLOW_TRIGGER_ID,
 			typeVersion: 1.1,
 			name: 'When Executed by Another Workflow',
 			type: 'n8n-nodes-base.executeWorkflowTrigger',
@@ -26,7 +27,7 @@ export const SAMPLE_SUBWORKFLOW_WORKFLOW: IWorkflowDataCreate = {
 				[
 					{
 						node: 'Replace me with your logic',
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					},
 				],
@@ -62,23 +63,22 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 		},
 		{
 			parameters: {
-				assignments: {
+				metrics: {
 					assignments: [
 						{
-							id: 'a748051d-ebdb-4fcf-aaed-02756130ce2a',
 							name: 'latency',
 							value:
 								'={{(() => {\n  const newExecutionRuns = Object.values($json.newExecution)\n    .reduce((acc, node) => {\n      acc.push(node.runs.filter(run => run.output.main !== undefined))\n      return acc\n    }, []).flat()\n\n  const latency = newExecutionRuns.reduce((acc, run) => acc + run.executionTime, 0)\n\n  return latency\n})()}}',
 							type: 'number',
+							id: '1ebc15e9-f079-4d1f-a08d-d4880ea0ddb5',
 						},
 					],
 				},
-				options: {},
 			},
+			type: 'n8n-nodes-base.evaluationMetrics',
 			id: '33e2e94a-ec48-4e7b-b750-f56718d5105c',
 			name: 'Return metric(s)',
-			type: 'n8n-nodes-base.set',
-			typeVersion: 3.4,
+			typeVersion: 1,
 			position: [600, 440],
 		},
 		{
@@ -143,7 +143,7 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 				[
 					{
 						node: 'Replace me',
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					},
 				],
@@ -154,7 +154,7 @@ export const SAMPLE_EVALUATION_WORKFLOW: IWorkflowDataCreate = {
 				[
 					{
 						node: 'Return metric(s)',
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					},
 				],

@@ -6,7 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	JSON2SheetOpts,
 	ParsingOptions,
@@ -43,8 +43,8 @@ export class SpreadsheetFileV1 implements INodeType {
 				name: 'Spreadsheet File',
 				color: '#2244FF',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			properties: [
 				oldVersionNotice,
 				operationProperty,

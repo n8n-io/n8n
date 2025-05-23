@@ -1,7 +1,7 @@
+import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ICredentialTestFunctions } from 'n8n-workflow';
 
-import { Memoized } from '@/decorators';
 import { Logger } from '@/logging';
 
 import { proxyRequestToAxios } from './utils/request-helper-functions';

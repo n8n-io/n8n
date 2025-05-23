@@ -5,7 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { itemFields, itemOperations } from './ItemDescription';
@@ -29,8 +29,8 @@ export class WebflowV1 implements INodeType {
 			defaults: {
 				name: 'Webflow',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'webflowApi',

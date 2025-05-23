@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	inputSchemaField,
@@ -36,10 +36,10 @@ export const versionDescription: INodeTypeDescription = {
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: [],
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-	outputs: [NodeConnectionType.AiTool],
+	outputs: [NodeConnectionTypes.AiTool],
 	outputNames: ['Tool'],
 	properties: [
-		getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+		getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 		{
 			displayName:
 				'See an example of a workflow to suggest meeting slots using AI <a href="/templates/1953" target="_blank">here</a>.',

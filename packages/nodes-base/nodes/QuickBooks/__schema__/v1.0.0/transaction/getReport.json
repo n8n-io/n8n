@@ -1,10 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "tx_date": {
-            "type": "string"
-        },
-        "txn_type": {
+        "account_name": {
             "type": "string"
         },
         "doc_num": {
@@ -13,21 +10,21 @@
         "is_no_post": {
             "type": "string"
         },
-        "name": {
-            "type": "string"
-        },
         "memo": {
             "type": "string"
         },
-        "account_name": {
+        "name": {
             "type": "string"
         },
         "other_account": {
             "type": "string"
         },
-        "subt_nat_amount": {
+        "tx_date": {
+            "type": "string"
+        },
+        "txn_type": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

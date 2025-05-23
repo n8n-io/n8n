@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { Validatable, IValidator } from '@n8n/design-system';
 import { N8nFormInput } from '@n8n/design-system';
-import { VALID_EMAIL_REGEX } from '@/constants';
+import { VALID_EMAIL_REGEX, COMMUNITY_PLUS_DOCS_URL } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
@@ -15,6 +15,7 @@ const props = defineProps<{
 	modalName: string;
 	data?: {
 		closeCallback?: () => void;
+		customHeading?: string;
 	};
 }>();
 
@@ -85,11 +86,8 @@ const confirm = async () => {
 	>
 		<template #content>
 			<div>
-				<p :class="$style.top">
-					<N8nBadge>{{ i18n.baseText('communityPlusModal.badge') }}</N8nBadge>
-				</p>
 				<N8nText tag="h1" align="center" size="xlarge" class="mb-m">{{
-					i18n.baseText('communityPlusModal.title')
+					data?.customHeading ?? i18n.baseText('communityPlusModal.title')
 				}}</N8nText>
 				<N8nText tag="p">{{ i18n.baseText('communityPlusModal.description') }}</N8nText>
 				<ul :class="$style.features">
@@ -114,6 +112,13 @@ const confirm = async () => {
 							{{ i18n.baseText('communityPlusModal.features.third.description') }}
 						</N8nText>
 					</li>
+					<li>
+						<i> 📁</i>
+						<N8nText>
+							<strong>{{ i18n.baseText('communityPlusModal.features.fourth.title') }}</strong>
+							{{ i18n.baseText('communityPlusModal.features.fourth.description') }}
+						</N8nText>
+					</li>
 				</ul>
 				<N8nFormInput
 					id="email"
@@ -133,6 +138,14 @@ const confirm = async () => {
 			</div>
 		</template>
 		<template #footer>
+			<div :class="$style.notice">
+				<N8nText size="xsmall" tag="span">
+					{{ i18n.baseText('communityPlusModal.notice') }}
+					<a :href="COMMUNITY_PLUS_DOCS_URL" target="_blank">
+						{{ i18n.baseText('generic.moreInfo') }}
+					</a>
+				</N8nText>
+			</div>
 			<div :class="$style.buttons">
 				<N8nButton :class="$style.skip" type="secondary" text @click="closeModal">{{
 					i18n.baseText('communityPlusModal.button.skip')
@@ -146,10 +159,8 @@ const confirm = async () => {
 </template>
 
 <style lang="scss" module>
-.top {
-	display: flex;
-	justify-content: center;
-	margin: 0 0 var(--spacing-s);
+.notice {
+	margin-bottom: var(--spacing-l);
 }
 
 .features {

@@ -1,16 +1,13 @@
 {
     "type": "object",
     "properties": {
-        "creator": {
-            "type": "string"
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
-        "title": {
-            "type": "string"
-        },
-        "link": {
-            "type": "string"
-        },
-        "pubDate": {
+        "content": {
             "type": "string"
         },
         "content:encoded": {
@@ -19,25 +16,28 @@
         "content:encodedSnippet": {
             "type": "string"
         },
+        "contentSnippet": {
+            "type": "string"
+        },
+        "creator": {
+            "type": "string"
+        },
         "dc:creator": {
             "type": "string"
         },
         "guid": {
             "type": "string"
         },
-        "categories": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
         "isoDate": {
             "type": "string"
         },
-        "content": {
+        "link": {
             "type": "string"
         },
-        "contentSnippet": {
+        "pubDate": {
+            "type": "string"
+        },
+        "title": {
             "type": "string"
         }
     },

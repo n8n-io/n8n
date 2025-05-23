@@ -3,14 +3,13 @@ import { Container } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { ensureError, jsonParse, type INodeProperties } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets.ee/constants';
-import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
-
 import type {
 	GcpSecretsManagerContext,
 	GcpSecretAccountKey,
 	RawGcpSecretAccountKey,
 } from './types';
+import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../../constants';
+import type { SecretsProvider, SecretsProviderState } from '../../types';
 
 export class GcpSecretsManager implements SecretsProvider {
 	name = 'gcpSecretsManager';

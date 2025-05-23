@@ -12,27 +12,18 @@
                     "id": {
                         "type": "string"
                     },
-                    "threadId": {
-                        "type": "string"
-                    },
                     "labelIds": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "threadId": {
+                        "type": "string"
                     }
-                },
-                "required": [
-                    "id",
-                    "threadId",
-                    "labelIds"
-                ]
+                }
             }
         }
     },
-    "required": [
-        "id",
-        "messages"
-    ],
     "version": 1
 }

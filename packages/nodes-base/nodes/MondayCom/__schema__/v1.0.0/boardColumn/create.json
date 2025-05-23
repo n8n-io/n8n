@@ -5,8 +5,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "id"
-    ],
     "version": 1
 }

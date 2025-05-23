@@ -20,11 +20,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "ETag",
-        "Key",
-        "LastModified",
-        "Size"
-    ],
     "version": 1
 }

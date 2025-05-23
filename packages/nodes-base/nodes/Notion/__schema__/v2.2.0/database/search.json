@@ -4,16 +4,12 @@
         "id": {
             "type": "string"
         },
-        "url": {
+        "name": {
             "type": "string"
         },
-        "name": {
+        "url": {
             "type": "string"
         }
     },
-    "required": [
-        "id",
-        "url"
-    ],
     "version": 1
 }

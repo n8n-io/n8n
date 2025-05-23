@@ -1,80 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "state": {
-            "type": "object",
-            "properties": {
-                "on": {
-                    "type": "boolean"
-                },
-                "bri": {
-                    "type": "integer"
-                },
-                "hue": {
-                    "type": "integer"
-                },
-                "sat": {
-                    "type": "integer"
-                },
-                "effect": {
-                    "type": "string"
-                },
-                "xy": {
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    }
-                },
-                "ct": {
-                    "type": "integer"
-                },
-                "alert": {
-                    "type": "string"
-                },
-                "colormode": {
-                    "type": "string"
-                },
-                "mode": {
-                    "type": "string"
-                },
-                "reachable": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "on",
-                "alert",
-                "mode",
-                "reachable"
-            ]
-        },
-        "swupdate": {
-            "type": "object",
-            "properties": {
-                "state": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "state",
-                "lastinstall"
-            ]
-        },
-        "type": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "modelid": {
-            "type": "string"
-        },
-        "manufacturername": {
-            "type": "string"
-        },
-        "productname": {
-            "type": "string"
-        },
         "capabilities": {
             "type": "object",
             "properties": {
@@ -84,15 +10,6 @@
                 "control": {
                     "type": "object",
                     "properties": {
-                        "mindimlevel": {
-                            "type": "integer"
-                        },
-                        "maxlumen": {
-                            "type": "integer"
-                        },
-                        "colorgamuttype": {
-                            "type": "string"
-                        },
                         "colorgamut": {
                             "type": "array",
                             "items": {
@@ -102,48 +19,40 @@
                                 }
                             }
                         },
+                        "colorgamuttype": {
+                            "type": "string"
+                        },
                         "ct": {
                             "type": "object",
                             "properties": {
-                                "min": {
-                                    "type": "integer"
-                                },
                                 "max": {
                                     "type": "integer"
+                                },
+                                "min": {
+                                    "type": "integer"
                                 }
-                            },
-                            "required": [
-                                "min",
-                                "max"
-                            ]
+                            }
+                        },
+                        "maxlumen": {
+                            "type": "integer"
+                        },
+                        "mindimlevel": {
+                            "type": "integer"
                         }
-                    },
-                    "required": [
-                        "mindimlevel",
-                        "maxlumen"
-                    ]
+                    }
                 },
                 "streaming": {
                     "type": "object",
                     "properties": {
-                        "renderer": {
-                            "type": "boolean"
-                        },
                         "proxy": {
                             "type": "boolean"
+                        },
+                        "renderer": {
+                            "type": "boolean"
                         }
-                    },
-                    "required": [
-                        "renderer",
-                        "proxy"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "certified",
-                "control",
-                "streaming"
-            ]
+            }
         },
         "config": {
             "type": "object",
@@ -151,59 +60,101 @@
                 "archetype": {
                     "type": "string"
                 },
-                "function": {
+                "direction": {
                     "type": "string"
                 },
-                "direction": {
+                "function": {
                     "type": "string"
                 },
                 "startup": {
                     "type": "object",
                     "properties": {
-                        "mode": {
-                            "type": "string"
-                        },
                         "configured": {
                             "type": "boolean"
+                        },
+                        "mode": {
+                            "type": "string"
                         }
-                    },
-                    "required": [
-                        "mode",
-                        "configured"
-                    ]
+                    }
                 }
-            },
-            "required": [
-                "archetype",
-                "function",
-                "direction"
-            ]
+            }
         },
-        "uniqueid": {
+        "manufacturername": {
             "type": "string"
         },
-        "swversion": {
+        "modelid": {
             "type": "string"
         },
-        "swconfigid": {
+        "name": {
             "type": "string"
         },
         "productid": {
             "type": "string"
+        },
+        "productname": {
+            "type": "string"
+        },
+        "state": {
+            "type": "object",
+            "properties": {
+                "alert": {
+                    "type": "string"
+                },
+                "bri": {
+                    "type": "integer"
+                },
+                "colormode": {
+                    "type": "string"
+                },
+                "ct": {
+                    "type": "integer"
+                },
+                "effect": {
+                    "type": "string"
+                },
+                "hue": {
+                    "type": "integer"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "on": {
+                    "type": "boolean"
+                },
+                "reachable": {
+                    "type": "boolean"
+                },
+                "sat": {
+                    "type": "integer"
+                },
+                "xy": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "swconfigid": {
+            "type": "string"
+        },
+        "swupdate": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "swversion": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "uniqueid": {
+            "type": "string"
         }
     },
-    "required": [
-        "state",
-        "swupdate",
-        "type",
-        "name",
-        "modelid",
-        "manufacturername",
-        "productname",
-        "capabilities",
-        "config",
-        "uniqueid",
-        "swversion"
-    ],
     "version": 1
 }

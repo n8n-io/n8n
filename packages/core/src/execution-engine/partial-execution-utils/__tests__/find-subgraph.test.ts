@@ -9,7 +9,7 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { createNodeData } from './helpers';
 import { DirectedGraph } from '../directed-graph';
@@ -191,7 +191,7 @@ describe('findSubgraph', () => {
 		//                   ┌┴──────┐
 		//                   │aiModel│
 		//                   └───────┘
-		test('always retain connections that have a different type than `NodeConnectionType.Main`', () => {
+		test('always retain connections that have a different type than `NodeConnectionTypes.Main`', () => {
 			// ARRANGE
 			const trigger = createNodeData({ name: 'trigger' });
 			const destination = createNodeData({ name: 'destination' });
@@ -201,7 +201,7 @@ describe('findSubgraph', () => {
 				.addNodes(trigger, destination, aiModel)
 				.addConnections(
 					{ from: trigger, to: destination },
-					{ from: aiModel, type: NodeConnectionType.AiLanguageModel, to: destination },
+					{ from: aiModel, type: NodeConnectionTypes.AiLanguageModel, to: destination },
 				);
 
 			// ACT
@@ -236,7 +236,7 @@ describe('findSubgraph', () => {
 				.addNodes(trigger, root, aiModel, destination)
 				.addConnections(
 					{ from: trigger, to: aiModel },
-					{ from: aiModel, type: NodeConnectionType.AiLanguageModel, to: root },
+					{ from: aiModel, type: NodeConnectionTypes.AiLanguageModel, to: root },
 					{ from: root, to: destination },
 				);
 

@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IDataObject,
 	type IExecuteSingleFunctions,
 	type IHttpRequestOptions,
@@ -23,8 +23,8 @@ export class Adalo implements INodeType {
 			name: 'Adalo',
 		},
 		usableAsTool: true,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'adaloApi',

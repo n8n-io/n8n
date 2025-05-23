@@ -4,30 +4,8 @@
         "base": {
             "type": "string"
         },
-        "target": {
+        "coin_id": {
             "type": "string"
-        },
-        "market": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "identifier": {
-                    "type": "string"
-                },
-                "has_trading_incentive": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "name",
-                "identifier",
-                "has_trading_incentive"
-            ]
-        },
-        "last": {
-            "type": "number"
         },
         "converted_last": {
             "type": "object",
@@ -38,21 +16,7 @@
                 "eth": {
                     "type": "number"
                 }
-            },
-            "required": [
-                "btc",
-                "eth",
-                "usd"
-            ]
-        },
-        "timestamp": {
-            "type": "string"
-        },
-        "last_traded_at": {
-            "type": "string"
-        },
-        "last_fetch_at": {
-            "type": "string"
+            }
         },
         "is_anomaly": {
             "type": "boolean"
@@ -60,37 +24,44 @@
         "is_stale": {
             "type": "boolean"
         },
-        "trade_url": {
+        "last": {
+            "type": "number"
+        },
+        "last_fetch_at": {
+            "type": "string"
+        },
+        "last_traded_at": {
+            "type": "string"
+        },
+        "market": {
+            "type": "object",
+            "properties": {
+                "has_trading_incentive": {
+                    "type": "boolean"
+                },
+                "identifier": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "target": {
+            "type": "string"
+        },
+        "target_coin_id": {
+            "type": "string"
+        },
+        "timestamp": {
             "type": "string"
         },
         "token_info_url": {
             "type": "null"
         },
-        "coin_id": {
-            "type": "string"
-        },
-        "target_coin_id": {
+        "trade_url": {
             "type": "string"
         }
     },
-    "required": [
-        "base",
-        "target",
-        "market",
-        "last",
-        "volume",
-        "converted_last",
-        "converted_volume",
-        "trust_score",
-        "bid_ask_spread_percentage",
-        "timestamp",
-        "last_traded_at",
-        "last_fetch_at",
-        "is_anomaly",
-        "is_stale",
-        "trade_url",
-        "token_info_url",
-        "coin_id"
-    ],
     "version": 1
 }

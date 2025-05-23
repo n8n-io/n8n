@@ -5,7 +5,7 @@ import type { CanvasConnectionPort, CanvasElementPortWithRenderData } from '@/ty
 import { CanvasConnectionMode } from '@/types';
 import type { ValidConnectionFunc } from '@vue-flow/core';
 import { Handle } from '@vue-flow/core';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import CanvasHandleMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainInput.vue';
 import CanvasHandleMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainOutput.vue';
 import CanvasHandleNonMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainInput.vue';
@@ -58,13 +58,13 @@ const connectionsLimitReached = computed(() => {
 const isConnectableStart = computed(() => {
 	if (connectionsLimitReached.value) return false;
 
-	return props.mode === CanvasConnectionMode.Output || props.type !== NodeConnectionType.Main;
+	return props.mode === CanvasConnectionMode.Output || props.type !== NodeConnectionTypes.Main;
 });
 
 const isConnectableEnd = computed(() => {
 	if (connectionsLimitReached.value) return false;
 
-	return props.mode === CanvasConnectionMode.Input || props.type !== NodeConnectionType.Main;
+	return props.mode === CanvasConnectionMode.Input || props.type !== NodeConnectionTypes.Main;
 });
 
 const isConnected = computed(() => props.connectionsCount > 0);
@@ -91,13 +91,13 @@ const RenderType = () => {
 	let Component;
 
 	if (props.mode === CanvasConnectionMode.Output) {
-		if (props.type === NodeConnectionType.Main) {
+		if (props.type === NodeConnectionTypes.Main) {
 			Component = CanvasHandleMainOutput;
 		} else {
 			Component = CanvasHandleNonMainOutput;
 		}
 	} else {
-		if (props.type === NodeConnectionType.Main) {
+		if (props.type === NodeConnectionTypes.Main) {
 			Component = CanvasHandleMainInput;
 		} else {
 			Component = CanvasHandleNonMainInput;

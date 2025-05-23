@@ -1,26 +1,28 @@
 {
     "type": "object",
     "properties": {
-        "result_score": {
-            "type": "number"
+        "currency": {
+            "type": "string"
         },
         "id": {
             "type": "integer"
         },
-        "type": {
-            "type": "string"
+        "notes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
-        "title": {
-            "type": "string"
-        },
-        "currency": {
-            "type": "string"
-        },
-        "status": {
-            "type": "string"
-        },
-        "visible_to": {
-            "type": "integer"
+        "organization": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
         },
         "owner": {
             "type": "object",
@@ -28,10 +30,21 @@
                 "id": {
                     "type": "integer"
                 }
-            },
-            "required": [
-                "id"
-            ]
+            }
+        },
+        "person": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "result_score": {
+            "type": "number"
         },
         "stage": {
             "type": "object",
@@ -42,17 +55,19 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "id",
-                "name"
-            ]
-        },
-        "notes": {
-            "type": "array",
-            "items": {
-                "type": "string"
             }
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "integer"
         }
     },
     "version": 1

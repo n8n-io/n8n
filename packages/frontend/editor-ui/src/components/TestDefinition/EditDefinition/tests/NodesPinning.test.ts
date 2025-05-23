@@ -13,7 +13,7 @@ import {
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { SET_NODE_TYPE } from '@/constants';
 
 vi.mock('vue-router', () => {
@@ -53,8 +53,8 @@ describe('NodesPinning', () => {
 	const nodeTypesStore = mockedStore(useNodeTypesStore);
 	const nodeTypeDescription = mockNodeTypeDescription({
 		name: SET_NODE_TYPE,
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 	});
 	nodeTypesStore.nodeTypes = {
 		node: { 1: nodeTypeDescription },

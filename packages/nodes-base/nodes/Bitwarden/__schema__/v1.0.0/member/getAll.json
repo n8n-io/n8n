@@ -1,28 +1,22 @@
 {
     "type": "object",
     "properties": {
-        "object": {
+        "collections": {
+            "type": "null"
+        },
+        "email": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
-        "userId": {
-            "type": "string"
-        },
         "name": {
             "type": "string"
         },
-        "email": {
+        "object": {
             "type": "string"
         },
-        "twoFactorEnabled": {
-            "type": "boolean"
-        },
-        "status": {
-            "type": "integer"
-        },
-        "collections": {
+        "permissions": {
             "type": "null"
         },
         "resetPasswordEnrolled": {
@@ -31,26 +25,18 @@
         "ssoExternalId": {
             "type": "null"
         },
+        "status": {
+            "type": "integer"
+        },
+        "twoFactorEnabled": {
+            "type": "boolean"
+        },
         "type": {
             "type": "integer"
         },
-        "permissions": {
-            "type": "null"
+        "userId": {
+            "type": "string"
         }
     },
-    "required": [
-        "object",
-        "id",
-        "userId",
-        "name",
-        "email",
-        "twoFactorEnabled",
-        "status",
-        "collections",
-        "resetPasswordEnrolled",
-        "type",
-        "externalId",
-        "permissions"
-    ],
     "version": 1
 }

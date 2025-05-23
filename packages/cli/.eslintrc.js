@@ -47,7 +47,12 @@ module.exports = {
 			},
 		},
 		{
-			files: ['./src/databases/**/*.ts', './test/**/*.ts', './src/**/__tests__/**/*.ts'],
+			files: [
+				'./src/databases/**/*.ts',
+				'./src/modules/**/*.ts',
+				'./test/**/*.ts',
+				'./src/**/__tests__/**/*.ts',
+			],
 			rules: {
 				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
 			},

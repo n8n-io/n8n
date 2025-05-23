@@ -17,8 +17,6 @@ import type {
 	CanvasEventBusEvents,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
-import NodeIcon from '@/components/NodeIcon.vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
 import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
@@ -58,7 +56,7 @@ const emit = defineEmits<{
 	run: [id: string];
 	select: [id: string, selected: boolean];
 	toggle: [id: string];
-	activate: [id: string];
+	activate: [id: string, event: MouseEvent];
 	deactivate: [id: string];
 	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
@@ -71,7 +69,6 @@ const style = useCssModule();
 
 const props = defineProps<Props>();
 
-const nodeTypesStore = useNodeTypesStore();
 const contextMenu = useContextMenu();
 
 const { connectingHandle } = useCanvas();
@@ -97,10 +94,6 @@ const {
 });
 
 const isDisabled = computed(() => props.data.disabled);
-
-const nodeTypeDescription = computed(() => {
-	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
-});
 
 const classes = computed(() => ({
 	[style.canvasNode]: true,
@@ -155,14 +148,6 @@ const mappedOutputs = computed(() => {
 		...nonMainOutputs.value.map(nonMainOutputsMappingFn),
 	].filter((endpoint) => !!endpoint);
 });
-
-/**
- * Node icon
- */
-
-const nodeIconSize = computed(() =>
-	'configuration' in data.value.render.options && data.value.render.options.configuration ? 30 : 40,
-);
 
 /**
  * Endpoints
@@ -255,8 +240,8 @@ function onDisabledToggle() {
 	emit('toggle', props.id);
 }
 
-function onActivate() {
-	emit('activate', props.id);
+function onActivate(id: string, event: MouseEvent) {
+	emit('activate', id, event);
 }
 
 function onDeactivate() {
@@ -302,6 +287,10 @@ provide(CanvasNodeKey, {
 	readOnly,
 	eventBus: canvasNodeEventBus,
 });
+
+const hasToolbar = computed(
+	() => ![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.AIPrompt].includes(renderType.value),
+);
 
 const showToolbar = computed(() => {
 	const target = contextMenu.target.value;
@@ -388,7 +377,7 @@ onBeforeUnmount(() => {
 		</template>
 
 		<CanvasNodeToolbar
-			v-else-if="nodeTypeDescription"
+			v-else-if="hasToolbar"
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
@@ -405,15 +394,8 @@ onBeforeUnmount(() => {
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
-		>
-			<NodeIcon
-				:node-type="nodeTypeDescription"
-				:size="nodeIconSize"
-				:shrink="false"
-				:disabled="isDisabled"
-			/>
-			<!-- @TODO :color-default="iconColorDefault"-->
-		</CanvasNodeRenderer>
+			@delete="onDelete"
+		/>
 
 		<CanvasNodeTrigger
 			v-if="

@@ -9,7 +9,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '@/stores/apiKeys.store';
 import { DateTime } from 'luxon';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 setActivePinia(createTestingPinia());
 
@@ -107,6 +107,7 @@ describe('SettingsApiView', () => {
 				updatedAt: new Date().toString(),
 				apiKey: '****Atcr',
 				expiresAt: null,
+				scopes: ['user:create'],
 			},
 			{
 				id: '2',
@@ -115,6 +116,7 @@ describe('SettingsApiView', () => {
 				updatedAt: new Date().toString(),
 				apiKey: '****Bdcr',
 				expiresAt: dateInTheFuture.toSeconds(),
+				scopes: ['user:create'],
 			},
 			{
 				id: '3',
@@ -123,6 +125,7 @@ describe('SettingsApiView', () => {
 				updatedAt: new Date().toString(),
 				apiKey: '****Wtcr',
 				expiresAt: dateInThePast.toSeconds(),
+				scopes: ['user:create'],
 			},
 		];
 
@@ -163,6 +166,7 @@ describe('SettingsApiView', () => {
 				updatedAt: new Date().toString(),
 				apiKey: '****Atcr',
 				expiresAt: null,
+				scopes: ['user:create'],
 			},
 			{
 				id: '2',
@@ -171,6 +175,7 @@ describe('SettingsApiView', () => {
 				updatedAt: new Date().toString(),
 				apiKey: '****Bdcr',
 				expiresAt: dateInTheFuture.toSeconds(),
+				scopes: ['user:create'],
 			},
 			{
 				id: '3',
@@ -179,6 +184,7 @@ describe('SettingsApiView', () => {
 				updatedAt: new Date().toString(),
 				apiKey: '****Wtcr',
 				expiresAt: dateInThePast.toSeconds(),
+				scopes: ['user:create'],
 			},
 		];
 
@@ -212,6 +218,7 @@ describe('SettingsApiView', () => {
 				updatedAt: new Date().toString(),
 				apiKey: '****Atcr',
 				expiresAt: null,
+				scopes: ['user:create'],
 			},
 		];
 
