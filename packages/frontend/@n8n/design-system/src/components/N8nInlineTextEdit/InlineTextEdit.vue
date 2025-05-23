@@ -102,7 +102,11 @@ function onChange(e: string) {
 			<span ref="measureSpan" :class="$style.measureSpan">
 				{{ temp }}
 			</span>
-			<EditablePreview :class="$style.inlineRenamePreview" :style="{ maxWidth: `${maxWidth}px` }" />
+			<EditablePreview
+				data-test-id="inline-edit-preview"
+				:class="$style.inlineRenamePreview"
+				:style="{ maxWidth: `${maxWidth}px` }"
+			/>
 			<EditableInput
 				ref="input"
 				data-test-id="inline-edit-input"
