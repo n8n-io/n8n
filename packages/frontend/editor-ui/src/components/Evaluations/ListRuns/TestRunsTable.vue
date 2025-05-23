@@ -152,13 +152,13 @@ const runSummaries = computed(() => {
 .alertText {
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
+	line-clamp: 2;
 	-webkit-box-orient: vertical;
 	max-width: 100%;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	white-space: normal;
 	word-break: break-word;
-	// font-size: var(--font-size-2xs);
 	line-height: 1.25;
 	text-transform: none;
 }
