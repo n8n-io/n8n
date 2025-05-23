@@ -1,4 +1,4 @@
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest } from '@n8n/api-requests';
 import type { IRestApiContext } from '@/Interface';
 import type {
 	InsightsSummary,

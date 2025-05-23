@@ -4,18 +4,18 @@ import type {
 	FolderTreeResponseItem,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
-	IRestApiContext,
 	IWorkflowDb,
 	NewWorkflowResponse,
 	WorkflowListResource,
 } from '@/Interface';
+import type { IRestApiContext } from '@n8n/api-requests';
 import type {
 	ExecutionFilters,
 	ExecutionOptions,
 	ExecutionSummary,
 	IDataObject,
 } from 'n8n-workflow';
-import { getFullApiResponse, makeRestApiRequest } from '@/utils/apiUtils';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/api-requests';
 
 export async function getNewWorkflow(context: IRestApiContext, data?: IDataObject) {
 	const response = await makeRestApiRequest<NewWorkflowResponse>(

@@ -16,7 +16,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest } from '@n8n/api-requests';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
 import { useLocalStorage } from '@vueuse/core';

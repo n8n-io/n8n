@@ -921,8 +921,6 @@ export const IsInPiPWindowSymbol = 'IsInPipWindow' as unknown as InjectionKey<
 >;
 
 /** Auth */
-export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
-
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 
 export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';

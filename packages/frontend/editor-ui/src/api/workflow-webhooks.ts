@@ -1,5 +1,5 @@
 import type { IUser } from '@/Interface';
-import { post } from '@/utils/apiUtils';
+import { post } from '@n8n/api-requests';
 
 const N8N_API_BASE_URL = 'https://api.n8n.io/api';
 const CONTACT_EMAIL_SUBMISSION_ENDPOINT = '/accounts/onboarding';

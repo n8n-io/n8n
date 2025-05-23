@@ -1,5 +1,5 @@
-import type { IRestApiContext } from '@/Interface';
-import { get } from '@/utils/apiUtils';
+import type { IRestApiContext } from '@n8n/api-requests';
+import { get } from '@n8n/api-requests';
 import type {
 	WorkflowHistory,
 	WorkflowVersion,

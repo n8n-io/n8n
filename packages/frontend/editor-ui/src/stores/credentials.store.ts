@@ -13,7 +13,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { i18n } from '@/plugins/i18n';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest } from '@n8n/api-requests';
 import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
 import { splitName } from '@/utils/projects.utils';
 import { isEmpty, isPresent } from '@/utils/typesUtils';

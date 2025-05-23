@@ -73,7 +73,7 @@ import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
-import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/utils/apiUtils';
+import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@n8n/api-requests';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';

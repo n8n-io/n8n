@@ -1,0 +1,12 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"rootDir": ".",
+		"outDir": "dist",
+		"moduleResolution": "bundler",
+		"types": ["vite/client", "vitest/globals"],
+		"isolatedModules": true
+	},
+	"include": ["src/**/*.ts", "vite.config.ts", "tsup.config.ts"]
+}

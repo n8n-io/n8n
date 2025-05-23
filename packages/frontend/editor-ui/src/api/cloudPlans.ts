@@ -1,5 +1,6 @@
-import type { Cloud, IRestApiContext, InstanceUsage } from '@/Interface';
-import { get, post } from '@/utils/apiUtils';
+import type { Cloud, InstanceUsage } from '@/Interface';
+import type { IRestApiContext } from '@n8n/api-requests';
+import { get, post } from '@n8n/api-requests';
 
 export async function getCurrentPlan(context: IRestApiContext): Promise<Cloud.PlanData> {
 	return await get(context.baseUrl, '/admin/cloud-plan');

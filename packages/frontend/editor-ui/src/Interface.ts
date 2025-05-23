@@ -1179,11 +1179,6 @@ export interface CommunityNodesState {
 	installedPackages: CommunityPackageMap;
 }
 
-export interface IRestApiContext {
-	baseUrl: string;
-	pushRef: string;
-}
-
 export interface IZoomConfig {
 	scale: number;
 	offset: XYPosition;

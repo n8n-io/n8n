@@ -1,5 +1,6 @@
-import type { IRestApiContext, ITag } from '@/Interface';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import type { ITag } from '@/Interface';
+import type { IRestApiContext } from '@n8n/api-requests';
+import { makeRestApiRequest } from '@n8n/api-requests';
 import type { CreateOrUpdateTagRequestDto, RetrieveTagQueryDto } from '@n8n/api-types';
 
 type TagsApiEndpoint = '/tags' | '/annotation-tags';

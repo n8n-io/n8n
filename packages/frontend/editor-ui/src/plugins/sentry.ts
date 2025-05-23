@@ -1,6 +1,6 @@
 import type { Plugin } from 'vue';
 import { AxiosError } from 'axios';
-import { ResponseError } from '@/utils/apiUtils';
+import { ResponseError } from '@n8n/api-requests';
 import * as Sentry from '@sentry/vue';
 
 const ignoredErrors = [
