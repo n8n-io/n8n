@@ -9,7 +9,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
-import { N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { orderBy } from 'lodash-es';
