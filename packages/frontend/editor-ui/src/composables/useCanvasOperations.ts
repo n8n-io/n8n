@@ -252,6 +252,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		newProperties: Partial<INode>,
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
+		// @todo this should probably use use workflowsStore.setNodeValues()?
 		const node = workflowsStore.getNodeById(nodeId);
 		if (!node) return;
 

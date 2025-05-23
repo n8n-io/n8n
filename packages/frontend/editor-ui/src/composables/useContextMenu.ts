@@ -170,6 +170,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				divided: true,
 				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
 				shortcut: { shiftKey: true, metaKey: true, keys: ['X'] },
+				disabled: isReadOnly.value,
 			},
 		];
 
