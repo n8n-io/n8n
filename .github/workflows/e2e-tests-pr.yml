@@ -10,20 +10,17 @@ concurrency:
 
 jobs:
   eligibility_check:
-    name: Check Run Eligibility
-    uses: ./.github/workflows/check-run-eligibility.yml
-    if: github.event.review.state == 'approved'
-    with:
-      pr_base_ref: ${{ github.event.pull_request.base.ref }}
-      pr_head_sha: ${{ github.event.pull_request.head.sha }}
-      pr_head_repo_full_name: ${{ github.event.pull_request.head.repo.full_name }}
-      is_pr_approved_by_maintainer: ${{ github.event.review.state == 'approved' }}
+      name: Check Eligibility for Test Run
+      if: github.event.review.state == 'approved'
+      uses: ./.github/workflows/check-run-eligibility.yml
+      with:
+        is_pr_approved_by_maintainer: true
 
   run-e2e-tests:
     name: E2E [Electron/Node 18]
     uses: ./.github/workflows/e2e-reusable.yml
     needs: [eligibility_check]
-    if: ${{ needs.eligibility_check.result != 'skipped' && needs.eligibility_check.outputs.should_run == 'true' }}
+    if: needs.eligibility_check.outputs.should_run == 'true'
     with:
       pr_number: ${{ github.event.pull_request.number }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
