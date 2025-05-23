@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
 import type {
 	ICredentialsDecryptedResponse,
@@ -51,6 +51,7 @@ import {
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/utils/typeGuards';
+import { useElementSize } from '@vueuse/core';
 
 type Props = {
 	modalName: string;
@@ -1064,6 +1065,9 @@ function resetCredentialData(): void {
 		homeProject,
 	};
 }
+
+const credNameRef = useTemplateRef('credNameRef');
+const { width } = useElementSize(credNameRef);
 </script>
 
 <template>
@@ -1082,10 +1086,11 @@ function resetCredentialData(): void {
 					<div :class="$style.credIcon">
 						<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
 					</div>
-					<div :class="$style.credName">
+					<div ref="credNameRef" :class="$style.credName">
 						<N8nInlineTextEdit
 							v-if="credentialName"
 							:model-value="credentialName"
+							:max-width="width - 10"
 							:readonly="
 								!credentialPermissions.update || !credentialType || isEditingManagedCredential
 							"
@@ -1206,6 +1211,7 @@ function resetCredentialData(): void {
 
 .credName {
 	display: flex;
+	width: 100%;
 	flex-direction: column;
 	gap: var(--spacing-4xs);
 }
