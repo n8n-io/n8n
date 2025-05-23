@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useElementSize } from '@vueuse/core';
 import { EditableArea, EditableInput, EditablePreview, EditableRoot } from 'reka-ui';
-import { ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 
 type Props = {
 	modelValue: string;
@@ -20,16 +20,10 @@ const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
 
-const newValue = ref(props.modelValue);
-const temp = ref(props.modelValue);
-
-const preview = useTemplateRef('preview');
-const { width } = useElementSize(preview);
-
 const editableRoot = useTemplateRef('editableRoot');
 
 function forceFocus() {
-	if (editableRoot.value) {
+	if (editableRoot.value && !props.readOnly) {
 		editableRoot.value.edit();
 	}
 }
@@ -47,16 +41,42 @@ function onSubmit() {
 
 function onInput(value: string) {
 	newValue.value = value;
-}
-
-function onChange(e: string) {
-	temp.value = e.replace(/\s/g, '.'); // force input to expand on space chars];
+	measureText.value = value || 'A';
 }
 
 function onStateChange(state: string) {
 	if (state === 'cancel') {
 		temp.value = newValue.value;
 	}
+}
+
+// Resize logic
+const newValue = ref(props.modelValue);
+const temp = ref(props.modelValue);
+const measureText = ref(props.modelValue || 'A');
+
+const measureSpan = useTemplateRef('measureSpan');
+const { width: measuredWidth } = useElementSize(measureSpan);
+
+const inputWidth = computed(() => {
+	const minWidth = 60; // Minimum width
+	return Math.max(minWidth, Math.min(measuredWidth.value, props.maxWidth));
+});
+
+watch(
+	[newValue, temp],
+	([newVal, tempVal]) => {
+		// Use the longer of the two values for measurement
+		const textToMeasure = tempVal.length > newVal.length ? tempVal : newVal;
+		measureText.value = textToMeasure || 'A';
+	},
+	{ immediate: true },
+);
+
+function onChange(e: string) {
+	const processedValue = e.replace(/\s/g, '.');
+	temp.value = processedValue;
+	measureText.value = processedValue || 'A';
 }
 </script>
 
@@ -75,16 +95,18 @@ function onStateChange(state: string) {
 		@update:state="onStateChange"
 	>
 		<EditableArea
-			:style="{ width: `${width}px`, maxWidth: `${maxWidth}px` }"
+			:style="{ width: `${inputWidth}px`, maxWidth: `${maxWidth}px` }"
 			:class="$style.inlineRenameArea"
+			@click="forceFocus"
 		>
-			<span ref="preview" :class="$style.hidden">
+			<span ref="measureSpan" :class="$style.measureSpan">
 				{{ temp }}
 			</span>
 			<EditablePreview :class="$style.inlineRenamePreview" :style="{ maxWidth: `${maxWidth}px` }" />
 			<EditableInput
 				ref="input"
-				:style="{ width: `${width}px`, maxWidth: `${maxWidth}px`, zIndex: 1 }"
+				data-test-id="inline-edit-input"
+				:style="{ width: `${inputWidth}px`, maxWidth: `${maxWidth}px`, zIndex: 1 }"
 				@input="(e) => onChange(e.target.value)"
 			/>
 		</EditableArea>
@@ -151,10 +173,14 @@ function onStateChange(state: string) {
 	z-index: 1;
 }
 
-.hidden {
+.measureSpan {
 	position: absolute;
 	top: 0;
 	visibility: hidden;
 	white-space: nowrap;
+	font-family: inherit;
+	font-size: inherit;
+	font-weight: inherit;
+	letter-spacing: inherit;
 }
 </style>
