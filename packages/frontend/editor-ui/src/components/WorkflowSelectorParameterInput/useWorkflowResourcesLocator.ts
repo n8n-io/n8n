@@ -4,39 +4,49 @@ import { sortBy } from 'lodash-es';
 import type { Router } from 'vue-router';
 import { VIEWS } from '@/constants';
 
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, WorkflowListItem, WorkflowListResource } from '@/Interface';
 
 export function useWorkflowResourcesLocator(router: Router) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowsResources = ref<Array<{ name: string; value: string; url: string }>>([]);
 	const isLoadingResources = ref(true);
 	const searchFilter = ref('');
-	const PAGE_SIZE = 40;
+	const currentPage = ref(1);
+	const PAGE_SIZE = 2;
+	const workflows = ref<WorkflowListItem[]>();
 
-	const sortedWorkflows = computed(() =>
-		sortBy(workflowsStore.allWorkflows, (workflow) =>
-			new Date(workflow.updatedAt).valueOf(),
-		).reverse(),
-	);
+	// const sortedWorkflows = computed(() =>
+	// 	sortBy(workflowsStore.allWorkflows, (workflow) =>
+	// 		new Date(workflow.updatedAt).valueOf(),
+	// 	).reverse(),
+	// );
 
 	const hasMoreWorkflowsToLoad = computed(
-		() => workflowsStore.allWorkflows.length > workflowsResources.value.length,
+		// () => workflowsStore.allWorkflows.length > workflowsResources.value.length,
+		() => false,
 	);
 
 	const filteredResources = computed(() => {
-		return workflowsStore.allWorkflows
-			.filter((resource) => resource.name.toLowerCase().includes(searchFilter.value.toLowerCase()))
-			.map(workflowDbToResourceMapper);
+		// return workflowsStore.allWorkflows
+		// 	.filter((resource) => resource.name.toLowerCase().includes(searchFilter.value.toLowerCase()))
+		// 	.map(workflowDbToResourceMapper);
+		currentPage.value = 1;
+		populateNextWorkflowsPage();
+		return workflowsResources.value;
 	});
 
 	async function populateNextWorkflowsPage() {
-		await workflowsStore.fetchAllWorkflows();
-		const nextPage = sortedWorkflows.value.slice(
-			workflowsResources.value.length,
-			workflowsResources.value.length + PAGE_SIZE,
-		);
-
-		workflowsResources.value.push(...nextPage.map(workflowDbToResourceMapper));
+		currentPage.value++;
+		// TODO: replace casting with type guard
+		workflows.value = (await workflowsStore.fetchWorkflowsPage(
+			undefined,
+			currentPage.value,
+			PAGE_SIZE,
+			'updatedAt:desc',
+			searchFilter ? { name: searchFilter.value } : undefined,
+		)) as WorkflowListItem[];
+		console.log(workflows);
+		workflowsResources.value.push(...workflows.value.map(workflowDbToResourceMapper));
 	}
 
 	async function setWorkflowsResources() {
@@ -51,7 +61,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 		isLoadingResources.value = false;
 	}
 
-	function workflowDbToResourceMapper(workflow: IWorkflowDb) {
+	function workflowDbToResourceMapper(workflow: WorkflowListItem) {
 		return {
 			name: getWorkflowName(workflow.id),
 			value: workflow.id,
@@ -78,6 +88,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	}
 
 	function onSearchFilter(filter: string) {
+		debugger;
 		searchFilter.value = filter;
 	}
 

@@ -8,7 +8,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -18,7 +18,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { BinaryDataService, Logger } from 'n8n-core';
-import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
+import { NodeApiError, PROJECT_ROOT, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -40,6 +40,8 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
 import { WorkflowSharingService } from './workflow-sharing.service';
+import { STARTING_NODES } from '@/constants';
+import { NodeTypes } from '@/node-types';
 
 @Service()
 export class WorkflowService {
@@ -128,6 +130,23 @@ export class WorkflowService {
 
 		if (includeFolders) {
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
+		}
+
+		for (const wf of workflows) {
+			if ('resource' in wf && wf.resource === 'folder') {
+				continue;
+			}
+
+			const fullWorkflow = await this.workflowRepository.findById(wf.id);
+
+			if (fullWorkflow) {
+				(wf as any).canBeActivated = Container.get(
+					ActiveWorkflowManager,
+				).checkIfWorkflowCanBeActivated(
+					new Workflow({ ...fullWorkflow, nodeTypes: Container.get(NodeTypes) }),
+					STARTING_NODES,
+				);
+			}
 		}
 
 		return {
@@ -359,6 +378,7 @@ export class WorkflowService {
 				await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
 				await this.activeWorkflowManager.add(workflowId, workflow.active ? 'update' : 'activate');
 			} catch (error) {
+				console.log(error);
 				// If workflow could not be activated set it again to inactive
 				// and revert the versionId change so UI remains consistent
 				await this.workflowRepository.update(workflowId, {

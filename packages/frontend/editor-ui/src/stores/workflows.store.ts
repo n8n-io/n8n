@@ -171,6 +171,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const workflowTags = computed(() => workflow.value.tags as string[]);
 
+	/** @deprecated don't use all workflows */
 	const allWorkflows = computed(() =>
 		Object.values(workflowsById.value).sort((a, b) => a.name.localeCompare(b.name)),
 	);
@@ -179,6 +180,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const isWorkflowActive = computed(() => workflow.value.active);
 
+	// NOTE: this is how we find out if something is a trigger
 	const workflowTriggerNodes = computed(() =>
 		workflow.value.nodes.filter((node: INodeUi) => {
 			const nodeTypesStore = useNodeTypesStore();
@@ -577,6 +579,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return data;
 	}
 
+	/** @deprecated Don't fetch all workflows */
 	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
@@ -1880,6 +1883,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowVersionId,
 		workflowSettings,
 		workflowTags,
+		/** @deprecated don't use all workflows, paginate! */
 		allWorkflows,
 		isNewWorkflow,
 		isWorkflowActive,

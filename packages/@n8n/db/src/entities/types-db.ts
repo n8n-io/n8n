@@ -213,7 +213,7 @@ export namespace ListQueryDb {
 		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
 
 		type BaseFields = Pick<WorkflowEntity, 'id'> &
-			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
+			Partial<Pick<WorkflowEntity, OptionalBaseFields>> & { canBeActivated?: boolean };
 
 		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
 

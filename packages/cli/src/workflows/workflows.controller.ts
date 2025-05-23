@@ -62,6 +62,9 @@ import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
+import { Container } from '@n8n/di';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { STARTING_NODES } from '@/constants';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -226,7 +229,7 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: WorkflowRequest.GetMany, res: express.Response) {
 		try {
-			const { workflows: data, count } = await this.workflowService.getMany(
+			const { workflows, count } = await this.workflowService.getMany(
 				req.user,
 				req.listQueryOptions,
 				!!req.query.includeScopes,
@@ -234,8 +237,21 @@ export class WorkflowsController {
 				!!req.query.onlySharedWithMe,
 			);
 
-			res.json({ count, data });
+			const enhancedWorkflows: Array<(typeof workflows)[number] & { canBeActivated: boolean }> = [];
+
+			// for (const wf of workflows) {
+			// 	enhancedWorkflows.push({
+			// 		...wf,
+			// 		canBeActivated: Container.get(ActiveWorkflowManager).checkIfWorkflowCanBeActivated(
+			// 			wf,
+			// 			STARTING_NODES,
+			// 		),
+			// 	});
+			// }
+
+			res.json({ count, data: workflows });
 		} catch (maybeError) {
+			console.log(maybeError);
 			const error = utils.toError(maybeError);
 			ResponseHelper.reportError(error);
 			ResponseHelper.sendErrorResponse(res, error);

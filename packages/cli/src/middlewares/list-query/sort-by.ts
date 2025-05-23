@@ -25,6 +25,7 @@ export const sortByQueryMiddleware: RequestHandler = (req: ListQuery.Request, re
 
 		const validationResponse = validateSync(plainToInstance(SortBy, { sortBy }));
 
+		console.log('validationResponse', validationResponse);
 		if (validationResponse.length) {
 			const validationError = validationResponse[0];
 			throw new UnexpectedError(validationError.constraints?.workflowSortBy ?? '');

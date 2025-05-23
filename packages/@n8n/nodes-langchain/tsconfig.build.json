@@ -14,5 +14,5 @@
 		"types/**/*.ts",
 		"utils/**/*.ts"
 	],
-	"exclude": ["nodes/**/*.test.ts", "test/**"]
+	"exclude": ["utils/**/*.test.ts", "nodes/**/*.test.ts", "test/**"]
 }

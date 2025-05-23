@@ -69,6 +69,7 @@ const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
 });
 
+// NOTE: checks if only active triggers exist
 const containsOnlyExecuteWorkflowTrigger = computed((): boolean => {
 	const foundActiveTriggers = workflowsStore.workflowTriggerNodes.filter(
 		(trigger) => !trigger.disabled,
