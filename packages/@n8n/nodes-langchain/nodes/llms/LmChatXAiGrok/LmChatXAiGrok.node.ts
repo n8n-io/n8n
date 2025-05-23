@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import { ChatXAI } from '@langchain/xai';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -23,7 +23,8 @@ export class LmChatXAiGrok implements INodeType {
 		name: 'lmChatXAiGrok',
 		icon: { light: 'file:logo.dark.svg', dark: 'file:logo.svg' },
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'xAI Grok Chat Model',
@@ -164,6 +165,11 @@ export class LmChatXAiGrok implements INodeType {
 									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
 							},
 						],
+						displayOptions: {
+							hide: {
+								'@version': [{ _cnd: { eq: 1 } }],
+							},
+						},
 					},
 					{
 						displayName: 'Presence Penalty',
@@ -227,29 +233,42 @@ export class LmChatXAiGrok implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const configuration: ClientOptions = {
-			baseURL: credentials.url,
-			httpAgent: getHttpProxyAgent(),
-		};
+		let model = undefined;
 
-		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey,
-			modelName,
-			...options,
-			timeout: options.timeout ?? 60000,
-			maxRetries: options.maxRetries ?? 2,
-			configuration,
-			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: {
-				stream_options: undefined,
-				...(options.responseFormat
-					? {
-							response_format: { type: options.responseFormat },
-						}
-					: undefined),
-			},
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
-		});
+		if (this.getNode().typeVersion >= 1.1) {
+			model = new ChatXAI({
+				apiKey: credentials.apiKey,
+				model: modelName,
+				...options,
+				callbacks: [new N8nLlmTracing(this)],
+				streaming: false,
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+			});
+		} else {
+			const configuration: ClientOptions = {
+				baseURL: credentials.url,
+				httpAgent: getHttpProxyAgent(),
+			};
+
+			model = new ChatOpenAI({
+				openAIApiKey: credentials.apiKey,
+				modelName,
+				...options,
+				timeout: options.timeout ?? 60000,
+				maxRetries: options.maxRetries ?? 2,
+				configuration,
+				callbacks: [new N8nLlmTracing(this)],
+				modelKwargs: {
+					stream_options: undefined,
+					...(options.responseFormat
+						? {
+								response_format: { type: options.responseFormat },
+							}
+						: undefined),
+				},
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+			});
+		}
 
 		return {
 			response: model,
