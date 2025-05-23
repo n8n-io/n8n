@@ -59,7 +59,7 @@ describe('TestRunnerService', () => {
 		jest.resetAllMocks();
 	});
 
-	describe('findTriggerNode', () => {
+	describe('findEvaluationTriggerNode', () => {
 		test('should find the trigger node in a workflow', () => {
 			// Setup a test workflow with a trigger node
 			const workflowWithTrigger = mock<IWorkflowBase>({
@@ -85,7 +85,7 @@ describe('TestRunnerService', () => {
 			});
 
 			// Use the protected method via any type casting
-			const result = (testRunnerService as any).findTriggerNode(workflowWithTrigger);
+			const result = (testRunnerService as any).findEvaluationTriggerNode(workflowWithTrigger);
 
 			// Assert the result is the correct node
 			expect(result).toBeDefined();
@@ -118,12 +118,12 @@ describe('TestRunnerService', () => {
 			});
 
 			// Call the function and expect undefined result
-			const result = (testRunnerService as any).findTriggerNode(workflowWithoutTrigger);
+			const result = (testRunnerService as any).findEvaluationTriggerNode(workflowWithoutTrigger);
 			expect(result).toBeUndefined();
 		});
 
 		test('should work with the actual workflow.under-test.json', () => {
-			const result = (testRunnerService as any).findTriggerNode(wfUnderTestJson);
+			const result = (testRunnerService as any).findEvaluationTriggerNode(wfUnderTestJson);
 
 			// Assert the result is the correct node
 			expect(result).toBeDefined();
