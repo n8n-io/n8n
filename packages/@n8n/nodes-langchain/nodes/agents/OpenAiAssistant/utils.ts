@@ -32,14 +32,3 @@ export function formatToOpenAITool(tool: StructuredTool): OpenAIClient.Chat.Chat
 		},
 	};
 }
-
-export function formatToOpenAIAssistantTool(tool: StructuredTool): OpenAIClient.Beta.AssistantTool {
-	return {
-		type: 'function',
-		function: {
-			name: tool.name,
-			description: tool.description,
-			parameters: zodToJsonSchema(tool.schema),
-		},
-	};
-}

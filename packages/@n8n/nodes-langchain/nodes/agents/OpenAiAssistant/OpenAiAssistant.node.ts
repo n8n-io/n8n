@@ -13,7 +13,7 @@ import { OpenAI as OpenAIClient } from 'openai';
 import { getConnectedTools } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
-import { formatToOpenAIAssistantTool } from './utils';
+import { formatToOpenAIAssistantTool } from '../../vendors/OpenAi/helpers/utils';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
