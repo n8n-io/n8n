@@ -172,8 +172,10 @@ function parseExpressionMapping(
 	// The calling code is expected to only handle $json expressions for the root node
 	// As these are invalid conversions for inner nodes
 	if (exprStart === '$json') {
-		const partsIdx = parts.findIndex((x) => !DOT_REFERENCEABLE_JS_VARIABLE.test(x));
-
+		let partsIdx = 0;
+		for (; partsIdx < parts.length; ++partsIdx) {
+			if (!DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx])) break;
+		}
 		return {
 			nodeNameInExpression: null,
 			originalExpression: `${exprStart}.${parts.slice(0, partsIdx + 1).join('.')}`, // $json.valid.until, but not ['x'] after
@@ -207,9 +209,10 @@ function parseExpressionMapping(
 			};
 		} else {
 			if (DATA_ACCESSORS.some((x) => parts[1] === x)) {
-				// This should always be at least 2
-				const partsIdx = parts.findIndex((x) => !DOT_REFERENCEABLE_JS_VARIABLE.test(x));
-
+				let partsIdx = 2;
+				for (; partsIdx < parts.length; ++partsIdx) {
+					if (!DOT_REFERENCEABLE_JS_VARIABLE.test(parts[partsIdx])) break;
+				}
 				// Use a separate name for anything except item to avoid users confusing their e.g. first() variables
 				const replacementPostfix =
 					parts[0] === 'item' ? '' : `_${convertDataAccessorName(parts[0])}`;
