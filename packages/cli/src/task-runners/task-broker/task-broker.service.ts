@@ -98,6 +98,8 @@ export class TaskBroker {
 	}
 
 	expireTasks() {
+		const sizeBefore = this.pendingTaskOffers.length;
+
 		const now = process.hrtime.bigint();
 		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
 			const offer = this.pendingTaskOffers[i];
@@ -106,6 +108,9 @@ export class TaskBroker {
 				this.pendingTaskOffers.splice(i, 1);
 			}
 		}
+
+		const sizeAfter = this.pendingTaskOffers.length;
+		this.logger.info(`Expired ${sizeBefore - sizeAfter} offers, ${sizeAfter} remaining`);
 	}
 
 	registerRunner(runner: TaskRunner, messageCallback: MessageCallback) {
@@ -232,6 +237,7 @@ export class TaskBroker {
 			acceptReject.reject(new TaskRejectError(reason));
 			this.runnerAcceptRejects.delete(taskId);
 		}
+		this.logPendingOffersSize();
 	}
 
 	handleRunnerDeferred(taskId: Task['id']) {
@@ -527,6 +533,8 @@ export class TaskBroker {
 			await acceptPromise;
 		} catch (e) {
 			request.acceptInProgress = false;
+			this.logPendingOffersSize();
+
 			if (e instanceof TaskRejectError) {
 				this.logger.info(`Task (${taskId}) rejected by Runner with reason "${e.reason}"`);
 				return;
@@ -633,6 +641,7 @@ export class TaskBroker {
 
 	taskOffered(offer: TaskOffer) {
 		this.pendingTaskOffers.push(offer);
+		this.logPendingOffersSize();
 		this.settleTasks();
 	}
 
@@ -683,5 +692,9 @@ export class TaskBroker {
 		>,
 	) {
 		this.runnerAcceptRejects = new Map(Object.entries(runnerAcceptRejects));
+	}
+
+	private logPendingOffersSize() {
+		this.logger.info(`Pending task offers: ${this.pendingTaskOffers.length}`);
 	}
 }
