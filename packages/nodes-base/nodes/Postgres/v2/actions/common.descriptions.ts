@@ -152,6 +152,30 @@ export const optionsCollection: INodeProperties = {
 				},
 			},
 		},
+		{
+			displayName: 'Preserve Postgres Types',
+			name: 'preservePostgresTypes',
+			type: 'multiOptions',
+			default: [],
+			options: [
+				{
+					name: 'DATE',
+					value: 1082,
+				},
+				{
+					name: 'TIMESTAMP',
+					value: 1114,
+				},
+				{
+					name: 'TIMESTAMP WITH TIME ZONE',
+					value: 1184,
+				},
+				{
+					name: 'INTERVAL',
+					value: 1186,
+				},
+			],
+		},
 	],
 };
 

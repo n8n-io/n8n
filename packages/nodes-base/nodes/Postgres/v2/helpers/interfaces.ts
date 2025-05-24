@@ -50,6 +50,7 @@ export type PostgresNodeOptions = {
 	skipOnConflict?: boolean;
 	replaceEmptyStrings?: boolean;
 	treatQueryParametersInSingleQuotesAsText?: boolean;
+	preservePostgresTypes?: number[];
 };
 
 export type PostgresNodeCredentials = {
