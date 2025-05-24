@@ -10,4 +10,5 @@ export interface IUser {
 	url?: string;
 	description?: string;
 	password?: string;
+	roles?: number[];
 }
