@@ -42,6 +42,7 @@
       "dist/credentials/SerpApi.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
+      "dist/credentials/StraicoApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
       "dist/credentials/ZepApi.credentials.js"
     ],
@@ -84,6 +85,7 @@
       "dist/nodes/llms/LMOpenAi/LmOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
       "dist/nodes/llms/LMOllama/LmOllama.node.js",
+      "dist/nodes/llms/LmChatStraico/LmChatStraico.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
       "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
