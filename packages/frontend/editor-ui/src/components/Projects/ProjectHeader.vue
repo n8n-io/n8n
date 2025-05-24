@@ -162,7 +162,10 @@ const subtitle = computed(() => {
 		return i18n.baseText('projects.header.shared.subtitle');
 	} else if (isPersonalProject.value) {
 		return i18n.baseText('projects.header.personal.subtitle');
+	} else if (projectPages.isProjectsSubPage) {
+		return projectsStore.currentProject?.description;
 	}
+
 	return null;
 });
 
@@ -225,8 +228,7 @@ const onSelect = (action: string) => {
 </template>
 
 <style lang="scss" module>
-.projectHeader,
-.projectDescription {
+.projectHeader {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
