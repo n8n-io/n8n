@@ -117,6 +117,10 @@ export async function getNewEmails(
 				dataPropertyAttachmentsPrefixName,
 			);
 
+			(parsedEmail.json as IDataObject).attributes = {
+				uid: message.attributes.uid,
+			};
+
 			newEmails.push(parsedEmail);
 		}
 	} else if (format === 'simple') {
