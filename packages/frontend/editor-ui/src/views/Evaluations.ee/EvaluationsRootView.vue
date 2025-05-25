@@ -11,7 +11,7 @@ import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-import { computed, onMounted } from 'vue';
+import { computed, watch } from 'vue';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import EvaluationsPaywall from '@/components/Evaluations.ee/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '@/components/Evaluations.ee/SetupWizard/SetupWizard.vue';
@@ -92,24 +92,6 @@ const evaluationsQuotaExceeded = computed(() => {
 	);
 });
 
-onMounted(() => {
-	telemetry.track('User viewed tests tab', {
-		workflow_id: props.name,
-		test_type: 'evaluation',
-		view: showWizard.value ? 'setup' : 'overview',
-		...(showWizard.value
-			? {
-					trigger_set_up: datasetTriggerExist.value,
-					output_set_up: evaluationSetOutputNodeExist.value,
-					metrics_set_up: evaluationMetricNodeExist.value,
-					quota_reached: evaluationsQuotaExceeded.value,
-				}
-			: {
-					run_count: runs.value.length,
-				}),
-	});
-});
-
 const { isReady } = useAsyncState(async () => {
 	try {
 		await usageStore.getLicenseInfo();
@@ -139,6 +121,33 @@ const { isReady } = useAsyncState(async () => {
 		}
 	}
 }, undefined);
+
+watch(
+	isReady,
+	(ready) => {
+		if (ready) {
+			if (showWizard.value) {
+				telemetry.track('User viewed tests tab', {
+					workflow_id: props.name,
+					test_type: 'evaluation',
+					view: 'setup',
+					trigger_set_up: datasetTriggerExist.value,
+					output_set_up: evaluationSetOutputNodeExist.value,
+					metrics_set_up: evaluationMetricNodeExist.value,
+					quota_reached: evaluationsQuotaExceeded.value,
+				});
+			} else {
+				telemetry.track('User viewed tests tab', {
+					workflow_id: props.name,
+					test_type: 'evaluation',
+					view: 'overview',
+					run_count: runs.value.length,
+				});
+			}
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
