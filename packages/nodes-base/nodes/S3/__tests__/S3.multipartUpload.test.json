@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "testInstance"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "bucketName": "test-bucket",
+        "fileName": "large-test-file.bin",
+        "binaryData": true,
+        "binaryPropertyName": "data"
+      },
+      "name": "S3",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "s3": {
+          "id": "s3-test-account",
+          "name": "S3 test account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

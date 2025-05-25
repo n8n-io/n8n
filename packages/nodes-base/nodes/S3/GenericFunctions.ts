@@ -13,7 +13,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { URL } from 'url';
-import { parseString } from 'xml2js';
+import { parseString, Builder } from 'xml2js';
+import { createHash } from 'crypto';
 
 function queryToString(params: IDataObject) {
 	return Object.keys(params)
@@ -211,4 +212,161 @@ export async function s3ApiRequestSOAPAllItems(
 	);
 
 	return returnData;
+}
+
+export async function s3CreateMultipartUpload(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	bucket: string,
+	key: string,
+	headers?: IDataObject,
+	region?: string,
+): Promise<string> {
+	const responseData = await s3ApiRequestSOAP.call(
+		this,
+		bucket,
+		'POST',
+		`/${key}`, // Object key
+		undefined, // body
+		{ uploads: '' }, // query for multipart upload initiation
+		headers,
+		{}, // option
+		region,
+	);
+
+	if (
+		!responseData ||
+		!responseData.InitiateMultipartUploadResult ||
+		!responseData.InitiateMultipartUploadResult.UploadId
+	) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Invalid response from S3 for CreateMultipartUpload: UploadId missing',
+			{
+				description: `S3 response: ${JSON.stringify(responseData)}`,
+			},
+		);
+	}
+
+	return responseData.InitiateMultipartUploadResult.UploadId;
+}
+
+export async function s3UploadPart(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	bucket: string,
+	key: string,
+	uploadId: string,
+	partNumber: number,
+	chunk: Buffer,
+	headers?: IDataObject,
+	region?: string,
+): Promise<string> {
+	const contentLength = chunk.length;
+	const contentMd5 = createHash('md5').update(chunk).digest('base64');
+
+	const requestHeaders = {
+		...headers,
+		'Content-Length': contentLength,
+		'Content-MD5': contentMd5,
+	};
+
+	// s3ApiRequest returns the body by default
+	// We need the full response to access headers for ETag
+	const response = await s3ApiRequest.call(
+		this,
+		bucket,
+		'PUT',
+		`/${key}`,
+		chunk,
+		{ partNumber, uploadId },
+		requestHeaders,
+		{ resolveWithFullResponse: true }, // Get full response for headers
+		region,
+	);
+
+	if (!response.headers || !response.headers.etag) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Invalid response from S3 for UploadPart: ETag missing from headers',
+			{
+				description: `S3 response headers: ${JSON.stringify(response.headers)}`,
+			},
+		);
+	}
+
+	// ETag is returned with quotes, e.g., "\"d41d8cd98f00b204e9800998ecf8427e\""
+	// These quotes need to be removed.
+	return response.headers.etag.replace(/"/g, '');
+}
+
+export interface S3UploadPartData {
+	PartNumber: number;
+	ETag: string;
+}
+
+export async function s3CompleteMultipartUpload(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	bucket: string,
+	key: string,
+	uploadId: string,
+	parts: S3UploadPartData[],
+	headers?: IDataObject,
+	region?: string,
+): Promise<any> {
+	const xmlParts = parts.map((part) => ({
+		Part: {
+			PartNumber: part.PartNumber,
+			ETag: part.ETag, // ETags from S3 UploadPart already include quotes
+		},
+	}));
+
+	const xmlObject = {
+		CompleteMultipartUpload: {
+			Part: xmlParts.map(p => p.Part), // xml2js builder expects an array of Part objects directly
+		},
+	};
+
+	// Using renderOpts to ensure compact XML for accurate Content-MD5
+	const builder = new Builder({ renderOpts: { pretty: false, indent: '', newline: '' } });
+	const xmlBody = builder.buildObject(xmlObject);
+
+	const contentMd5 = createHash('md5').update(xmlBody).digest('base64');
+
+	const requestHeaders = {
+		...headers,
+		'Content-Type': 'application/xml',
+		'Content-MD5': contentMd5,
+	};
+
+	return s3ApiRequestSOAP.call(
+		this,
+		bucket,
+		'POST',
+		`/${key}`,
+		xmlBody,
+		{ uploadId },
+		requestHeaders,
+		{}, // option
+		region,
+	);
+}
+
+export async function s3AbortMultipartUpload(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	bucket: string,
+	key: string,
+	uploadId: string,
+	headers?: IDataObject,
+	region?: string,
+): Promise<any> {
+	return s3ApiRequestSOAP.call(
+		this,
+		bucket,
+		'DELETE',
+		`/${key}`,
+		undefined, // body
+		{ uploadId },
+		headers,
+		{}, // option
+		region,
+	);
 }

@@ -6,10 +6,30 @@ import {
 	s3ApiRequestREST,
 	s3ApiRequestSOAP,
 	s3ApiRequestSOAPAllItems,
+	s3CreateMultipartUpload,
+	s3UploadPart,
+	s3CompleteMultipartUpload,
+	s3AbortMultipartUpload,
 } from '../GenericFunctions';
+import { Builder } from 'xml2js'; // Needed for s3CompleteMultipartUpload test
+import { createHash } from 'crypto'; // To mock
 
 jest.mock('aws4');
-jest.mock('xml2js');
+jest.mock('xml2js', () => {
+	const originalXml2js = jest.requireActual('xml2js');
+	return {
+		...originalXml2js,
+		parseString: jest.fn(),
+		Builder: jest.fn().mockImplementation(() => ({ // Mock Builder constructor
+			buildObject: jest.fn(),
+		})),
+	};
+});
+jest.mock('crypto', () => ({
+	...jest.requireActual('crypto'),
+	createHash: jest.fn().mockReturnThis(), // Return `this` to allow chaining
+}));
+
 
 describe('S3 Node Generic Functions', () => {
 	let mockContext: any;
@@ -159,6 +179,249 @@ describe('S3 Node Generic Functions', () => {
 
 			expect(result).toHaveLength(2);
 			expect(result).toEqual([{ Key: 'file1.txt' }, { Key: 'file2.txt' }]);
+		});
+	});
+
+	// New tests for multipart upload functions
+	describe('s3CreateMultipartUpload', () => {
+		it('should call s3ApiRequestSOAP with correct parameters and return UploadId', async () => {
+			const mockResponse = { InitiateMultipartUploadResult: { UploadId: 'test-upload-id' } };
+			mockContext.helpers.request.mockResolvedValueOnce('<xml>response</xml>');
+			(parseString as jest.Mock).mockImplementationOnce((_, __, callback) =>
+				callback(null, mockResponse),
+			);
+
+			const result = await s3CreateMultipartUpload.call(
+				mockContext,
+				'test-bucket',
+				'test-key.txt',
+				{ 'x-amz-acl': 'private' },
+				'us-west-1',
+			);
+
+			expect(mockContext.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					qs: { uploads: '' },
+					// Path for s3ApiRequest is built from bucket and key, check signOpts for final path
+				}),
+			);
+			// Check if sign was called with the correct path for s3ApiRequest internal logic
+			expect(sign).toHaveBeenCalledWith(
+				expect.objectContaining({
+					path: expect.stringMatching(/\/test-bucket\/test-key.txt\?uploads=/), // Path in s3ApiRequest
+					method: 'POST',
+					headers: expect.objectContaining({ 'x-amz-acl': 'private' }),
+					region: 'us-west-1',
+				}),
+				expect.any(Object),
+			);
+			expect(result).toBe('test-upload-id');
+		});
+
+		it('should throw error if UploadId is missing in response', async () => {
+			const mockResponse = { InitiateMultipartUploadResult: {} }; // Missing UploadId
+			mockContext.helpers.request.mockResolvedValueOnce('<xml>response</xml>');
+			(parseString as jest.Mock).mockImplementationOnce((_, __, callback) =>
+				callback(null, mockResponse),
+			);
+
+			await expect(
+				s3CreateMultipartUpload.call(mockContext, 'test-bucket', 'test-key.txt'),
+			).rejects.toThrow('Invalid response from S3 for CreateMultipartUpload: UploadId missing');
+		});
+	});
+
+	describe('s3UploadPart', () => {
+		const mockDigest = jest.fn().mockReturnValue('mocked-md5-hash');
+		const mockUpdate = jest.fn().mockReturnValue({ digest: mockDigest });
+
+		beforeEach(() => {
+			(createHash as jest.Mock).mockImplementation(() => ({
+				update: mockUpdate,
+			}));
+		});
+
+		it('should call s3ApiRequest with correct parameters and return ETag', async () => {
+			const mockChunk = Buffer.from('test-chunk');
+			const mockEtag = '"test-etag-123"'; // S3 returns ETag with quotes
+			const mockFullResponse = {
+				headers: { etag: mockEtag },
+				body: '', // s3ApiRequest (non-SOAP/REST) returns body, but we need headers
+			};
+			mockContext.helpers.request.mockResolvedValueOnce(mockFullResponse); // s3ApiRequest is called directly
+
+			const result = await s3UploadPart.call(
+				mockContext,
+				'test-bucket',
+				'test-key.txt',
+				'test-upload-id',
+				1,
+				mockChunk,
+				{ 'x-amz-server-side-encryption': 'AES256' },
+				'us-east-1',
+			);
+
+			expect(createHash).toHaveBeenCalledWith('md5');
+			expect(mockUpdate).toHaveBeenCalledWith(mockChunk);
+			expect(mockDigest).toHaveBeenCalledWith('base64');
+
+			expect(mockContext.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'PUT',
+					qs: { partNumber: 1, uploadId: 'test-upload-id' },
+					body: mockChunk,
+					headers: expect.objectContaining({
+						'Content-Length': mockChunk.length,
+						'Content-MD5': 'mocked-md5-hash',
+						'x-amz-server-side-encryption': 'AES256',
+					}),
+					resolveWithFullResponse: true, // Critical for getting headers
+					// Path for s3ApiRequest is built from bucket and key, check signOpts for final path
+				}),
+			);
+			expect(sign).toHaveBeenCalledWith(
+				expect.objectContaining({
+					path: expect.stringMatching(/\/test-bucket\/test-key.txt\?partNumber=1&uploadId=test-upload-id/),
+					method: 'PUT',
+				}),
+				expect.any(Object),
+			);
+			expect(result).toBe('test-etag-123'); // Quotes should be removed
+		});
+
+		it('should throw error if ETag is missing in response headers', async () => {
+			const mockChunk = Buffer.from('test-chunk');
+			const mockFullResponse = { headers: {}, body: '' }; // Missing ETag
+			mockContext.helpers.request.mockResolvedValueOnce(mockFullResponse);
+
+			await expect(
+				s3UploadPart.call(
+					mockContext,
+					'test-bucket',
+					'test-key.txt',
+					'test-upload-id',
+					1,
+					mockChunk,
+				),
+			).rejects.toThrow('Invalid response from S3 for UploadPart: ETag missing from headers');
+		});
+	});
+
+	describe('s3CompleteMultipartUpload', () => {
+		const mockBuilderInstance = { buildObject: jest.fn() };
+		const mockDigest = jest.fn().mockReturnValue('mocked-xml-md5-hash');
+		const mockUpdate = jest.fn().mockReturnValue({ digest: mockDigest });
+
+
+		beforeEach(() => {
+			(Builder as jest.Mock).mockImplementation(() => mockBuilderInstance);
+			(createHash as jest.Mock).mockImplementation(() => ({
+				update: mockUpdate,
+			}));
+		});
+
+
+		it('should call s3ApiRequestSOAP with correct XML body and headers', async () => {
+			const parts = [
+				{ PartNumber: 1, ETag: '"etag1"' },
+				{ PartNumber: 2, ETag: '"etag2"' },
+			];
+			const mockXmlBody = '<CompleteMultipartUpload><Part><PartNumber>1</PartNumber><ETag>"etag1"</ETag></Part><Part><PartNumber>2</PartNumber><ETag>"etag2"</ETag></Part></CompleteMultipartUpload>';
+			mockBuilderInstance.buildObject.mockReturnValueOnce(mockXmlBody);
+
+			const mockS3Response = { CompleteMultipartUploadResult: { Location: 'test-location' } };
+			mockContext.helpers.request.mockResolvedValueOnce('<xml>s3_response</xml>'); // For s3ApiRequestSOAP
+			(parseString as jest.Mock).mockImplementationOnce((_, __, callback) =>
+				callback(null, mockS3Response),
+			);
+
+
+			const result = await s3CompleteMultipartUpload.call(
+				mockContext,
+				'test-bucket',
+				'test-key.txt',
+				'test-upload-id',
+				parts,
+				{ 'x-amz-meta-custom': 'value' },
+				'ap-southeast-2',
+			);
+
+			expect(Builder).toHaveBeenCalledWith({ renderOpts: { pretty: false, indent: '', newline: '' } });
+			expect(mockBuilderInstance.buildObject).toHaveBeenCalledWith({
+				CompleteMultipartUpload: {
+					Part: [
+						{ PartNumber: 1, ETag: '"etag1"' },
+						{ PartNumber: 2, ETag: '"etag2"' },
+					],
+				},
+			});
+			expect(createHash).toHaveBeenCalledWith('md5');
+			expect(mockUpdate).toHaveBeenCalledWith(mockXmlBody);
+			expect(mockDigest).toHaveBeenCalledWith('base64');
+
+			expect(mockContext.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					qs: { uploadId: 'test-upload-id' },
+					body: mockXmlBody,
+					headers: expect.objectContaining({
+						'Content-Type': 'application/xml',
+						'Content-MD5': 'mocked-xml-md5-hash',
+						'x-amz-meta-custom': 'value',
+					}),
+					// Path for s3ApiRequest is built from bucket and key, check signOpts for final path
+				}),
+			);
+			expect(sign).toHaveBeenCalledWith(
+				expect.objectContaining({
+					path: expect.stringMatching(/\/test-bucket\/test-key.txt\?uploadId=test-upload-id/),
+					method: 'POST',
+					region: 'ap-southeast-2',
+				}),
+				expect.any(Object),
+			);
+			expect(result).toEqual(mockS3Response);
+		});
+	});
+
+	describe('s3AbortMultipartUpload', () => {
+		it('should call s3ApiRequestSOAP with DELETE method and uploadId', async () => {
+			const mockS3Response = { AbortMultipartUploadResult: {} }; // Or often empty for 204
+			mockContext.helpers.request.mockResolvedValueOnce(''); // 204 No Content often has empty body
+			(parseString as jest.Mock).mockImplementationOnce((_, __, callback) =>
+				callback(null, mockS3Response), // parseString might return {} for empty string
+			);
+
+			const result = await s3AbortMultipartUpload.call(
+				mockContext,
+				'test-bucket',
+				'test-key.txt',
+				'test-upload-id',
+				{ 'x-amz-expected-bucket-owner': 'owner-id' },
+				'eu-central-1',
+			);
+
+			expect(mockContext.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'DELETE',
+					qs: { uploadId: 'test-upload-id' },
+					body: undefined,
+					headers: expect.objectContaining({
+						'x-amz-expected-bucket-owner': 'owner-id',
+					}),
+					// Path for s3ApiRequest is built from bucket and key, check signOpts for final path
+				}),
+			);
+			expect(sign).toHaveBeenCalledWith(
+				expect.objectContaining({
+					path: expect.stringMatching(/\/test-bucket\/test-key.txt\?uploadId=test-upload-id/),
+					method: 'DELETE',
+					region: 'eu-central-1',
+				}),
+				expect.any(Object),
+			);
+			expect(result).toEqual(mockS3Response);
 		});
 	});
 });

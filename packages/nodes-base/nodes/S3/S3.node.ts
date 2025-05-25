@@ -10,8 +10,18 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { Builder } from 'xml2js';
+import { Readable } from 'stream';
 
-import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
+import {
+	s3ApiRequestREST,
+	s3ApiRequestSOAP,
+	s3ApiRequestSOAPAllItems,
+	s3CreateMultipartUpload,
+	s3UploadPart,
+	s3CompleteMultipartUpload,
+	s3AbortMultipartUpload,
+	type S3UploadPartData,
+} from './GenericFunctions';
 import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
 import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
 import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
@@ -838,31 +848,110 @@ export class S3 implements INodeType {
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+							const UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
 
-							headers['Content-Type'] = binaryData.mimeType;
+							// Use multipart upload for streamable binary data
+							if (binaryData.id) {
+								let uploadId: string | undefined;
+								const objectKey = `${path}${fileName || binaryData.fileName}`;
+								// Headers for create and complete can include ACL, storage class, encryption, tags
+								// s3UploadPart will handle its own Content-Length and Content-MD5 for the chunk
+								const multipartHeaders = { ...headers };
+								// Content-Type is important for CreateMultipartUpload as S3 uses it
+								// for the final object if not overridden by a specific part.
+								// However, parts themselves can have Content-Type, but usually not needed
+								// if the whole object is of one type.
+								if (binaryData.mimeType) {
+									multipartHeaders['Content-Type'] = binaryData.mimeType;
+								}
 
-							headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
 
-							responseData = await s3ApiRequestSOAP.call(
-								this,
-								bucketName,
-								'PUT',
-								`${path}${fileName || binaryData.fileName}`,
-								body,
-								qs,
-								headers,
-								{},
-								region as string,
-							);
+								try {
+									uploadId = await s3CreateMultipartUpload.call(
+										this,
+										bucketName,
+										objectKey,
+										multipartHeaders, // Pass headers like ACL, encryption, tags here
+										region as string,
+									);
+
+									const uploadedParts: S3UploadPartData[] = [];
+									let partNumber = 1;
+									const binaryStream = await this.helpers.getBinaryStream(
+										binaryPropertyName,
+										UPLOAD_CHUNK_SIZE,
+									);
+
+									for await (const chunk of binaryStream as Readable) {
+										const etag = await s3UploadPart.call(
+											this,
+											bucketName,
+											objectKey,
+											uploadId,
+											partNumber,
+											chunk as Buffer,
+											{}, // Per-part headers are usually minimal, main headers are at create/complete
+											region as string,
+										);
+										uploadedParts.push({ PartNumber: partNumber, ETag: etag });
+										partNumber++;
+									}
+
+									responseData = await s3CompleteMultipartUpload.call(
+										this,
+										bucketName,
+										objectKey,
+										uploadId,
+										uploadedParts,
+										multipartHeaders, // Pass headers like ACL, encryption, tags here
+										region as string,
+									);
+								} catch (multipartError) {
+									if (uploadId) {
+										try {
+											await s3AbortMultipartUpload.call(
+												this,
+												bucketName,
+												objectKey,
+												uploadId,
+												{},
+												region as string,
+											);
+										} catch (abortError) {
+											// Log or handle abort error if necessary, but prioritize original error
+											this.logger.error(
+												`Failed to abort multipart upload (Upload ID: ${uploadId}) after an error: ${abortError.message}`,
+											);
+										}
+									}
+									throw multipartError; // Re-throw the original error from the multipart process
+								}
+							} else {
+								// Fallback for non-streamable binary data (existing logic)
+								body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+								headers['Content-Type'] = binaryData.mimeType;
+								headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
+								// Content-Length will be set by s3ApiRequest
+
+								responseData = await s3ApiRequestSOAP.call(
+									this,
+									bucketName,
+									'PUT',
+									`${path}${fileName || binaryData.fileName}`,
+									body,
+									qs,
+									headers,
+									{},
+									region as string,
+								);
+							}
 						} else {
+							// Non-binary data (text content)
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
-
 							body = Buffer.from(fileContent, 'utf8');
-
-							headers['Content-Type'] = 'text/html';
-
-							headers['Content-MD5'] = createHash('md5').update(fileContent).digest('base64');
+							headers['Content-Type'] = 'text/html'; // Or derive from parameters
+							headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
+							// Content-Length will be set by s3ApiRequest
 
 							responseData = await s3ApiRequestSOAP.call(
 								this,
@@ -877,8 +966,13 @@ export class S3 implements INodeType {
 							);
 						}
 
+						// Assuming responseData from multipart is compatible or needs specific handling for success reporting
+						// For now, a successful completeMultipartUpload returns an XML response which s3ApiRequestSOAP parses.
+						// We might need to adjust what's pushed to returnData if the structure is different.
+						// The AWS SDK typically returns { ETag, Location, VersionId, etc. } for CompleteMultipartUpload.
+						// s3ApiRequestSOAP will parse the XML to a JS object.
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ success: true }),
+							this.helpers.returnJsonArray(responseData as IDataObject || { success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
