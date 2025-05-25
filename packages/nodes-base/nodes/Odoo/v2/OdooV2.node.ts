@@ -11,8 +11,8 @@ export class OdooV2 implements INodeType {
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
-			...this.description,
 			...baseDescription,
+			...this.description,
 		};
 	}
 

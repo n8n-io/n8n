@@ -1,4 +1,4 @@
-import type { type IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import { customResourceId, fieldsToInclude } from '../../descriptions';
@@ -22,7 +22,7 @@ export async function execute(
 	credentials: OdooCredentialsInterface,
 	customResource: string,
 ) {
-	const customResourceId = this.getNodeParameter('customResourceId', index) as string;
+	const customResourceId: string = this.getNodeParameter('customResourceId', index);
 	const options = this.getNodeParameter('options', index);
 	const fields = (options.fieldsList as IDataObject[]) || [];
 

@@ -5,5 +5,6 @@
 			"type": "boolean"
 		}
 	},
-	"required": ["success"]
+	"required": ["success"],
+	"version": 2
 }

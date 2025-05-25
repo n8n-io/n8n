@@ -1,8 +1,8 @@
-import type { type IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import { fieldsToInclude, returnAllOrLimit } from '../../descriptions';
-import type { type IOdooFilterOperations, OdooCredentialsInterface } from '../../GenericFunctions';
+import type { IOdooFilterOperations, OdooCredentialsInterface } from '../../GenericFunctions';
 import { odooHTTPRequest, processBasicFilters, processCustomFilters } from '../../GenericFunctions';
 
 export const basicFilter: INodeProperties[] = [
@@ -230,14 +230,15 @@ export async function execute(
 ) {
 	const returnAll = this.getNodeParameter('returnAll', index);
 	const options = this.getNodeParameter('options', index);
-	const fields = (options.fieldsList as IDataObject[]) || [];
+	const fields: IDataObject[] = options.fieldsList;
 	const customFilterToggle = this.getNodeParameter('customFilterToggle', index);
 
+	const customFilter: string = this.getNodeParameter('customFilter', index, '');
+	const basicFilter: IOdooFilterOperations = this.getNodeParameter('basicFilter', index, {});
+
 	const domain = customFilterToggle
-		? processCustomFilters(this.getNodeParameter('customFilter', index, '') as string) || []
-		: processBasicFilters(
-				this.getNodeParameter('basicFilter', index, {}) as IOdooFilterOperations,
-			) || [];
+		? processCustomFilters(this, customFilter) || []
+		: processBasicFilters(basicFilter) || [];
 
 	if (returnAll) {
 		return await odooHTTPRequest.call(this, credentials, customResource, 'search_read', [], {

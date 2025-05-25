@@ -118,7 +118,7 @@ export class OdooV1 implements INodeType {
 
 				const response = await odooGetModelFields.call(this, db, userID, password, resource, url);
 				const options = Object.entries(response).map(([key, field]) => {
-					const optionField = field as { [key: string]: string };
+					const optionField: Record<string, string> = field;
 					try {
 						optionField.name = capitalCase(optionField.name);
 					} catch (error) {
@@ -260,7 +260,7 @@ export class OdooV1 implements INodeType {
 						json: true,
 					};
 					const result = await this.helpers.request(options);
-					if (result.error || !result.result) {
+					if (result.error && !result.result) {
 						return {
 							status: 'Error',
 							message: 'Credentials are not valid',
@@ -317,9 +317,17 @@ export class OdooV1 implements INodeType {
 				if (resource === 'contact') {
 					if (operation === 'create') {
 						let additionalFields = this.getNodeParameter('additionalFields', i);
-
 						if (additionalFields.address) {
-							const addressFields = (additionalFields.address as IDataObject).value as IDataObject;
+							const address = additionalFields.address;
+							if (
+								!address ||
+								typeof address !== 'object' ||
+								!('value' in address) ||
+								typeof (address as any).value !== 'object'
+							) {
+								throw new Error('Invalid address structure');
+							}
+							const addressFields: IDataObject = (address as { value: IDataObject }).value;
 							if (addressFields) {
 								additionalFields = {
 									...additionalFields,
