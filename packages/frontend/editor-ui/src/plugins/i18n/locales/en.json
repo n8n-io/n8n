@@ -3080,7 +3080,7 @@
 	"evaluations.paywall.title": "Register to enable evaluation",
 	"evaluations.paywall.description": "Register your Community instance to unlock the evaluation feature",
 	"evaluations.paywall.cta": "Register instance",
-	"evaluations.setupWizard.title": "Test your workflow over multiple inputs",
+	"evaluations.setupWizard.title": "Test your AI workflow over multiple inputs",
 	"evaluations.setupWizard.description": "Evaluations measure performance against a test dataset.",
 	"evaluations.setupWizard.moreInfo": "More info",
 	"evaluations.setupWizard.stepHeader.optional": "Optional",
