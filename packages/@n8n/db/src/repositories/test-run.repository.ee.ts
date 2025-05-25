@@ -22,22 +22,21 @@ export class TestRunRepository extends Repository<TestRun> {
 		super(TestRun, dataSource.manager);
 	}
 
-	async createTestRun(testDefinitionId: string) {
+	async createTestRun(workflowId: string) {
 		const testRun = this.create({
 			status: 'new',
-			testDefinition: { id: testDefinitionId },
+			workflow: {
+				id: workflowId,
+			},
 		});
 
 		return await this.save(testRun);
 	}
 
-	async markAsRunning(id: string, totalCases: number) {
+	async markAsRunning(id: string) {
 		return await this.update(id, {
 			status: 'running',
 			runAt: new Date(),
-			totalCases,
-			passedCases: 0,
-			failedCases: 0,
 		});
 	}
 
@@ -47,7 +46,7 @@ export class TestRunRepository extends Repository<TestRun> {
 
 	async markAsCancelled(id: string, trx?: EntityManager) {
 		trx = trx ?? this.manager;
-		return await trx.update(TestRun, id, { status: 'cancelled' });
+		return await trx.update(TestRun, id, { status: 'cancelled', completedAt: new Date() });
 	}
 
 	async markAsError(id: string, errorCode: TestRunErrorCode, errorDetails?: IDataObject) {
@@ -55,30 +54,21 @@ export class TestRunRepository extends Repository<TestRun> {
 			status: 'error',
 			errorCode,
 			errorDetails,
+			completedAt: new Date(),
 		});
 	}
 
 	async markAllIncompleteAsFailed() {
 		return await this.update(
 			{ status: In(['new', 'running']) },
-			{ status: 'error', errorCode: 'INTERRUPTED' },
+			{ status: 'error', errorCode: 'INTERRUPTED', completedAt: new Date() },
 		);
 	}
 
-	async incrementPassed(id: string, trx?: EntityManager) {
-		trx = trx ?? this.manager;
-		return await trx.increment(TestRun, { id }, 'passedCases', 1);
-	}
-
-	async incrementFailed(id: string, trx?: EntityManager) {
-		trx = trx ?? this.manager;
-		return await trx.increment(TestRun, { id }, 'failedCases', 1);
-	}
-
-	async getMany(testDefinitionId: string, options: ListQuery.Options) {
+	async getMany(workflowId: string, options: ListQuery.Options) {
 		// FIXME: optimize fetching final result of each test run
 		const findManyOptions: FindManyOptions<TestRun> = {
-			where: { testDefinition: { id: testDefinitionId } },
+			where: { workflow: { id: workflowId } },
 			order: { createdAt: 'DESC' },
 			relations: ['testCaseExecutions'],
 		};
@@ -103,12 +93,9 @@ export class TestRunRepository extends Repository<TestRun> {
 	 * E.g. Test Run is considered successful if all test case executions are successful.
 	 * Test Run is considered failed if at least one test case execution is failed.
 	 */
-	async getTestRunSummaryById(
-		testDefinitionId: string,
-		testRunId: string,
-	): Promise<TestRunSummary> {
+	async getTestRunSummaryById(testRunId: string): Promise<TestRunSummary> {
 		const testRun = await this.findOne({
-			where: { id: testRunId, testDefinition: { id: testDefinitionId } },
+			where: { id: testRunId },
 			relations: ['testCaseExecutions'],
 		});
 

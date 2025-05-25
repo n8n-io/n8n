@@ -60,13 +60,9 @@ describe('executeRequestWithSessionManagement', () => {
 				},
 			);
 
-			expect(result).toEqual([
-				{
-					json: {
-						success: true,
-					},
-				},
-			]);
+			expect(result).toEqual({
+				success: true,
+			});
 		});
 
 		it("should not terminate session when 'autoTerminateSession' is false", async () => {
@@ -91,15 +87,11 @@ describe('executeRequestWithSessionManagement', () => {
 				'/sessions/existing-session-123',
 			);
 
-			expect(result).toEqual([
-				{
-					json: {
-						sessionId: 'new-session-123',
-						windowId: 'new-window-123',
-						success: true,
-					},
-				},
-			]);
+			expect(result).toEqual({
+				sessionId: 'new-session-123',
+				windowId: 'new-window-123',
+				success: true,
+			});
 		});
 
 		it("should terminate session when 'autoTerminateSession' is true", async () => {

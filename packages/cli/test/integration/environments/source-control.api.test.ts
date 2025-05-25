@@ -13,6 +13,7 @@ import * as utils from '../shared/utils';
 
 let authOwnerAgent: SuperAgentTest;
 let owner: User;
+
 mockInstance(Telemetry);
 
 const testServer = utils.setupTestServer({

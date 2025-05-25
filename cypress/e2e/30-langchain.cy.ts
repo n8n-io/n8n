@@ -41,6 +41,8 @@ import {
 	getNodes,
 	openNode,
 	getConnectionBySourceAndTarget,
+	disableNode,
+	getExecuteWorkflowButton,
 } from '../composables/workflow';
 import { NDV, WorkflowPage } from '../pages';
 import { createMockNodeExecutionData, runMockWorkflowExecution } from '../utils';
@@ -68,6 +70,26 @@ describe('Langchain Integration', () => {
 
 		clickExecuteWorkflowButton();
 		getManualChatModal().should('not.exist');
+	});
+
+	it('should remove test workflow button', () => {
+		addNodeToCanvas('Schedule Trigger', true);
+		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true);
+
+		clickGetBackToCanvas();
+
+		addNodeToCanvas(AGENT_NODE_NAME, true, true);
+		clickGetBackToCanvas();
+
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
+		clickGetBackToCanvas();
+
+		disableNode('Schedule Trigger');
+		getExecuteWorkflowButton().should('not.exist');
 	});
 
 	it('should add nodes to all Agent node input types', () => {
@@ -346,6 +368,59 @@ describe('Langchain Integration', () => {
 		addNodeToCanvas(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, true);
 		getConnectionBySourceAndTarget(CHAT_TRIGGER_NODE_DISPLAY_NAME, AGENT_NODE_NAME).should('exist');
 		getNodes().should('have.length', 3);
+	});
+
+	it('should render runItems for sub-nodes and allow switching between them', () => {
+		const workflowPage = new WorkflowPage();
+		const ndv = new NDV();
+
+		cy.visit(workflowPage.url);
+		cy.createFixtureWorkflow('In_memory_vector_store_fake_embeddings.json');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.deselectAll();
+
+		workflowPage.actions.executeNode('Populate VS');
+
+		const assertInputOutputText = (text: string, assertion: 'exist' | 'not.exist') => {
+			ndv.getters.outputPanel().contains(text).should(assertion);
+			ndv.getters.inputPanel().contains(text).should(assertion);
+		};
+
+		workflowPage.actions.openNode('Character Text Splitter');
+		ndv.getters.outputRunSelector().should('exist');
+		ndv.getters.inputRunSelector().should('exist');
+		ndv.getters.inputRunSelector().find('input').should('include.value', '3 of 3');
+		ndv.getters.outputRunSelector().find('input').should('include.value', '3 of 3');
+		assertInputOutputText('Kyiv', 'exist');
+		assertInputOutputText('Berlin', 'not.exist');
+		assertInputOutputText('Prague', 'not.exist');
+
+		ndv.actions.changeOutputRunSelector('2 of 3');
+		assertInputOutputText('Berlin', 'exist');
+		assertInputOutputText('Kyiv', 'not.exist');
+		assertInputOutputText('Prague', 'not.exist');
+
+		ndv.actions.changeOutputRunSelector('1 of 3');
+		assertInputOutputText('Prague', 'exist');
+		assertInputOutputText('Berlin', 'not.exist');
+		assertInputOutputText('Kyiv', 'not.exist');
+
+		ndv.actions.toggleInputRunLinking();
+		ndv.actions.changeOutputRunSelector('2 of 3');
+		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 3');
+		ndv.getters.outputRunSelector().find('input').should('include.value', '2 of 3');
+		ndv.getters.inputPanel().contains('Prague').should('exist');
+		ndv.getters.inputPanel().contains('Berlin').should('not.exist');
+
+		ndv.getters.outputPanel().contains('Berlin').should('exist');
+		ndv.getters.outputPanel().contains('Prague').should('not.exist');
+
+		ndv.actions.toggleInputRunLinking();
+		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 3');
+		ndv.getters.outputRunSelector().find('input').should('include.value', '1 of 3');
+		assertInputOutputText('Prague', 'exist');
+		assertInputOutputText('Berlin', 'not.exist');
+		assertInputOutputText('Kyiv', 'not.exist');
 	});
 
 	it('should show tool info notice if no existing tools were used during execution', () => {

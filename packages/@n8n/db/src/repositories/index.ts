@@ -21,8 +21,6 @@ export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
-export { TestDefinitionRepository } from './test-definition.repository.ee';
-export { TestMetricRepository } from './test-metric.repository.ee';
 export { TestRunRepository } from './test-run.repository.ee';
 export { VariablesRepository } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';

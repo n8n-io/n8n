@@ -38,7 +38,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				description: 'Create a new item, or update the current one if it already exists (upsert)',
 				routing: {
 					request: {
 						method: 'POST',

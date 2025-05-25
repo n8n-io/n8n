@@ -282,11 +282,11 @@ describe('compaction', () => {
 			const workflow = await createWorkflow({}, project);
 
 			// create 100 more events than the batch size (500)
-			const batchSize = 600;
+			const numberOfEvents = 600;
 
 			let timestamp = DateTime.utc().startOf('hour');
 			const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
-			for (let i = 0; i < batchSize; i++) {
+			for (let i = 0; i < numberOfEvents; i++) {
 				events.push({ type: 'success', value: 1, timestamp });
 				timestamp = timestamp.plus({ minute: 1 });
 			}
@@ -296,13 +296,13 @@ describe('compaction', () => {
 			await insightsCompactionService.compactInsights();
 
 			// ASSERT
-			// compaction batch size is 500, so rawToHour should be called 3 times:
-			// 1st call: 500 events, 2nd call: 100 events, and third call that returns nothing
-			expect(rawToHourSpy).toHaveBeenCalledTimes(3);
+			// compaction batch size is 500, so rawToHour should be called 2 times:
+			// 1st call: 500 events, 2nd call: 100 events
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
 			await expect(insightsRawRepository.count()).resolves.toBe(0);
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
-			expect(accumulatedValues).toBe(batchSize);
+			expect(accumulatedValues).toBe(numberOfEvents);
 		});
 	});
 

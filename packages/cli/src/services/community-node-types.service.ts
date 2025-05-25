@@ -1,25 +1,35 @@
-import type { CommunityNodeAttributes, CommunityNodeData } from '@n8n/api-types';
+import type { CommunityNodeType } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import { ensureError } from 'n8n-workflow';
+import { ensureError, type INodeTypeDescription } from 'n8n-workflow';
 
 import { CommunityPackagesService } from './community-packages.service';
-import { paginatedRequest } from '../utils/community-nodes-request-utils';
+import { getCommunityNodeTypes } from '../utils/community-node-types-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 
-const N8N_VETTED_NODE_TYPES_STAGING_URL = 'https://api-staging.n8n.io/api/community-nodes';
-const N8N_VETTED_NODE_TYPES_PRODUCTION_URL = 'https://api.n8n.io/api/community-nodes';
+export type StrapiCommunityNodeType = {
+	authorGithubUrl: string;
+	authorName: string;
+	checksum: string;
+	description: string;
+	displayName: string;
+	name: string;
+	numberOfStars: number;
+	numberOfDownloads: number;
+	packageName: string;
+	createdAt: string;
+	updatedAt: string;
+	npmVersion: string;
+	isOfficialNode: boolean;
+	companyName?: string;
+	nodeDescription: INodeTypeDescription;
+};
 
 @Service()
 export class CommunityNodeTypesService {
-	private communityNodes: {
-		[key: string]: CommunityNodeAttributes & {
-			nodeDescription: INodeTypeDescription;
-		};
-	} = {};
+	private communityNodeTypes: Map<string, StrapiCommunityNodeType> = new Map();
 
 	private lastUpdateTimestamp = 0;
 
@@ -31,39 +41,33 @@ export class CommunityNodeTypesService {
 
 	private async fetchNodeTypes() {
 		try {
-			let data: CommunityNodeData[] = [];
+			let data: StrapiCommunityNodeType[] = [];
 			if (
 				this.globalConfig.nodes.communityPackages.enabled &&
 				this.globalConfig.nodes.communityPackages.verifiedEnabled
 			) {
 				const environment = this.globalConfig.license.tenantId === 1 ? 'production' : 'staging';
-				const url =
-					environment === 'production'
-						? N8N_VETTED_NODE_TYPES_PRODUCTION_URL
-						: N8N_VETTED_NODE_TYPES_STAGING_URL;
-				data = await paginatedRequest(url);
+				data = await getCommunityNodeTypes(environment);
 			}
 
-			this.updateData(data);
+			this.updateCommunityNodeTypes(data);
 		} catch (error) {
 			this.logger.error('Failed to fetch community node types', { error: ensureError(error) });
 		}
 	}
 
-	private updateData(data: CommunityNodeData[]) {
-		if (!data?.length) return;
+	private updateCommunityNodeTypes(nodeTypes: StrapiCommunityNodeType[]) {
+		if (!nodeTypes?.length) return;
 
-		this.resetData();
+		this.resetCommunityNodeTypes();
 
-		for (const entry of data) {
-			this.communityNodes[entry.attributes.name] = entry.attributes;
-		}
+		this.communityNodeTypes = new Map(nodeTypes.map((nodeType) => [nodeType.name, nodeType]));
 
 		this.lastUpdateTimestamp = Date.now();
 	}
 
-	private resetData() {
-		this.communityNodes = {};
+	private resetCommunityNodeTypes() {
+		this.communityNodeTypes = new Map();
 	}
 
 	private updateRequired() {
@@ -71,36 +75,37 @@ export class CommunityNodeTypesService {
 		return Date.now() - this.lastUpdateTimestamp > UPDATE_INTERVAL;
 	}
 
-	async getDescriptions(): Promise<INodeTypeDescription[]> {
-		const nodesDescriptions: INodeTypeDescription[] = [];
+	private async createIsInstalled() {
+		const installedPackages = (await this.communityPackagesService.getAllInstalledPackages()) ?? [];
+		const installedPackageNames = new Set(installedPackages.map((p) => p.packageName));
 
-		if (this.updateRequired() || !Object.keys(this.communityNodes).length) {
+		return (nodeTypeName: string) => installedPackageNames.has(nodeTypeName.split('.')[0]);
+	}
+
+	async getCommunityNodeTypes(): Promise<CommunityNodeType[]> {
+		if (this.updateRequired() || !this.communityNodeTypes.size) {
 			await this.fetchNodeTypes();
 		}
 
-		const installedPackages = (
-			(await this.communityPackagesService.getAllInstalledPackages()) ?? []
-		).map((p) => p.packageName);
+		const isInstalled = await this.createIsInstalled();
 
-		for (const node of Object.values(this.communityNodes)) {
-			if (installedPackages.includes(node.name.split('.')[0])) continue;
-			nodesDescriptions.push(node.nodeDescription);
-		}
-
-		return nodesDescriptions;
+		return Array.from(this.communityNodeTypes.values()).map((nodeType) => ({
+			...nodeType,
+			isInstalled: isInstalled(nodeType.name),
+		}));
 	}
 
-	getCommunityNodeAttributes(type: string): CommunityNodeAttributes | null {
-		const node = this.communityNodes[type];
-		if (!node) return null;
-		const { nodeDescription, ...attributes } = node;
-		return attributes;
+	async getCommunityNodeType(type: string): Promise<CommunityNodeType | null> {
+		const nodeType = this.communityNodeTypes.get(type);
+		const isInstalled = await this.createIsInstalled();
+		if (!nodeType) return null;
+		return { ...nodeType, isInstalled: isInstalled(nodeType.name) };
 	}
 
 	findVetted(packageName: string) {
-		const vettedTypes = Object.keys(this.communityNodes);
+		const vettedTypes = Array.from(this.communityNodeTypes.keys());
 		const nodeName = vettedTypes.find((t) => t.includes(packageName));
 		if (!nodeName) return;
-		return this.communityNodes[nodeName];
+		return this.communityNodeTypes.get(nodeName);
 	}
 }

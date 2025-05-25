@@ -44,21 +44,27 @@ export class InsightsCompactionService {
 
 		// Compact raw data to hourly aggregates
 		do {
+			this.logger.debug('Compacting raw data to hourly aggregates');
 			numberOfCompactedRawData = await this.compactRawToHour();
-		} while (numberOfCompactedRawData > 0);
+			this.logger.debug(`Compacted ${numberOfCompactedRawData} raw data to hourly aggregates`);
+		} while (numberOfCompactedRawData === this.insightsConfig.compactionBatchSize);
 
 		let numberOfCompactedHourData: number;
 
 		// Compact hourly data to daily aggregates
 		do {
+			this.logger.debug('Compacting hourly data to daily aggregates');
 			numberOfCompactedHourData = await this.compactHourToDay();
-		} while (numberOfCompactedHourData > 0);
+			this.logger.debug(`Compacted ${numberOfCompactedHourData} hourly data to daily aggregates`);
+		} while (numberOfCompactedHourData === this.insightsConfig.compactionBatchSize);
 
 		let numberOfCompactedDayData: number;
 		// Compact daily data to weekly aggregates
 		do {
+			this.logger.debug('Compacting daily data to weekly aggregates');
 			numberOfCompactedDayData = await this.compactDayToWeek();
-		} while (numberOfCompactedDayData > 0);
+			this.logger.debug(`Compacted ${numberOfCompactedDayData} daily data to weekly aggregates`);
+		} while (numberOfCompactedDayData === this.insightsConfig.compactionBatchSize);
 	}
 
 	/**

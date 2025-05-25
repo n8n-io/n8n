@@ -7,7 +7,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import VirtualSchema from '@/components/VirtualSchema.vue';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { IF_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
+import {
+	IF_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SET_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+} from '@/constants';
 import type { IWorkflowDb } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -78,6 +83,20 @@ const unknownNodeType = createTestNode({
 	type: 'unknown',
 });
 
+const splitInBatchesNode = createTestNode({
+	name: 'SplitInBatches',
+	type: SPLIT_IN_BATCHES_NODE_TYPE,
+	typeVersion: 1,
+	disabled: false,
+});
+
+const customerDatastoreNode = createTestNode({
+	name: 'Customer Datastore',
+	type: 'n8n-nodes-base.n8nTrainingCustomerDatastore',
+	typeVersion: 1,
+	disabled: false,
+});
+
 const defaultNodes = [
 	{ name: 'Manual Trigger', indicies: [], depth: 1 },
 	{ name: 'Set2', indicies: [], depth: 2 },
@@ -97,6 +116,8 @@ async function setupStore() {
 			aiTool,
 			unknownNodeType,
 			nodeWithCredential,
+			splitInBatchesNode,
+			customerDatastoreNode,
 		],
 	};
 
@@ -121,6 +142,14 @@ async function setupStore() {
 		}),
 		mockNodeTypeDescription({
 			name: 'n8n-nodes-base.notion',
+			outputs: [NodeConnectionTypes.Main],
+		}),
+		mockNodeTypeDescription({
+			name: SPLIT_IN_BATCHES_NODE_TYPE,
+			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		}),
+		mockNodeTypeDescription({
+			name: 'n8n-nodes-base.n8nTrainingCustomerDatastore',
 			outputs: [NodeConnectionTypes.Main],
 		}),
 	]);
@@ -353,6 +382,42 @@ describe('VirtualSchema.vue', () => {
 			const headers = getAllByTestId('run-data-schema-header');
 			expect(headers[0]).toHaveTextContent('If');
 			expect(headers[0]).toHaveTextContent('2 items');
+		});
+	});
+
+	it('renders schema for specific output branch when outputIndex is specified', async () => {
+		const originalNodeHelpers = nodeHelpers.useNodeHelpers();
+		vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
+			return {
+				...originalNodeHelpers,
+				getLastRunIndexWithData: vi.fn(() => 0),
+				hasNodeExecuted: vi.fn(() => true),
+				getNodeInputData: vi.fn((node, _, outputIndex) => {
+					if (node.name === 'If' && outputIndex === 1) {
+						return [{ json: { doneItems: 'done branch data' } }];
+					}
+					if (node.name === 'If' && outputIndex === 0) {
+						return [{ json: { loopItems: 'loop branch data' } }];
+					}
+					return [];
+				}),
+			};
+		});
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				nodes: [{ name: 'If', indicies: [0, 1], depth: 2 }],
+				outputIndex: 1,
+			},
+		});
+
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers[0]).toHaveTextContent('If');
+			expect(headers[0]).toHaveTextContent('1 item');
+
+			const items = getAllByTestId('run-data-schema-item');
+			expect(items[0]).toHaveTextContent('doneItemsdone branch data');
 		});
 	});
 
@@ -679,5 +744,70 @@ describe('VirtualSchema.vue', () => {
 			expect(headers.length).toBe(2);
 		});
 		expect(container).toMatchSnapshot();
+	});
+
+	it('renders schema for loop node done-branch with correct filtering', async () => {
+		// Mock customer datastore output - 6 customer items
+		const customerData = Array.from({ length: 6 }, (_, i) => ({
+			json: {
+				id: i + 1,
+				name: `Customer ${i + 1}`,
+				email: `customer${i + 1}@example.com`,
+				status: 'active',
+			},
+		}));
+
+		// Mock SplitInBatches node processing the loop with multiple items on output 0 (loop branch)
+		// and final completion signal on output 1 (done branch)
+		const originalNodeHelpers = nodeHelpers.useNodeHelpers();
+		vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => {
+			return {
+				...originalNodeHelpers,
+				getLastRunIndexWithData: vi.fn(() => 0),
+				hasNodeExecuted: vi.fn(() => true),
+				getNodeInputData: vi.fn((node, _, outputIndex) => {
+					if (node.name === 'Customer Datastore') {
+						return customerData;
+					}
+					if (node.name === 'SplitInBatches' && outputIndex === 0) {
+						// Loop branch: return individual customer items processed one by one
+						return customerData; // Multiple items being processed
+					}
+					if (node.name === 'SplitInBatches' && outputIndex === 1) {
+						// Done branch: return completion signal with aggregated results
+						return [
+							{ json: { processed: 6, completed: true, summary: 'All customers processed' } },
+						];
+					}
+					return [];
+				}),
+			};
+		});
+
+		// Test the done branch (outputIndex: 1) specifically
+		const { getAllByTestId } = renderComponent({
+			props: {
+				nodes: [
+					{ name: 'Customer Datastore', indicies: [], depth: 1 },
+					{ name: 'SplitInBatches', indicies: [0, 1], depth: 2 },
+				],
+				outputIndex: 1, // Specifically viewing the done branch
+			},
+		});
+
+		await waitFor(() => {
+			const headers = getAllByTestId('run-data-schema-header');
+			expect(headers).toHaveLength(3); // Customer Datastore, SplitInBatches, and Variables
+
+			// Check Customer Datastore (first header)
+			expect(headers[0]).toHaveTextContent('Customer Datastore');
+
+			// Check SplitInBatches shows only 1 item from the done branch (not 6 from loop branch)
+			expect(headers[1]).toHaveTextContent('SplitInBatches');
+			expect(headers[1]).toHaveTextContent('1 item');
+
+			// This is the key assertion: the SplitInBatches node shows "1 item" instead of "6 items"
+			// which proves that the outputIndex filtering is working correctly for the done branch
+		});
 	});
 });

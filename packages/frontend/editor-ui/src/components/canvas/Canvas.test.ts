@@ -9,6 +9,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
 import { SIMULATE_NODE_TYPE } from '@/constants';
+import { canvasEventBus } from '@/event-bus/canvas';
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
@@ -154,6 +155,24 @@ describe('Canvas', () => {
 		await fireEvent.keyUp(node, { key: ' ', view: window });
 
 		expect(emitted()['update:node:name']).toEqual([['1']]);
+	});
+
+	it('should update viewport if nodes:select event is received with panIntoView=true', async () => {
+		const node = createCanvasNodeElement({ position: { x: -1000, y: -500 } });
+
+		renderComponent({
+			props: {
+				id: 'c0',
+				nodes: [node],
+				eventBus: canvasEventBus,
+			},
+		});
+
+		const { getViewport } = useVueFlow('c0');
+
+		expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 });
+		canvasEventBus.emit('nodes:select', { ids: [node.id], panIntoView: true });
+		await waitFor(() => expect(getViewport()).toEqual({ x: 1100, y: 600, zoom: 1 }));
 	});
 
 	it('should not emit `update:node:name` event if long key press', async () => {

@@ -17,6 +17,8 @@ import {
 	mockNodeCreateElement,
 	mockSectionCreateElement,
 } from './__tests__/utils';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
 
 vi.mock('@/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
@@ -134,6 +136,9 @@ describe('NodeCreator - utils', () => {
 		});
 	});
 	describe('prepareCommunityNodeDetailsViewStack', () => {
+		beforeEach(() => {
+			setActivePinia(createTestingPinia());
+		});
 		const nodeCreateElement: NodeCreateElement = {
 			key: 'n8n-nodes-preview-test.OtherNode',
 			properties: {
@@ -162,6 +167,7 @@ describe('NodeCreator - utils', () => {
 					nodeIcon: undefined,
 					packageName: 'n8n-nodes-test',
 					title: 'Other Node',
+					official: false,
 				},
 				hasSearch: false,
 				items: [
@@ -185,7 +191,7 @@ describe('NodeCreator - utils', () => {
 				mode: 'community-node',
 				rootView: undefined,
 				subcategory: 'Other Node',
-				title: 'Community node details',
+				title: 'Node details',
 			});
 		});
 
@@ -255,6 +261,7 @@ describe('NodeCreator - utils', () => {
 					nodeIcon: undefined,
 					packageName: 'n8n-nodes-test',
 					title: 'Other Node',
+					official: false,
 				},
 				hasSearch: false,
 				items: [
@@ -322,7 +329,7 @@ describe('NodeCreator - utils', () => {
 				mode: 'actions',
 				rootView: undefined,
 				subcategory: 'Other Node',
-				title: 'Community node details',
+				title: 'Node details',
 			});
 		});
 	});

@@ -19,7 +19,7 @@ import type {
 	CanvasNodeData,
 } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
-import { getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
+import { updateViewportToContainNodes, getMousePosition, GRID_SIZE } from '@/utils/nodeViewUtils';
 import { isPresent } from '@/utils/typesUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useShortKeyPress } from '@n8n/composables/useShortKeyPress';
@@ -72,6 +72,7 @@ const emit = defineEmits<{
 	'update:logs-open': [open?: boolean];
 	'update:logs:input-open': [open?: boolean];
 	'update:logs:output-open': [open?: boolean];
+	'update:has-range-selection': [isActive: boolean];
 	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
@@ -153,6 +154,7 @@ const {
 	viewport,
 	dimensions,
 	nodesSelectionActive,
+	userSelectionRect,
 	setViewport,
 	onEdgeMouseLeave,
 	onEdgeMouseEnter,
@@ -402,9 +404,21 @@ function onSelectNode() {
 	emit('update:node:selected', lastSelectedNode.value?.id);
 }
 
-function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
+function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select']) {
 	clearSelectedNodes();
 	addSelectedNodes(ids.map(findNode).filter(isPresent));
+
+	if (panIntoView) {
+		const nodes = ids.map(findNode).filter(isPresent);
+
+		if (nodes.length === 0) {
+			return;
+		}
+
+		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
+
+		void setViewport(newViewport, { duration: 200 });
+	}
 }
 
 function onToggleNodeEnabled(id: string) {
@@ -797,6 +811,10 @@ onNodesInitialized(() => {
 watch(() => props.readOnly, setReadonly, {
 	immediate: true,
 });
+
+watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
+	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
+);
 
 /**
  * Provide

@@ -1,4 +1,4 @@
-import type { INodeExecutionData, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
 import {
 	validateSessionAndWindowId,
@@ -7,6 +7,7 @@ import {
 	validateAirtopApiResponse,
 } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
+import type { IAirtopResponse } from '../../transport/types';
 
 /**
  * Execute the node operation. Creates and terminates a new session if needed.
@@ -23,7 +24,7 @@ export async function executeRequestWithSessionManagement(
 		path: string;
 		body: IDataObject;
 	},
-): Promise<INodeExecutionData[]> {
+): Promise<IAirtopResponse> {
 	const { sessionId, windowId } = shouldCreateNewSession.call(this, index)
 		? await createSessionAndWindow.call(this, index)
 		: validateSessionAndWindowId.call(this, index);
@@ -38,8 +39,8 @@ export async function executeRequestWithSessionManagement(
 	if (shouldTerminateSession) {
 		await apiRequest.call(this, 'DELETE', `/sessions/${sessionId}`);
 		this.logger.info(`[${this.getNode().name}] Session terminated.`);
-		return this.helpers.returnJsonArray({ ...response });
+		return response;
 	}
 
-	return this.helpers.returnJsonArray({ sessionId, windowId, ...response });
+	return { sessionId, windowId, ...response };
 }

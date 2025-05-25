@@ -2,6 +2,36 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.83.0
+
+### What changed?
+
+The Form nodes no longer allows `input` field types for custom HTML to prevent malicious javascript from being added.
+
+### When is action necessary?
+
+If you were previously using `input` in the custom HTML for a Form node.
+
+## 1.82.1
+
+### What changed?
+
+The Form nodes no longer allows `input` field types for custom HTML to prevent malicious javascript from being added.
+
+### When is action necessary?
+
+If you were previously using `input` in the custom HTML for a Form node.
+
+## 1.81.3
+
+### What changed?
+
+The Form nodes no longer allows `input` field types for custom HTML to prevent malicious javascript from being added.
+
+### When is action necessary?
+
+If you were previously using `input` in the custom HTML for a Form node.
+
 ## 1.65.0
 
 ### What changed?

@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-export interface CommunityNodeAttributes {
+export type CommunityNodeType = {
 	authorGithubUrl: string;
 	authorName: string;
 	checksum: string;
@@ -13,11 +13,8 @@ export interface CommunityNodeAttributes {
 	createdAt: string;
 	updatedAt: string;
 	npmVersion: string;
-}
-
-export interface CommunityNodeData {
-	id: number;
-	attributes: CommunityNodeAttributes & {
-		nodeDescription: INodeTypeDescription;
-	};
-}
+	isOfficialNode: boolean;
+	companyName?: string;
+	nodeDescription: INodeTypeDescription;
+	isInstalled: boolean;
+};
