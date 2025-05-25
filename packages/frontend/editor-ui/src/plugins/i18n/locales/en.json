@@ -1381,6 +1381,8 @@
 	"nodeHelpers.credentialsUnset": "Credentials for '{credentialType}' are not set.",
 	"nodeSettings.alwaysOutputData.description": "If active, will output a single, empty item when the output would have been empty. Use to prevent the workflow finishing on this node.",
 	"nodeSettings.alwaysOutputData.displayName": "Always Output Data",
+	"nodeSettings.passThrough.description": "Comma-separated list of the field names you want to include in the output. You can drag the selected fields from the input panel.",
+	"nodeSettings.passThrough.displayName": "Passthrough previous node output",
 	"nodeSettings.clickOnTheQuestionMarkIcon": "Click the '?' icon to open this node on n8n.io",
 	"nodeSettings.onError.description": "Action to take when the node execution fails",
 	"nodeSettings.onError.displayName": "On Error",
