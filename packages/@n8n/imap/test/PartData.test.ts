@@ -60,6 +60,14 @@ describe('QuotedPrintablePartData', () => {
 	});
 });
 
+describe('QuotedPrintableGB2312PartData', () => {
+	it('should correctly decode quoted-printable data', () => {
+		const data = '=C4=E3=BA=C3=A3=AC =CA=C0=BD=E7=A3=A1'; // '你好， 世界！' in quoted-printable with gb2312 encoding
+		const partData = new QuotedPrintablePartData(data, 'gb2312');
+		expect(partData.toString('gb2312')).toBe('你好， 世界！');
+	});
+});
+
 describe('SevenBitPartData', () => {
 	it('should correctly decode 7bit data', () => {
 		const data = 'Hello, world!';
