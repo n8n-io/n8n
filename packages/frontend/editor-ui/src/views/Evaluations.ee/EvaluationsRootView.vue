@@ -8,7 +8,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
@@ -29,7 +28,6 @@ const telemetry = useTelemetry();
 const router = useRouter();
 const toast = useToast();
 const locale = useI18n();
-const nodeTypesStore = useNodeTypesStore();
 
 const { initializeWorkspace } = useCanvasOperations({ router });
 
@@ -101,14 +99,14 @@ onMounted(() => {
 		view: showWizard.value ? 'setup' : 'overview',
 		...(showWizard.value
 			? {
-				trigger_set_up: datasetTriggerExist.value,
-				output_set_up: evaluationSetOutputNodeExist.value,
-				metrics_set_up: evaluationMetricNodeExist.value,
-				quota_reached: evaluationsQuotaExceeded.value,
-			}
+					trigger_set_up: datasetTriggerExist.value,
+					output_set_up: evaluationSetOutputNodeExist.value,
+					metrics_set_up: evaluationMetricNodeExist.value,
+					quota_reached: evaluationsQuotaExceeded.value,
+				}
 			: {
-				run_count: runs.value.length,
-			}),
+					run_count: runs.value.length,
+				}),
 	});
 });
 
