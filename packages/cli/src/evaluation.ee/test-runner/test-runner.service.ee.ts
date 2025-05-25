@@ -323,7 +323,9 @@ export class TestRunnerService {
 	 */
 	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
 		return workflow.nodes.filter(
-			(node) => node.type === EVALUATION_NODE && node.parameters.operation === 'setOutputs',
+			(node) =>
+				node.type === EVALUATION_NODE &&
+				(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
 		);
 	}
 

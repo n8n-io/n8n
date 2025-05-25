@@ -975,6 +975,42 @@ describe('TestRunnerService', () => {
 			}).not.toThrow();
 		});
 
+		it('should pass when operation is default (undefined)', () => {
+			const workflow = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Set Outputs',
+						type: EVALUATION_NODE,
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							operation: undefined,
+							outputs: {
+								assignments: [
+									{
+										id: '1',
+										name: 'result',
+										value: 'success',
+									},
+									{
+										id: '2',
+										name: 'score',
+										value: 95,
+									},
+								],
+							},
+						},
+					},
+				],
+				connections: {},
+			});
+
+			expect(() => {
+				(testRunnerService as any).validateSetOutputsNodes(workflow);
+			}).not.toThrow();
+		});
+
 		it('should throw SET_OUTPUTS_NODE_NOT_FOUND when no outputs nodes exist', () => {
 			const workflow = mock<IWorkflowBase>({
 				nodes: [
