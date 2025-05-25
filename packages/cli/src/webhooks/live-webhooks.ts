@@ -114,9 +114,39 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
-		const webhookData = this.webhookService
-			.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
-			.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
+		const nodeForWebhookData = workflow.getNode(webhook.node) as INode;
+		if (!nodeForWebhookData) {
+			throw new NotFoundError(
+				`Could not find node instance for webhook node name "${webhook.node}" in workflow "${workflow.id}"`,
+			);
+		}
+
+		const webhookDataList = this.webhookService.getNodeWebhooks(
+			workflow,
+			nodeForWebhookData,
+			additionalData,
+		);
+
+		const webhookData = webhookDataList.find((w_candidate) => {
+			// w_candidate.path is already the fully formed path as it would be registered
+			// by WebhookHelpers.getWorkflowWebhooks (which uses NodeHelpers.getNodeWebhookPath internally).
+			// We should compare it directly (after normalization) with webhook.webhookPath from the DB.
+
+			let candidatePathFromList = w_candidate.path;
+			if (candidatePathFromList.endsWith('/')) {
+				candidatePathFromList = candidatePathFromList.slice(0, -1);
+			}
+
+			let dbWebhookPath = webhook.webhookPath; // Path from the DB that matched the incoming request
+			if (dbWebhookPath.endsWith('/')) {
+				dbWebhookPath = dbWebhookPath.slice(0, -1);
+			}
+
+			this.logger.debug(
+				`Comparing: candidatePathFromList="${candidatePathFromList}", dbWebhookPath="${dbWebhookPath}", methodCandidate="${w_candidate.httpMethod}", methodRequest="${httpMethod}"`,
+			);
+			return w_candidate.httpMethod === httpMethod && candidatePathFromList === dbWebhookPath;
+		}) as IWebhookData;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data

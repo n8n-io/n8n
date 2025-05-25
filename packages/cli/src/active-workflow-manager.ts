@@ -4,7 +4,7 @@ import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { chunk } from 'lodash';
+import { chunk, cloneDeep, isEqual } from 'lodash';
 import {
 	ActiveWorkflows,
 	ErrorReporter,
@@ -158,46 +158,66 @@ export class ActiveWorkflowManager {
 		activation: WorkflowActivateMode,
 	) {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
-		let path = '';
 
 		if (webhooks.length === 0) return false;
 
 		for (const webhookData of webhooks) {
 			const node = workflow.getNode(webhookData.node) as INode;
-			node.name = webhookData.node;
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-			path = webhookData.path;
+			// Handle webhook path assignment for API-created workflows
+			if (nodeType?.description.defaults?.name === 'Webhook') {
+				node.parameters = node.parameters || {};
 
-			const webhook = this.webhookService.createWebhook({
+				// Apply defaults if not present
+				if (node.parameters.httpMethod === undefined) node.parameters.httpMethod = 'GET';
+				if (node.parameters.authentication === undefined) node.parameters.authentication = 'none';
+				if (node.parameters.responseMode === undefined) node.parameters.responseMode = 'onReceived';
+				if (node.parameters.responseCode === undefined) node.parameters.responseCode = 200;
+				if (node.parameters.options === undefined) node.parameters.options = {};
+
+				// Ensure webhookId exists for the node
+				if (!node.webhookId) {
+					node.webhookId = node.id;
+				}
+
+				// Update node.parameters.path if it's empty or different from node.webhookId
+				if (!node.parameters.path || node.parameters.path !== node.webhookId) {
+					node.parameters.path = node.webhookId;
+					webhookData.path = node.webhookId;
+					workflow.staticData = workflow.staticData || {};
+					workflow.staticData.nodesParametersChanged = true;
+				}
+			}
+
+			// Normalize webhook path
+			let webhookPath = webhookData.path;
+			if (webhookPath.startsWith('/')) {
+				webhookPath = webhookPath.slice(1);
+			}
+			if (webhookPath.endsWith('/')) {
+				webhookPath = webhookPath.slice(0, -1);
+			}
+
+			const webhookToStore = this.webhookService.createWebhook({
 				workflowId: webhookData.workflowId,
-				webhookPath: path,
+				webhookPath,
 				node: node.name,
 				method: webhookData.httpMethod,
 			});
 
-			if (webhook.webhookPath.startsWith('/')) {
-				webhook.webhookPath = webhook.webhookPath.slice(1);
-			}
-			if (webhook.webhookPath.endsWith('/')) {
-				webhook.webhookPath = webhook.webhookPath.slice(0, -1);
-			}
-
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
-				webhook.webhookId = node.webhookId;
-				webhook.pathLength = webhook.webhookPath.split('/').length;
+			// Handle dynamic paths
+			if ((webhookPath.startsWith(':') || webhookPath.includes(':/')) && node.webhookId) {
+				webhookToStore.webhookId = node.webhookId;
+				webhookToStore.pathLength = webhookPath.split('/').length;
 			}
 
 			try {
-				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
-				await this.webhookService.storeWebhook(webhook);
+				await this.webhookService.storeWebhook(webhookToStore);
 				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
+				await this.webhookService.populateCache();
 			} catch (error) {
 				if (activation === 'init' && error.name === 'QueryFailedError') {
-					// n8n does not remove the registered webhooks on exit.
-					// This means that further initializations will always fail
-					// when inserting to database. This is why we ignore this error
-					// as it's expected to happen.
-
 					continue;
 				}
 
@@ -206,27 +226,69 @@ export class ActiveWorkflowManager {
 				} catch (error1) {
 					this.errorReporter.error(error1);
 					this.logger.error(
-						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error1.message}"`,
+						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${(error1 as Error).message}"`,
 					);
 				}
 
-				// if it's a workflow from the insert
-				// TODO check if there is standard error code for duplicate key violation that works
-				// with all databases
 				if (error instanceof Error && error.name === 'QueryFailedError') {
-					error = new WebhookPathTakenError(webhook.node, error);
-				} else if (error.detail) {
-					// it's a error running the webhook methods (checkExists, create)
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					error.message = error.detail;
+					error = new WebhookPathTakenError(webhookToStore.node, error);
+				} else if ((error as any).detail) {
+					(error as any).message = (error as any).detail;
 				}
 
 				throw error;
 			}
 		}
-		await this.webhookService.populateCache();
 
-		await this.workflowStaticDataService.saveStaticData(workflow);
+		// Save node parameter changes if any were made
+		if (webhooks.length > 0 && workflow.staticData?.nodesParametersChanged) {
+			delete workflow.staticData.nodesParametersChanged;
+
+			const entityToUpdate = await this.workflowRepository.findById(workflow.id);
+			if (entityToUpdate) {
+				let saveRequired = false;
+
+				// Update webhook nodes with new parameters and webhookId
+				for (const nodeKey in workflow.nodes) {
+					const sourceNode = workflow.nodes[nodeKey];
+					const nodeType = this.nodeTypes.getByNameAndVersion(
+						sourceNode.type,
+						sourceNode.typeVersion,
+					);
+
+					if (nodeType?.description.defaults?.name === 'Webhook') {
+						const targetNode = entityToUpdate.nodes.find((n) => n.id === sourceNode.id);
+
+						if (targetNode) {
+							const paramsChanged = !isEqual(
+								targetNode.parameters || {},
+								sourceNode.parameters || {},
+							);
+							const webhookIdChanged = targetNode.webhookId !== sourceNode.webhookId;
+
+							if (paramsChanged) {
+								targetNode.parameters = cloneDeep(sourceNode.parameters);
+								saveRequired = true;
+							}
+
+							if (webhookIdChanged) {
+								targetNode.webhookId = sourceNode.webhookId;
+								saveRequired = true;
+							}
+						}
+					}
+				}
+
+				if (saveRequired) {
+					await this.workflowRepository.save(entityToUpdate);
+				}
+			}
+		}
+
+		// Save static data if modified
+		if (workflow.staticData) {
+			await this.workflowStaticDataService.saveStaticData(workflow);
+		}
 
 		this.logger.debug(`Added webhooks for workflow "${workflow.name}" (ID ${workflow.id})`, {
 			workflowId: workflow.id,
@@ -570,12 +632,12 @@ export class ActiveWorkflowManager {
 			workflow = new Workflow({
 				id: dbWorkflow.id,
 				name: dbWorkflow.name,
-				nodes: dbWorkflow.nodes,
-				connections: dbWorkflow.connections,
+				nodes: cloneDeep(dbWorkflow.nodes),
+				connections: cloneDeep(dbWorkflow.connections),
 				active: dbWorkflow.active,
 				nodeTypes: this.nodeTypes,
-				staticData: dbWorkflow.staticData,
-				settings: dbWorkflow.settings,
+				staticData: cloneDeep(dbWorkflow.staticData),
+				settings: cloneDeep(dbWorkflow.settings),
 			});
 
 			const canBeActivated = this.checkIfWorkflowCanBeActivated(workflow, STARTING_NODES);
