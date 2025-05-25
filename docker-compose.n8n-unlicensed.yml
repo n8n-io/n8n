@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  n8n-unlicensed:
+    image: n8n-unlicensed:latest
+    container_name: n8n-unlicensed
+    ports:
+      - "7001:5678"
+    environment:
+      - N8N_ENCRYPTION_KEY=test-key
+      - NODE_ENV=production
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_USER_MANAGEMENT_DISABLED=false
+      - N8N_SECURE_COOKIE=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_TELEMETRY_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      - N8N_TEMPLATES_ENABLED=true
+      - N8N_DEPLOYMENT_TYPE=self-hosted
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+    volumes:
+      - n8n-unlicensed-data:/home/node/.n8n
+    restart: unless-stopped
+
+volumes:
+  n8n-unlicensed-data:

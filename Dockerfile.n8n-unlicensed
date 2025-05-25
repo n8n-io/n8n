@@ -1,0 +1,149 @@
+# Complete n8n with License Bypass, Authentication, and Pre-created API Key
+FROM n8nio/n8n:latest
+
+USER root
+
+# Install required tools
+RUN apk add --no-cache sqlite curl jq bash
+
+# Create the license bypass script
+RUN echo 'const Module = require("module");' > /license-bypass.js && \
+    echo 'const originalRequire = Module.prototype.require;' >> /license-bypass.js && \
+    echo '' >> /license-bypass.js && \
+    echo 'Module.prototype.require = function(id) {' >> /license-bypass.js && \
+    echo '    const result = originalRequire.apply(this, arguments);' >> /license-bypass.js && \
+    echo '    ' >> /license-bypass.js && \
+    echo '    if (id.includes("License") && result.License) {' >> /license-bypass.js && \
+    echo '        class MockLicense {' >> /license-bypass.js && \
+    echo '            constructor() {' >> /license-bypass.js && \
+    echo '                this.isLicensed = () => true;' >> /license-bypass.js && \
+    echo '                this.getFeatureValue = () => -1;' >> /license-bypass.js && \
+    echo '                this.getPlanName = () => "Enterprise";' >> /license-bypass.js && \
+    echo '            }' >> /license-bypass.js && \
+    echo '        }' >> /license-bypass.js && \
+    echo '        ' >> /license-bypass.js && \
+    echo '        if (result.License) {' >> /license-bypass.js && \
+    echo '            result.License = MockLicense;' >> /license-bypass.js && \
+    echo '        }' >> /license-bypass.js && \
+    echo '        ' >> /license-bypass.js && \
+    echo '        return new Proxy(result, {' >> /license-bypass.js && \
+    echo '            get: (target, prop) => {' >> /license-bypass.js && \
+    echo '                if (prop === "License") return MockLicense;' >> /license-bypass.js && \
+    echo '                return target[prop];' >> /license-bypass.js && \
+    echo '            }' >> /license-bypass.js && \
+    echo '        });' >> /license-bypass.js && \
+    echo '    }' >> /license-bypass.js && \
+    echo '    ' >> /license-bypass.js && \
+    echo '    return result;' >> /license-bypass.js && \
+    echo '};' >> /license-bypass.js
+
+# Create initialization script
+COPY <<'EOF' /init.sh
+#!/bin/bash
+set -e
+
+# Export NODE_OPTIONS for license bypass
+export NODE_OPTIONS="--require /license-bypass.js"
+
+# Function to wait for n8n
+wait_for_n8n() {
+    echo "Waiting for n8n to start..."
+    while ! curl -s http://localhost:5678/healthz > /dev/null 2>&1; do
+        sleep 2
+    done
+    echo "n8n is ready!"
+}
+
+# Function to setup owner and API key
+setup_owner_and_api() {
+    # Wait a bit more for full initialization
+    sleep 5
+    
+    # Check if setup is needed
+    SETUP_STATUS=$(curl -s http://localhost:5678/rest/settings | jq -r '.data.userManagement.showSetupOnFirstLoad' 2>/dev/null || echo "error")
+    
+    if [ "$SETUP_STATUS" = "true" ]; then
+        echo "Creating owner account..."
+        
+        # Use n8n's owner setup endpoint
+        RESPONSE=$(curl -s -X POST http://localhost:5678/rest/owner/setup \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "admin@n8n.local",
+            "firstName": "Admin",
+            "lastName": "User",
+            "password": "N8nPassword123",
+            "agree": true
+          }')
+        
+        if echo "$RESPONSE" | grep -q "email"; then
+            echo "✅ Owner account created!"
+            
+            # Create API key for the owner
+            echo "Creating API key..."
+            
+            # Get the database path
+            DB_PATH="/home/node/.n8n/database.sqlite"
+            
+            # Wait for database to be fully initialized
+            sleep 3
+            
+            # Insert the API key directly with generated ID and proper JSON scopes
+            sqlite3 "$DB_PATH" "INSERT INTO user_api_keys (id, apiKey, userId, label, scopes, createdAt, updatedAt) 
+                                SELECT lower(hex(randomblob(16))), 'n8n_api_test_key_123456789', id, 'Test API Key', '[\"global:owner\"]', datetime('now'), datetime('now') 
+                                FROM user 
+                                WHERE email = 'admin@n8n.local' 
+                                LIMIT 1;" 2>/dev/null || echo "API key might already exist"
+            
+            echo "✅ API key created!"
+        else
+            echo "Setup response: $RESPONSE"
+        fi
+    else
+        echo "Setup already completed, checking API key..."
+        
+        # Check if API key exists
+        DB_PATH="/home/node/.n8n/database.sqlite"
+        KEY_EXISTS=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM user_api_keys WHERE apiKey = 'n8n_api_test_key_123456789';" 2>/dev/null || echo "0")
+        
+        if [ "$KEY_EXISTS" = "0" ]; then
+            # Create API key if it doesn't exist with generated ID and proper JSON scopes
+            sqlite3 "$DB_PATH" "INSERT INTO user_api_keys (id, apiKey, userId, label, scopes, createdAt, updatedAt) 
+                                SELECT lower(hex(randomblob(16))), 'n8n_api_test_key_123456789', id, 'Test API Key', '[\"global:owner\"]', datetime('now'), datetime('now') 
+                                FROM user 
+                                WHERE email = 'admin@n8n.local' 
+                                LIMIT 1;" 2>/dev/null || echo "Failed to create API key"
+            echo "✅ API key created!"
+        else
+            echo "✅ API key already exists!"
+        fi
+    fi
+    
+    echo ""
+    echo "=========================================="
+    echo "n8n is ready at: http://localhost:5678"
+    echo ""
+    echo "Login credentials:"
+    echo "Email: admin@n8n.local"
+    echo "Password: N8nPassword123"
+    echo ""
+    echo "API Key: n8n_api_test_key_123456789"
+    echo "=========================================="
+}
+
+# Start setup in background
+(
+    wait_for_n8n
+    setup_owner_and_api
+) &
+
+# Start n8n
+exec docker-entrypoint.sh "$@"
+EOF
+
+RUN chmod +x /init.sh
+
+USER node
+
+ENTRYPOINT ["tini", "--", "/init.sh"]
+CMD ["n8n"]

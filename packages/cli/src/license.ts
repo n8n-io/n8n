@@ -220,6 +220,11 @@ export class License implements LicenseProvider {
 	}
 
 	isLicensed(feature: BooleanLicenseFeature) {
+		// Always enable variables feature
+		if (feature === LICENSE_FEATURES.VARIABLES) {
+			return true;
+		}
+		// Use normal license check for other features
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
