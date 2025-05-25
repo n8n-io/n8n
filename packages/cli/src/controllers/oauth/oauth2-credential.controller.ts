@@ -62,7 +62,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 		const toUpdate: ICredentialDataDecryptedObject = { csrfSecret };
 		if (oauthCredentials.grantType === 'pkce') {
-			const { code_verifier, code_challenge } = await pkceChallenge();
+			const { code_verifier, code_challenge } = await this.generatePkceChallenge(oauthCredentials);
 			oAuthOptions.query = {
 				...oAuthOptions.query,
 				code_challenge,
@@ -106,7 +106,10 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 			if (oauthCredentials.grantType === 'pkce') {
 				options = {
-					body: { code_verifier: decryptedDataOriginal.codeVerifier },
+					body: {
+						...(oAuthOptions.body ?? {}),
+						code_verifier: decryptedDataOriginal.codeVerifier,
+					},
 				};
 			} else if (oauthCredentials.authentication === 'body') {
 				options = {
@@ -159,6 +162,21 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		}
 	}
 
+	private async generatePkceChallenge(
+		credential: OAuth2CredentialData,
+	): Promise<{ code_verifier: string; code_challenge: string }> {
+		const { code_verifier, code_challenge } = await pkceChallenge();
+		const formattedCodeChallenge =
+			credential.pkceChallengeFormat === 'hex'
+				? Buffer.from(code_challenge, 'base64').toString('hex')
+				: code_challenge;
+
+		return {
+			code_verifier,
+			code_challenge: formattedCodeChallenge,
+		};
+	}
+
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,
@@ -170,6 +188,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			scopes: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
+			pkceChallengeFormat: credential.pkceChallengeFormat ?? 'base64',
 		};
 
 		if (
