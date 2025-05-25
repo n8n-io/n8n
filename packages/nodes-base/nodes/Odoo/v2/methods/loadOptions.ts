@@ -1,12 +1,12 @@
 import { capitalCase } from 'change-case';
-import type { type IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { odooGetRequestCredentials, odooHTTPRequest } from '../GenericFunctions';
 
 export async function getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const odooRequestCredentials = await odooGetRequestCredentials.call(this);
 
-	const response = (await odooHTTPRequest.call(
+	const response: IDataObject[] = (await odooHTTPRequest.call(
 		this,
 		odooRequestCredentials,
 		'ir.model',
@@ -45,7 +45,7 @@ export async function getModelFields(this: ILoadOptionsFunctions): Promise<INode
 	);
 
 	const options = Object.entries(response).map(([key, field]) => {
-		const optionField = field as { [key: string]: string };
+		const optionField: { [key: string]: string } = field;
 		try {
 			optionField.name = capitalCase(optionField.name);
 		} catch (error) {

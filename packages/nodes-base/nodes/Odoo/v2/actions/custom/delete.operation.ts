@@ -22,7 +22,7 @@ export async function execute(
 	credentials: OdooCredentialsInterface,
 	customResource: string,
 ) {
-	const customResourceIdParam = this.getNodeParameter('customResourceId', index) as string;
+	const customResourceIdParam: string = this.getNodeParameter('customResourceId', index);
 	const response = await odooHTTPRequest.call(this, credentials, customResource, 'unlink', [
 		+customResourceIdParam,
 	]);

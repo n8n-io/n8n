@@ -1,4 +1,4 @@
-import type { type IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import type { OdooCredentialsInterface } from '../../GenericFunctions';
@@ -34,7 +34,7 @@ export const properties: INodeProperties[] = [
 						name: 'argValue',
 						type: 'string',
 						default: '',
-						placeholder: 'Could be a number, a string, an array or a tupple',
+						placeholder: 'Could be a number, a string, an array or a tuple',
 					},
 				],
 			},
@@ -91,7 +91,7 @@ export async function execute(
 	credentials: OdooCredentialsInterface,
 	customResource: string,
 ) {
-	const methodName = this.getNodeParameter('methodName', index) as string;
+	const methodName: string = this.getNodeParameter('methodName', index);
 
 	const methodArgsArray = (this.getNodeParameter('methodArgs', index) as IDataObject)?.args;
 	const methodArgsValues = Array.isArray(methodArgsArray)
@@ -100,8 +100,9 @@ export async function execute(
 					const value = arg.argValue;
 
 					if (typeof value === 'string') {
-						if (!isNaN(Number(value))) {
-							return Number(value);
+						var trimmedValue = value.trim();
+						if (trimmedValue != '' && !isNaN(Number(trimmedValue))) {
+							return Number(trimmedValue);
 						} else {
 							try {
 								const cleanedValue = value
@@ -125,7 +126,9 @@ export async function execute(
 	const methodKwargs = Array.isArray(methodKwargsArray)
 		? methodKwargsArray.reduce(
 				(acc, { kwargName, kwargValue }) => {
-					acc[kwargName] = kwargValue;
+					if (kwargName) {
+						acc[kwargName] = kwargValue;
+					}
 					return acc;
 				},
 				{} as Record<string, string>,

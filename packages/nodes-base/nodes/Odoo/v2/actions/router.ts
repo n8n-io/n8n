@@ -1,4 +1,6 @@
-import type { IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+
 import { deepCopy } from 'n8n-workflow';
 
 import * as custom from './custom';
@@ -11,13 +13,13 @@ export async function router(this: IExecuteFunctions) {
 	items = deepCopy(items);
 	const returnData: INodeExecutionData[] = [];
 
-	const resource = this.getNodeParameter<OdooV2>('resource', 0) as string;
-	const operation = this.getNodeParameter('operation', 0) as OdooCRUD;
+	const resource: string = this.getNodeParameter<OdooV2>('resource', 0);
+	const operation: OdooCRUD = this.getNodeParameter('operation', 0);
 
-	const odooV2 = {
+	const odooV2: OdooV2 = {
 		resource,
 		operation,
-	} as OdooV2;
+	};
 
 	const odooRequestCredentials = await odooGetRequestCredentials.call(this);
 
@@ -27,7 +29,7 @@ export async function router(this: IExecuteFunctions) {
 
 			switch (odooV2.resource) {
 				case 'custom': {
-					const customResource = this.getNodeParameter('customResource', i) as string;
+					const customResource: string = this.getNodeParameter('customResource', i);
 
 					responseData = await custom[odooV2.operation].execute.call(
 						this,
@@ -38,9 +40,12 @@ export async function router(this: IExecuteFunctions) {
 					break;
 				}
 				default:
-					throw new ApplicationError();
+					throw new NodeOperationError(
+						this.getNode(),
+						`The operation "${operation}" is not known`,
+						{ itemIndex: i },
+					);
 			}
-
 			if (responseData !== undefined) {
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),

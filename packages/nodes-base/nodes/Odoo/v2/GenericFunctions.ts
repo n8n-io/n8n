@@ -125,7 +125,11 @@ export async function odooLoginRequest(
 			id: randomInt(100),
 		};
 		const loginResult = await odooJSONRPCRequest.call(this, body, credentials.url as string);
-		return loginResult as unknown as number;
+		if (typeof loginResult !== 'number') {
+			throw new Error(`Unexpected login result type: ${typeof loginResult}`);
+		}
+
+		return loginResult;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -146,8 +150,8 @@ export async function odooGetRequestCredentials(
 	const url = (credentials.url as string).replace(/\/$/, '');
 	const db = odooGetDBName(credentials.db as string, url);
 	const userID = await odooLoginRequest.call(this, credentials);
-	const password = credentials.password as string;
-	return { url, db, userID, password } as OdooCredentialsInterface;
+	const password: string = credentials.password;
+	return { url, db, userID, password } satisfies OdooCredentialsInterface;
 }
 
 function odooBuildRequestBody(
@@ -221,7 +225,7 @@ export function processBasicFilters(value: IOdooFilterOperations) {
 }
 
 export function processCustomFilters(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	functions: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	value: string,
 ) {
 	const cleanedValue = value
@@ -236,12 +240,12 @@ export function processCustomFilters(
 	try {
 		return JSON.parse(cleanedValue);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), { message: `Invalid JSON format: ${error}` });
+		throw new NodeApiError(functions.getNode(), error as JsonObject);
 	}
 }
 
 export function processNameValueFields(value: IDataObject) {
-	const data = value as unknown as IOdooNameValueFields;
+	const data: IOdooNameValueFields = value;
 	return data?.fields?.reduce((acc, record) => {
 		return Object.assign(acc, { [record.fieldName]: record.fieldValue });
 	}, {});
