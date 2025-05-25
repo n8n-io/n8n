@@ -1,4 +1,6 @@
-import type { IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+
 import { deepCopy } from 'n8n-workflow';
 
 import * as custom from './custom';
@@ -38,9 +40,12 @@ export async function router(this: IExecuteFunctions) {
 					break;
 				}
 				default:
-					throw new ApplicationError();
+					throw new NodeOperationError(
+						this.getNode(),
+						`The operation "${operation}" is not known`,
+						{ itemIndex: i },
+					);
 			}
-
 			if (responseData !== undefined) {
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),

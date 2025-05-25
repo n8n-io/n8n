@@ -1,5 +1,5 @@
 import { capitalCase } from 'change-case';
-import type { type IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { odooGetRequestCredentials, odooHTTPRequest } from '../GenericFunctions';
 

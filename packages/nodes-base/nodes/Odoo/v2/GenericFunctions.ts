@@ -221,7 +221,7 @@ export function processBasicFilters(value: IOdooFilterOperations) {
 }
 
 export function processCustomFilters(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	functions: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	value: string,
 ) {
 	const cleanedValue = value
@@ -236,7 +236,7 @@ export function processCustomFilters(
 	try {
 		return JSON.parse(cleanedValue);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), { message: `Invalid JSON format: ${error}` });
+		throw new NodeApiError(functions.getNode(), { message: `Invalid JSON format: ${error}` });
 	}
 }
 

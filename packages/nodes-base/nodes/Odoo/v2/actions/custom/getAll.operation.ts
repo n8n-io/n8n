@@ -1,8 +1,8 @@
-import type { type IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import { fieldsToInclude, returnAllOrLimit } from '../../descriptions';
-import type { type IOdooFilterOperations, OdooCredentialsInterface } from '../../GenericFunctions';
+import type { IOdooFilterOperations, OdooCredentialsInterface } from '../../GenericFunctions';
 import { odooHTTPRequest, processBasicFilters, processCustomFilters } from '../../GenericFunctions';
 
 export const basicFilter: INodeProperties[] = [
@@ -234,7 +234,7 @@ export async function execute(
 	const customFilterToggle = this.getNodeParameter('customFilterToggle', index);
 
 	const domain = customFilterToggle
-		? processCustomFilters(this.getNodeParameter('customFilter', index, '') as string) || []
+		? processCustomFilters(this, this.getNodeParameter('customFilter', index, '') as string) || []
 		: processBasicFilters(
 				this.getNodeParameter('basicFilter', index, {}) as IOdooFilterOperations,
 			) || [];
