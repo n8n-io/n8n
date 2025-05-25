@@ -39,6 +39,14 @@ export class CodeFlow {
 			state: options.state,
 			...(options.scopes ? { scope: options.scopes.join(options.scopesSeparator ?? ' ') } : {}),
 		};
+		
+		if (options.authorizationUri &&
+						((options.authorizationUri.includes('tiktokapis.com') || options.authorizationUri.includes('tiktok.com')) &&
+						 (options.authorizationUri.includes('oauth') || options.authorizationUri.includes('auth')))
+		) {
+						// For TikTok endpoints, use client_key and client_secret
+						queryParams.client_key = options.clientId;
+		}
 
 		for (const [key, value] of Object.entries(queryParams)) {
 			if (value !== null && value !== undefined) {
@@ -97,6 +105,15 @@ export class CodeFlow {
 			grant_type: 'authorization_code',
 			redirect_uri: options.redirectUri,
 		};
+
+		if (options.accessTokenUri &&
+						((options.accessTokenUri.includes('tiktokapis.com') || options.accessTokenUri.includes('tiktok.com')) &&
+						 (options.accessTokenUri.includes('oauth') || options.accessTokenUri.includes('auth')))
+		) {
+						// For TikTok endpoints, use client_key and client_secret
+						body.client_key = options.clientId;
+						body.client_secret = options.clientSecret;
+		}
 
 		// `client_id`: REQUIRED, if the client is not authenticating with the
 		// authorization server as described in Section 3.2.1.
