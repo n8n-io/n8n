@@ -591,6 +591,42 @@ describe('ExecutionService', () => {
 			expect(results[0].status).toBe('running');
 			expect(results[1].status).toBe('running');
 		});
+
+		test('should treat waiting executions as current, not completed', async () => {
+			const workflow = await createWorkflow();
+
+			await Promise.all([
+				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'running' }, workflow),
+				createExecution({ status: 'new' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'error' }, workflow),
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const { results, count } = await executionService.findLatestCurrentAndCompleted(query);
+
+			const currentExecutions = results.filter((e) =>
+				['waiting', 'running', 'new'].includes(e.status),
+			);
+			const completedExecutions = results.filter((e) =>
+				['success', 'error', 'canceled', 'crashed'].includes(e.status),
+			);
+
+			expect(currentExecutions).toHaveLength(4); // 2 waiting + 1 running + 1 new
+			expect(completedExecutions).toHaveLength(2); // 1 success + 1 error
+			expect(count).toBe(2); // Only completed executions count towards pagination
+
+			// Verify that waiting executions are included in results (not filtered out)
+			const waitingExecutions = results.filter((e) => e.status === 'waiting');
+			expect(waitingExecutions).toHaveLength(2);
+		});
 	});
 
 	describe('annotation', () => {
