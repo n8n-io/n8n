@@ -968,18 +968,10 @@ export function getNodeWebhookPath(
 			webhookPath += `/${path.startsWith('/') ? path.substring(1) : path}`;
 		}
 	} else {
-		if (isFullPath === true) {
-			if (path === node.webhookId || path === '' || path === undefined) {
-				webhookPath = node.webhookId;
-			} else {
-				webhookPath = `${node.webhookId}/${path.startsWith('/') ? path.substring(1) : path}`;
-			}
+		if (path === node.webhookId || path === '' || path === undefined) {
+			webhookPath = node.webhookId;
 		} else {
-			if (path === node.webhookId || path === '' || path === undefined) {
-				webhookPath = node.webhookId;
-			} else {
-				webhookPath = `${node.webhookId}/${path.startsWith('/') ? path.substring(1) : path}`;
-			}
+			webhookPath = `${node.webhookId}/${path.startsWith('/') ? path.substring(1) : path}`;
 		}
 	}
 

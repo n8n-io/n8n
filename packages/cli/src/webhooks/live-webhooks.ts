@@ -2,7 +2,7 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { Logger } from 'n8n-core';
-import { Workflow, CHAT_TRIGGER_NODE_TYPE, getNodeWebhookPath } from 'n8n-workflow';
+import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -116,10 +116,16 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const nodeForWebhookData = workflow.getNode(webhook.node) as INode;
 		if (!nodeForWebhookData) {
-			throw new NotFoundError(`Could not find node instance for webhook node name "${webhook.node}" in workflow "${workflow.id}"`);
+			throw new NotFoundError(
+				`Could not find node instance for webhook node name "${webhook.node}" in workflow "${workflow.id}"`,
+			);
 		}
 
-		const webhookDataList = this.webhookService.getNodeWebhooks(workflow, nodeForWebhookData, additionalData);
+		const webhookDataList = this.webhookService.getNodeWebhooks(
+			workflow,
+			nodeForWebhookData,
+			additionalData,
+		);
 
 		const webhookData = webhookDataList.find((w_candidate) => {
 			// w_candidate.path is already the fully formed path as it would be registered
@@ -136,7 +142,9 @@ export class LiveWebhooks implements IWebhookManager {
 				dbWebhookPath = dbWebhookPath.slice(0, -1);
 			}
 
-			this.logger.info(`Comparing: candidatePathFromList="${candidatePathFromList}", dbWebhookPath="${dbWebhookPath}", methodCandidate="${w_candidate.httpMethod}", methodRequest="${httpMethod}"`);
+			this.logger.debug(
+				`Comparing: candidatePathFromList="${candidatePathFromList}", dbWebhookPath="${dbWebhookPath}", methodCandidate="${w_candidate.httpMethod}", methodRequest="${httpMethod}"`,
+			);
 			return w_candidate.httpMethod === httpMethod && candidatePathFromList === dbWebhookPath;
 		}) as IWebhookData;
 
