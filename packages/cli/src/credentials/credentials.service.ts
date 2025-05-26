@@ -386,8 +386,10 @@ export class CredentialsService {
 	async update(credentialId: string, newCredentialData: ICredentialsDb) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
+		const { shared, ...dataForUpdate } = newCredentialData;
+
 		// Update the credentials in DB
-		await this.credentialsRepository.update(credentialId, newCredentialData);
+		await this.credentialsRepository.update(credentialId, dataForUpdate);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
