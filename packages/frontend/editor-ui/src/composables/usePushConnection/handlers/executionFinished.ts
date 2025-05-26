@@ -111,11 +111,11 @@ export async function executionFinished(
 			if (rowsLeft && rowsLeft > 0) {
 				// Find the button that belongs to the evaluation trigger, and click it.
 				const testId = `execute-workflow-button-${evalTrigger.name}`;
-				const button = Array.from(document.querySelectorAll('[data-test-id]')).filter((x) =>
-					(x as HTMLElement)?.dataset?.testId?.startsWith(testId),
-				)[0];
 
 				setTimeout(() => {
+					const button = Array.from(document.querySelectorAll('[data-test-id]')).filter((x) =>
+						(x as HTMLElement)?.dataset?.testId?.startsWith(testId),
+					)[0];
 					(button as HTMLElement)?.click();
 				}, 2);
 			}
