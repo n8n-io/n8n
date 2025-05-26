@@ -71,6 +71,9 @@ const isOwnPersonalProject = computed(() => {
 		selectedProject.value.id === projectsStore.personalProject?.id
 	);
 });
+const isTransferringOwnership = computed(() => {
+	return selectedProject.value && selectedProject.value?.id !== projectsStore.currentProject?.id;
+});
 
 const workflowCount = ref(0);
 const subFolderCount = ref(0);
@@ -81,7 +84,7 @@ const allCredentials = ref<ICredentialsResponse[]>([]);
 const shareableCredentials = computed(() =>
 	allCredentials.value.filter(
 		(credential) =>
-			projectsStore.currentProject?.id !== selectedProject.value?.id &&
+			isTransferringOwnership.value &&
 			getResourcePermissions(credential.scopes).credential.share &&
 			usedCredentials.value.find((uc) => uc.id === credential.id),
 	),
@@ -212,7 +215,7 @@ const onSubmit = () => {
 			});
 		}
 	} else {
-		if (selectedProject.value?.id !== projectsStore.currentProject?.id) {
+		if (isTransferringOwnership.value) {
 			props.data.workflowListEventBus.emit('workflow-transferred', {
 				newParent,
 				projectId: selectedProject.value.id,
@@ -354,7 +357,7 @@ onMounted(async () => {
 					/>
 				</div>
 			</template>
-			<div :class="$style.block">
+			<div v-if="isTransferringOwnership" :class="$style.block">
 				<N8nText>
 					<i18n-t keypath="projects.move.resource.modal.message.sharingNote">
 						<template #note
@@ -477,5 +480,9 @@ onMounted(async () => {
 	display: flex;
 	gap: var(--spacing-2xs);
 	justify-content: flex-end;
+}
+
+.tooltipText {
+	text-decoration: underline;
 }
 </style>

@@ -147,7 +147,12 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value.update && showFolders.value && !props.readOnly) {
+	if (
+		workflowPermissions.value.update &&
+		showFolders.value &&
+		!props.readOnly &&
+		route.name !== VIEWS.SHARED_WORKFLOWS
+	) {
 		items.push({
 			label: locale.baseText('folders.actions.moveToFolder'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
