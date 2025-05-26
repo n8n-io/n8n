@@ -559,587 +559,624 @@ describe('useCanvasMapping', () => {
 					});
 				});
 			});
-		});
 
-		describe('additionalNodePropertiesById', () => {
-			it('should return empty object when there are no sticky nodes', () => {
-				const nodes = ref([]);
-				const connections = {};
-				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+			describe('additionalNodePropertiesById', () => {
+				it('should return empty object when there are no sticky nodes', () => {
+					const nodes = ref([]);
+					const connections = {};
+					const workflowObject = createTestWorkflowObject();
+					const { additionalNodePropertiesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+					expect(additionalNodePropertiesById.value).toEqual({});
 				});
-				expect(additionalNodePropertiesById.value).toEqual({});
+
+				it('should calculate zIndex correctly for a single sticky node', () => {
+					const nodes = [
+						createTestNode({
+							id: '1',
+							type: STICKY_NODE_TYPE,
+							position: [0, 0],
+							parameters: { width: 100, height: 100 },
+						}),
+					];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject();
+					const { additionalNodePropertiesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+					expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
+						style: { zIndex: -100 },
+					});
+				});
+
+				it('should calculate zIndex correctly for multiple sticky nodes with no overlap', () => {
+					const nodes = [
+						createTestNode({
+							id: '1',
+							type: STICKY_NODE_TYPE,
+							position: [0, 0],
+							parameters: { width: 100, height: 100 },
+						}),
+						createTestNode({
+							id: '2',
+							type: STICKY_NODE_TYPE,
+							position: [200, 200],
+							parameters: { width: 100, height: 100 },
+						}),
+					];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject();
+					const { additionalNodePropertiesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
+						style: { zIndex: -100 },
+					});
+					expect(additionalNodePropertiesById.value[nodes[1].id]).toEqual({
+						style: { zIndex: -99 },
+					});
+				});
+
+				it('should calculate zIndex correctly for overlapping sticky nodes', () => {
+					const nodes = [
+						createTestNode({
+							id: '1',
+							type: STICKY_NODE_TYPE,
+							position: [50, 50],
+							parameters: { width: 100, height: 100 },
+						}),
+						createTestNode({
+							id: '2',
+							type: STICKY_NODE_TYPE,
+							position: [0, 0],
+							parameters: { width: 150, height: 150 },
+						}),
+					];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject();
+					const { additionalNodePropertiesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
+						style: { zIndex: -99 },
+					});
+					expect(additionalNodePropertiesById.value[nodes[1].id]).toEqual({
+						style: { zIndex: -100 },
+					});
+				});
+
+				it('calculates zIndex correctly for multiple overlapping sticky nodes', () => {
+					const nodes = [
+						createTestNode({
+							id: '1',
+							type: STICKY_NODE_TYPE,
+							position: [0, 0],
+							parameters: { width: 100, height: 100 },
+						}),
+						createTestNode({
+							id: '2',
+							type: STICKY_NODE_TYPE,
+							position: [25, 25],
+							parameters: { width: 50, height: 50 },
+						}),
+						createTestNode({
+							id: '3',
+							type: STICKY_NODE_TYPE,
+							position: [50, 50],
+							parameters: { width: 100, height: 100 },
+						}),
+					];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject();
+					const { additionalNodePropertiesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
+						style: { zIndex: -100 },
+					});
+					expect(additionalNodePropertiesById.value[nodes[1].id]).toEqual({
+						style: { zIndex: -98 },
+					});
+					expect(additionalNodePropertiesById.value[nodes[2].id]).toEqual({
+						style: { zIndex: -99 },
+					});
+				});
 			});
 
-			it('should calculate zIndex correctly for a single sticky node', () => {
-				const nodes = [
-					createTestNode({
-						id: '1',
-						type: STICKY_NODE_TYPE,
-						position: [0, 0],
-						parameters: { width: 100, height: 100 },
-					}),
-				];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
-					style: { zIndex: -100 },
-				});
-			});
+			describe('nodeIssuesById', () => {
+				it('should return empty array when node has no issues', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({ name: 'Test Node' });
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-			it('should calculate zIndex correctly for multiple sticky nodes with no overlap', () => {
-				const nodes = [
-					createTestNode({
-						id: '1',
-						type: STICKY_NODE_TYPE,
-						position: [0, 0],
-						parameters: { width: 100, height: 100 },
-					}),
-					createTestNode({
-						id: '2',
-						type: STICKY_NODE_TYPE,
-						position: [200, 200],
-						parameters: { width: 100, height: 100 },
-					}),
-				];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					workflowsStore.getWorkflowRunData = {};
+
+					const { nodeIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeIssuesById.value[node.id]).toEqual([]);
 				});
 
-				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
-					style: { zIndex: -100 },
-				});
-				expect(additionalNodePropertiesById.value[nodes[1].id]).toEqual({ style: { zIndex: -99 } });
-			});
+				it('should handle execution errors', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({ name: 'Test Node' });
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-			it('should calculate zIndex correctly for overlapping sticky nodes', () => {
-				const nodes = [
-					createTestNode({
-						id: '1',
-						type: STICKY_NODE_TYPE,
-						position: [50, 50],
-						parameters: { width: 100, height: 100 },
-					}),
-					createTestNode({
-						id: '2',
-						type: STICKY_NODE_TYPE,
-						position: [0, 0],
-						parameters: { width: 150, height: 150 },
-					}),
-				];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
+					const errorMessage = 'Test error message';
+					const errorDescription = 'Test error description';
+					workflowsStore.getWorkflowRunData = {
+						'Test Node': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								error: mock<NodeApiError>({
+									message: errorMessage,
+									description: errorDescription,
+								}),
+							},
+						],
+					};
 
-				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
-					style: { zIndex: -99 },
-				});
-				expect(additionalNodePropertiesById.value[nodes[1].id]).toEqual({
-					style: { zIndex: -100 },
-				});
-			});
+					const { nodeIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
 
-			it('calculates zIndex correctly for multiple overlapping sticky nodes', () => {
-				const nodes = [
-					createTestNode({
-						id: '1',
-						type: STICKY_NODE_TYPE,
-						position: [0, 0],
-						parameters: { width: 100, height: 100 },
-					}),
-					createTestNode({
-						id: '2',
-						type: STICKY_NODE_TYPE,
-						position: [25, 25],
-						parameters: { width: 50, height: 50 },
-					}),
-					createTestNode({
-						id: '3',
-						type: STICKY_NODE_TYPE,
-						position: [50, 50],
-						parameters: { width: 100, height: 100 },
-					}),
-				];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject();
-				const { additionalNodePropertiesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					expect(nodeIssuesById.value[node.id]).toEqual([`${errorMessage} (${errorDescription})`]);
 				});
 
-				expect(additionalNodePropertiesById.value[nodes[0].id]).toEqual({
-					style: { zIndex: -100 },
+				it('should handle execution error without description', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({ name: 'Test Node' });
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
+
+					const errorMessage = 'Test error message';
+					workflowsStore.getWorkflowRunData = {
+						'Test Node': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								error: mock<NodeApiError>({
+									message: errorMessage,
+									description: null,
+								}),
+							},
+						],
+					};
+
+					const { nodeIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeIssuesById.value[node.id]).toEqual([errorMessage]);
 				});
-				expect(additionalNodePropertiesById.value[nodes[1].id]).toEqual({
-					style: { zIndex: -98 },
+
+				it('should handle multiple execution errors', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({ name: 'Test Node' });
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
+
+					workflowsStore.getWorkflowRunData = {
+						'Test Node': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								error: mock<NodeApiError>({
+									message: 'Error 1',
+									description: 'Description 1',
+								}),
+							},
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 1,
+								source: [],
+								error: mock<NodeApiError>({
+									message: 'Error 2',
+									description: 'Description 2',
+								}),
+							},
+						],
+					};
+
+					const { nodeIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeIssuesById.value[node.id]).toEqual([
+						'Error 1 (Description 1)',
+						'Error 2 (Description 2)',
+					]);
 				});
-				expect(additionalNodePropertiesById.value[nodes[2].id]).toEqual({
-					style: { zIndex: -99 },
-				});
-			});
-		});
 
-		describe('nodeIssuesById', () => {
-			it('should return empty array when node has no issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({ name: 'Test Node' });
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {};
-
-				const { nodeIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-
-				expect(nodeIssuesById.value[node.id]).toEqual([]);
-			});
-
-			it('should handle execution errors', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({ name: 'Test Node' });
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				const errorMessage = 'Test error message';
-				const errorDescription = 'Test error description';
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: errorMessage,
-								description: errorDescription,
-							}),
+				it('should handle node issues', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({
+						name: 'Test Node',
+						issues: {
+							typeUnknown: true,
 						},
-					],
-				};
+					} as Partial<INode>);
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				const { nodeIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					workflowsStore.getWorkflowRunData = {};
+
+					const { nodeIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeIssuesById.value[node.id]).toEqual([
+						'Node Type "n8n-nodes-base.set" is not known.',
+					]);
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([`${errorMessage} (${errorDescription})`]);
-			});
-
-			it('should handle execution error without description', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({ name: 'Test Node' });
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				const errorMessage = 'Test error message';
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: errorMessage,
-								description: null,
-							}),
+				it('should combine execution errors and node issues', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({
+						name: 'Test Node',
+						issues: {
+							typeUnknown: true,
 						},
-					],
-				};
+					} as Partial<INode>);
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				const { nodeIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					workflowsStore.getWorkflowRunData = {
+						'Test Node': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								error: mock<NodeApiError>({
+									message: 'Execution error',
+									description: 'Error description',
+								}),
+							},
+						],
+					};
+
+					const { nodeIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeIssuesById.value[node.id]).toEqual([
+						'Execution error (Error description)',
+						'Node Type "n8n-nodes-base.set" is not known.',
+					]);
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([errorMessage]);
-			});
-
-			it('should handle multiple execution errors', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({ name: 'Test Node' });
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: 'Error 1',
-								description: 'Description 1',
-							}),
+				it('should handle multiple nodes with different issues', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node1 = createTestNode({
+						name: 'Node 1',
+						issues: {
+							typeUnknown: true,
 						},
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 1,
-							source: [],
-							error: mock<NodeApiError>({
-								message: 'Error 2',
-								description: 'Description 2',
-							}),
+					} as Partial<INode>);
+					const node2 = createTestNode({ name: 'Node 2' });
+					const nodes = [node1, node2];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
+
+					workflowsStore.getWorkflowRunData = {
+						'Node 2': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								error: mock<NodeApiError>({
+									message: 'Execution error',
+									description: 'Error description',
+								}),
+							},
+						],
+					};
+
+					const { nodeIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeIssuesById.value[node1.id]).toEqual([
+						'Node Type "n8n-nodes-base.set" is not known.',
+					]);
+					expect(nodeIssuesById.value[node2.id]).toEqual(['Execution error (Error description)']);
+				});
+			});
+
+			describe('nodeHasIssuesById', () => {
+				it('should return false when node has no issues or errors', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({ name: 'Test Node' });
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
+
+					workflowsStore.getWorkflowRunData = {};
+					workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+					const { nodeHasIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeHasIssuesById.value[node.id]).toBe(false);
+				});
+
+				it('should return true when execution status is crashed', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({ name: 'Test Node' });
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
+
+					workflowsStore.getWorkflowRunData = {
+						'Test Node': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'crashed',
+							},
+						],
+					};
+					workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+					const { nodeHasIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeHasIssuesById.value[node.id]).toBe(true);
+				});
+
+				it('should return true when execution status is error', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({ name: 'Test Node' });
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
+
+					workflowsStore.getWorkflowRunData = {
+						'Test Node': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'error',
+							},
+						],
+					};
+					workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+					const { nodeHasIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeHasIssuesById.value[node.id]).toBe(true);
+				});
+
+				it('should return false when node has pinned data regardless of issues', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({
+						name: 'Test Node',
+						issues: {
+							typeUnknown: true,
 						},
-					],
-				};
+					} as Partial<INode>);
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				const { nodeIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					workflowsStore.getWorkflowRunData = {};
+					workflowsStore.pinDataByNodeName.mockReturnValue([{ json: {} }]);
+
+					const { nodeHasIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeHasIssuesById.value[node.id]).toBe(false);
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([
-					'Error 1 (Description 1)',
-					'Error 2 (Description 2)',
-				]);
-			});
-
-			it('should handle node issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({
-					name: 'Test Node',
-					issues: {
-						typeUnknown: true,
-					},
-				} as Partial<INode>);
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {};
-
-				const { nodeIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-
-				expect(nodeIssuesById.value[node.id]).toEqual([
-					'Node Type "n8n-nodes-base.set" is not known.',
-				]);
-			});
-
-			it('should combine execution errors and node issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({
-					name: 'Test Node',
-					issues: {
-						typeUnknown: true,
-					},
-				} as Partial<INode>);
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: 'Execution error',
-								description: 'Error description',
-							}),
+				it('should return true when node has issues and no pinned data', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({
+						name: 'Test Node',
+						issues: {
+							typeUnknown: true,
 						},
-					],
-				};
+					} as Partial<INode>);
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				const { nodeIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					workflowsStore.getWorkflowRunData = {};
+					workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+					const { nodeHasIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeHasIssuesById.value[node.id]).toBe(true);
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([
-					'Execution error (Error description)',
-					'Node Type "n8n-nodes-base.set" is not known.',
-				]);
-			});
-
-			it('should handle multiple nodes with different issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node1 = createTestNode({
-					name: 'Node 1',
-					issues: {
-						typeUnknown: true,
-					},
-				} as Partial<INode>);
-				const node2 = createTestNode({ name: 'Node 2' });
-				const nodes = [node1, node2];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Node 2': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							error: mock<NodeApiError>({
-								message: 'Execution error',
-								description: 'Error description',
-							}),
+				it('should return true for execution errors even with other issues', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node = createTestNode({
+						name: 'Test Node',
+						issues: {
+							typeUnknown: true,
 						},
-					],
-				};
+					} as Partial<INode>);
+					const nodes = [node];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				const { nodeIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					workflowsStore.getWorkflowRunData = {
+						'Test Node': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'error',
+								error: mock<NodeApiError>({
+									message: 'Execution error',
+									description: 'Error description',
+								}),
+							},
+						],
+					};
+					workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+					const { nodeHasIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeHasIssuesById.value[node.id]).toBe(true);
 				});
 
-				expect(nodeIssuesById.value[node1.id]).toEqual([
-					'Node Type "n8n-nodes-base.set" is not known.',
-				]);
-				expect(nodeIssuesById.value[node2.id]).toEqual(['Execution error (Error description)']);
-			});
-		});
-
-		describe('nodeHasIssuesById', () => {
-			it('should return false when node has no issues or errors', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({ name: 'Test Node' });
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
-
-				const { nodeHasIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-
-				expect(nodeHasIssuesById.value[node.id]).toBe(false);
-			});
-
-			it('should return true when execution status is crashed', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({ name: 'Test Node' });
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							executionStatus: 'crashed',
+				it('should handle multiple nodes with different issue states', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node1 = createTestNode({
+						name: 'Node 1',
+						issues: {
+							typeUnknown: true,
 						},
-					],
-				};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+					} as Partial<INode>);
+					const node2 = createTestNode({ name: 'Node 2' });
+					const node3 = createTestNode({ name: 'Node 3' });
+					const nodes = [node1, node2, node3];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				const { nodeHasIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					workflowsStore.getWorkflowRunData = {
+						'Node 2': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'error',
+							},
+						],
+						'Node 3': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'success',
+							},
+						],
+					};
+					workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
+						return nodeName === 'Node 1' ? [{ json: {} }] : undefined;
+					});
+
+					const { nodeHasIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
+
+					expect(nodeHasIssuesById.value[node1.id]).toBe(false); // Has issues but also pinned data
+					expect(nodeHasIssuesById.value[node2.id]).toBe(true); // Has error status
+					expect(nodeHasIssuesById.value[node3.id]).toBe(false); // No issues
 				});
 
-				expect(nodeHasIssuesById.value[node.id]).toBe(true);
-			});
+				it('should handle successful executions after errors', () => {
+					const workflowsStore = mockedStore(useWorkflowsStore);
+					const node1 = createTestNode({ name: 'Node 2' });
+					const nodes = [node1];
+					const connections = {};
+					const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-			it('should return true when execution status is error', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({ name: 'Test Node' });
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
+					workflowsStore.getWorkflowRunData = {
+						'Node 2': [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'error',
+							},
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'success',
+							},
+						],
+					};
 
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							executionStatus: 'error',
-						},
-					],
-				};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+					const { nodeHasIssuesById } = useCanvasMapping({
+						nodes: ref(nodes),
+						connections: ref(connections),
+						workflowObject: ref(workflowObject) as Ref<Workflow>,
+					});
 
-				const { nodeHasIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
+					expect(nodeHasIssuesById.value[node1.id]).toBe(false); // Last run was successful
 				});
-
-				expect(nodeHasIssuesById.value[node.id]).toBe(true);
-			});
-
-			it('should return false when node has pinned data regardless of issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({
-					name: 'Test Node',
-					issues: {
-						typeUnknown: true,
-					},
-				} as Partial<INode>);
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {};
-				workflowsStore.pinDataByNodeName.mockReturnValue([{ json: {} }]);
-
-				const { nodeHasIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-
-				expect(nodeHasIssuesById.value[node.id]).toBe(false);
-			});
-
-			it('should return true when node has issues and no pinned data', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({
-					name: 'Test Node',
-					issues: {
-						typeUnknown: true,
-					},
-				} as Partial<INode>);
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
-
-				const { nodeHasIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-
-				expect(nodeHasIssuesById.value[node.id]).toBe(true);
-			});
-
-			it('should return true for execution errors even with other issues', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node = createTestNode({
-					name: 'Test Node',
-					issues: {
-						typeUnknown: true,
-					},
-				} as Partial<INode>);
-				const nodes = [node];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Test Node': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							executionStatus: 'error',
-							error: mock<NodeApiError>({
-								message: 'Execution error',
-								description: 'Error description',
-							}),
-						},
-					],
-				};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
-
-				const { nodeHasIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-
-				expect(nodeHasIssuesById.value[node.id]).toBe(true);
-			});
-
-			it('should handle multiple nodes with different issue states', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
-				const node1 = createTestNode({
-					name: 'Node 1',
-					issues: {
-						typeUnknown: true,
-					},
-				} as Partial<INode>);
-				const node2 = createTestNode({ name: 'Node 2' });
-				const node3 = createTestNode({ name: 'Node 3' });
-				const nodes = [node1, node2, node3];
-				const connections = {};
-				const workflowObject = createTestWorkflowObject({ nodes, connections });
-
-				workflowsStore.getWorkflowRunData = {
-					'Node 2': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							executionStatus: 'error',
-						},
-					],
-					'Node 3': [
-						{
-							startTime: 0,
-							executionTime: 0,
-							executionIndex: 0,
-							source: [],
-							executionStatus: 'success',
-						},
-					],
-				};
-				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
-					return nodeName === 'Node 1' ? [{ json: {} }] : undefined;
-				});
-
-				const { nodeHasIssuesById } = useCanvasMapping({
-					nodes: ref(nodes),
-					connections: ref(connections),
-					workflowObject: ref(workflowObject) as Ref<Workflow>,
-				});
-
-				expect(nodeHasIssuesById.value[node1.id]).toBe(false); // Has issues but also pinned data
-				expect(nodeHasIssuesById.value[node2.id]).toBe(true); // Has error status
-				expect(nodeHasIssuesById.value[node3.id]).toBe(false); // No issues
 			});
 		});
 	});
