@@ -20,7 +20,7 @@ export class LmChatPortkey implements INodeType {
 		displayName: 'Portkey Chat Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatPortkey',
-		icon: { light: 'file:portkeyLight.svg', dark: 'file:portkeyDark.svg' },
+		icon: 'file:portkeyLight.svg',
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
