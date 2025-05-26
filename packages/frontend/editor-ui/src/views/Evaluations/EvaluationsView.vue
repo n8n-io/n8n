@@ -26,9 +26,10 @@ const runs = computed(() => {
 		({ workflowId }) => workflowId === props.name,
 	);
 
-	return orderBy(testRuns, (record) => new Date(record.runAt), ['asc']).map((record, index) =>
-		Object.assign(record, { index: index + 1 }),
-	);
+	return orderBy(testRuns, (record) => new Date(record.runAt), ['asc']).map((record, index) => ({
+		...record,
+		index: index + 1,
+	}));
 });
 
 const isRunning = computed(() => runs.value.some((run) => run.status === 'running'));
