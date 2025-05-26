@@ -253,9 +253,6 @@ export class FrontendService {
 				dashboard: false,
 				dateRanges: [],
 			},
-			logsView: {
-				enabled: false,
-			},
 		};
 	}
 
@@ -392,8 +389,6 @@ export class FrontendService {
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
 		this.settings.folders.enabled = this.license.isFoldersEnabled();
-
-		this.settings.logsView.enabled = config.get('logs_view.enabled');
 
 		return this.settings;
 	}

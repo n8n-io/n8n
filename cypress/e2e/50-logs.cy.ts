@@ -9,10 +9,6 @@ import Workflow_loop from '../fixtures/Workflow_loop.json';
 import Workflow_wait_for_webhook from '../fixtures/Workflow_wait_for_webhook.json';
 
 describe('Logs', () => {
-	beforeEach(() => {
-		cy.overrideSettings({ logsView: { enabled: true } });
-	});
-
 	it('should populate logs as manual execution progresses', () => {
 		workflow.navigateToNewWorkflowPage();
 		workflow.pasteWorkflow(Workflow_loop);
