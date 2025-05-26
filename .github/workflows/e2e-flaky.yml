@@ -66,4 +66,3 @@ jobs:
           NODE_OPTIONS: --dns-result-order=ipv4first
           E2E_TESTS: true
           SHELL: /bin/sh
-          CYPRESS_NODE_VIEW_VERSION: 2

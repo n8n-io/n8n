@@ -10,7 +10,7 @@ import {
 	N8N_AUTH_COOKIE,
 } from '../constants';
 import { WorkflowPage } from '../pages';
-import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
+import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 	cy.window().then((win) => {
@@ -24,10 +24,6 @@ Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
-});
-
-Cypress.Commands.add('ifCanvasVersion', (getterV1, getterV2) => {
-	return isCanvasV2() ? getterV2() : getterV1();
 });
 
 Cypress.Commands.add(
@@ -74,15 +70,6 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			})
 			.then((response) => {
 				Cypress.env('currentUserId', response.body.data.id);
-
-				// @TODO Remove this once the switcher is removed
-				cy.window().then((win) => {
-					win.localStorage.setItem('NodeView.migrated.release', 'true');
-					win.localStorage.setItem('NodeView.switcher.discovered.beta', 'true');
-
-					const nodeViewVersion = Cypress.env('NODE_VIEW_VERSION');
-					win.localStorage.setItem('NodeView.version', nodeViewVersion ?? '1');
-				});
 			});
 	});
 });
@@ -219,15 +206,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, optio
 			const pageY = coords.top + coords.height / 2;
 
 			if (draggableSelector) {
-				cy.ifCanvasVersion(
-					() => {
-						// We can't use realMouseDown here because it hangs headless run
-						cy.get(draggableSelector).trigger('mousedown');
-					},
-					() => {
-						cy.get(draggableSelector).realMouseDown();
-					},
-				);
+				cy.get(draggableSelector).realMouseDown();
 			}
 			// We don't chain these commands to make sure cy.get is re-trying correctly
 			cy.get(droppableSelector).realMouseMove(0, 0);
