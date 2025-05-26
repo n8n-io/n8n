@@ -445,7 +445,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		await this.credentialsRepository.update(findQuery, newCredentialsData);
+		const { shared, ...dataForUpdate } = newCredentialsData;
+		await this.credentialsRepository.update(findQuery, dataForUpdate);
 	}
 
 	async credentialCanUseExternalSecrets(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
