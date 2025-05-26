@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/evaluation.ee';
-import MetricsChart from '@/components/Evaluations/ListRuns/MetricsChart.vue';
-import TestRunsTable from '@/components/Evaluations/ListRuns/TestRunsTable.vue';
+import MetricsChart from '@/components/Evaluations.ee/ListRuns/MetricsChart.vue';
+import TestRunsTable from '@/components/Evaluations.ee/ListRuns/TestRunsTable.vue';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';

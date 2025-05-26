@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TestCaseExecutionRecord } from '@/api/evaluation.ee';
-import type { TestTableColumn } from '@/components/Evaluations/shared/TestTableBase.vue';
-import TestTableBase from '@/components/Evaluations/shared/TestTableBase.vue';
+import type { TestTableColumn } from '@/components/Evaluations.ee/shared/TestTableBase.vue';
+import TestTableBase from '@/components/Evaluations.ee/shared/TestTableBase.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
@@ -13,8 +13,8 @@ import { N8nText, N8nTooltip, N8nIcon } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { orderBy } from 'lodash-es';
-import { statusDictionary } from '@/components/Evaluations/shared/statusDictionary';
-import { getErrorBaseKey } from '@/components/Evaluations/shared/errorCodes';
+import { statusDictionary } from '@/components/Evaluations.ee/shared/statusDictionary';
+import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
 
 const router = useRouter();
 const toast = useToast();

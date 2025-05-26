@@ -7,7 +7,7 @@ import type { TestTableColumn } from '../shared/TestTableBase.vue';
 import type { BaseTextKey } from '@/plugins/i18n';
 import TestTableBase from '../shared/TestTableBase.vue';
 import { statusDictionary } from '../shared/statusDictionary';
-import { getErrorBaseKey } from '@/components/Evaluations/shared/errorCodes';
+import { getErrorBaseKey } from '@/components/Evaluations.ee/shared/errorCodes';
 const emit = defineEmits<{
 	rowClick: [run: TestRunRecord & { index: number }];
 }>();

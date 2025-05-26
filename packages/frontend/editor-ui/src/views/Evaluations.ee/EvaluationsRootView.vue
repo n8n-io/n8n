@@ -11,8 +11,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { computed } from 'vue';
 import { N8nLink, N8nText } from '@n8n/design-system';
-import EvaluationsPaywall from '@/components/Evaluations/Paywall/EvaluationsPaywall.vue';
-import SetupWizard from '@/components/Evaluations/SetupWizard/SetupWizard.vue';
+import EvaluationsPaywall from '@/components/Evaluations.ee/Paywall/EvaluationsPaywall.vue';
+import SetupWizard from '@/components/Evaluations.ee/SetupWizard/SetupWizard.vue';
 
 const props = defineProps<{
 	name: string;

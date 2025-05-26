@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import EvaluationsView from '@/views/Evaluations/EvaluationsView.vue';
+import EvaluationsView from '@/views/Evaluations.ee/EvaluationsView.vue';
 
 import { cleanupAppModals, createAppModals, mockedStore } from '@/__tests__/utils';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';

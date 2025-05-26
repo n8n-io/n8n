@@ -20,7 +20,7 @@ import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import { insightsRoutes } from '@/features/insights/insights.router';
-import TestRunDetailView from './views/Evaluations/TestRunDetailView.vue';
+import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -62,8 +62,9 @@ const SettingsExternalSecrets = async () => await import('./views/SettingsExtern
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
-const EvaluationsView = async () => await import('./views/Evaluations/EvaluationsView.vue');
-const EvaluationRootView = async () => await import('./views/Evaluations/EvaluationsRootView.vue');
+const EvaluationsView = async () => await import('@/views/Evaluations.ee/EvaluationsView.vue');
+const EvaluationRootView = async () =>
+	await import('@/views/Evaluations.ee/EvaluationsRootView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();

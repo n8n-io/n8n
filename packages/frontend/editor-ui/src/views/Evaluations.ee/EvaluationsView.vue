@@ -2,7 +2,7 @@
 import { useI18n } from '@/composables/useI18n';
 import { computed, ref } from 'vue';
 
-import RunsSection from '@/components/Evaluations/ListRuns/RunsSection.vue';
+import RunsSection from '@/components/Evaluations.ee/ListRuns/RunsSection.vue';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { N8nButton } from '@n8n/design-system';
 import { orderBy } from 'lodash-es';
