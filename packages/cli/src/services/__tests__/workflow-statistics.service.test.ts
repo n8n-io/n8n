@@ -49,6 +49,10 @@ describe('WorkflowStatisticsService', () => {
 			workflow = await createWorkflow({}, user);
 		});
 
+		afterAll(async () => {
+			await testDb.terminate();
+		});
+
 		beforeEach(async () => {
 			jest.restoreAllMocks();
 			await testDb.truncate(['WorkflowStatistics']);
