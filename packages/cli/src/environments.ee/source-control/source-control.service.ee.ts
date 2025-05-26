@@ -325,16 +325,12 @@ export class SourceControlService {
 		const tagChanges = filesToPush.find((e) => e.type === 'tags');
 		if (tagChanges) {
 			filesToBePushed.add(tagChanges.file);
-			// TODO: For tags we need to change the implementation to
-			// only update mappings, that are available to the user
 			await this.sourceControlExportService.exportTagsToWorkFolder(context);
 		}
 
 		const folderChanges = filesToPush.find((e) => e.type === 'folders');
 		if (folderChanges) {
 			filesToBePushed.add(folderChanges.file);
-			// TODO: For folders we need to change the implementation to
-			// only update folders, that are available to the user
 			await this.sourceControlExportService.exportFoldersToWorkFolder(context);
 		}
 
