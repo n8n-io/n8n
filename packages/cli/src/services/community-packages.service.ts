@@ -69,7 +69,9 @@ export class CommunityPackagesService {
 
 	missingPackages: string[] = [];
 
-	readonly packageJsonPath = join(this.instanceSettings.nodesDownloadDir, 'package.json');
+	private readonly downloadFolder = this.instanceSettings.nodesDownloadDir;
+
+	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -150,10 +152,8 @@ export class CommunityPackagesService {
 
 	/** @deprecated */
 	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
-		const downloadFolder = this.instanceSettings.nodesDownloadDir;
-
 		const execOptions = {
-			cwd: downloadFolder,
+			cwd: this.downloadFolder,
 			env: {
 				NODE_PATH: process.env.NODE_PATH,
 				PATH: process.env.PATH,
@@ -161,8 +161,6 @@ export class CommunityPackagesService {
 				NODE_ENV: 'production',
 			},
 		};
-
-		await mkdir(downloadFolder, { recursive: true });
 
 		try {
 			const commandResult = await asyncExec(command, execOptions);
@@ -282,6 +280,7 @@ export class CommunityPackagesService {
 		try {
 			await access(this.packageJsonPath, constants.F_OK);
 		} catch {
+			await mkdir(this.downloadFolder, { recursive: true });
 			const packageJson: PackageJson = {
 				name: 'installed-nodes',
 				private: true,
@@ -462,13 +461,11 @@ export class CommunityPackagesService {
 	}
 
 	private resolvePackageDirectory(packageName: string) {
-		const downloadFolder = this.instanceSettings.nodesDownloadDir;
-		return `${downloadFolder}/node_modules/${packageName}`;
+		return `${this.downloadFolder}/node_modules/${packageName}`;
 	}
 
 	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
 		const registry = this.getNpmRegistry();
-		const downloadFolder = this.instanceSettings.nodesDownloadDir;
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
 		// (Re)create the packageDir
@@ -480,14 +477,14 @@ export class CommunityPackagesService {
 
 		const { stdout: tarOutput } = await asyncExec(
 			`npm pack ${packageName}@${packageVersion} --registry=${registry} --quiet`,
-			{ cwd: downloadFolder },
+			{ cwd: this.downloadFolder },
 		);
 
 		const tarballName = tarOutput?.trim();
 
 		try {
 			await asyncExec(`tar -xzf ${tarballName} -C ${packageDirectory} --strip-components=1`, {
-				cwd: downloadFolder,
+				cwd: this.downloadFolder,
 			});
 
 			// Strip dev, optional, and peer dependencies before running `npm install`
@@ -510,7 +507,7 @@ export class CommunityPackagesService {
 			await asyncExec(`npm install ${this.getNpmInstallArgs()}`, { cwd: packageDirectory });
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
-			await rm(join(downloadFolder, tarballName));
+			await rm(join(this.downloadFolder, tarballName));
 		}
 
 		return packageDirectory;

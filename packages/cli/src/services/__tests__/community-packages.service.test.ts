@@ -6,11 +6,12 @@ import { InstalledNodesRepository } from '@n8n/db';
 import { InstalledPackagesRepository } from '@n8n/db';
 import axios from 'axios';
 import { exec } from 'child_process';
-import { mkdir as fsMkdir, readFile, writeFile, rm, access, constants } from 'fs/promises';
+import { mkdir, readFile, writeFile, rm, access, constants } from 'fs/promises';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { Logger, InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
+import { join } from 'node:path';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -141,7 +142,6 @@ describe('CommunityPackagesService', () => {
 
 	describe('executeCommand()', () => {
 		beforeEach(() => {
-			mocked(fsMkdir).mockResolvedValue(undefined);
 			mocked(exec).mockImplementation(execMock);
 		});
 
@@ -159,7 +159,6 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.executeNpmCommand('ls');
 
-			expect(fsMkdir).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
 		});
 
@@ -168,7 +167,6 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.executeNpmCommand('ls');
 
-			expect(fsMkdir).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
 		});
 
@@ -185,7 +183,6 @@ describe('CommunityPackagesService', () => {
 
 			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 
-			expect(fsMkdir).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
 		});
 	});
@@ -410,7 +407,6 @@ describe('CommunityPackagesService', () => {
 
 			mocked(exec).mockImplementation(execMockForThisBlock as typeof exec);
 
-			mocked(fsMkdir).mockResolvedValue(undefined);
 			mocked(readFile).mockResolvedValue(
 				JSON.stringify({
 					name: PACKAGE_NAME,
@@ -472,7 +468,7 @@ describe('CommunityPackagesService', () => {
 				expect.any(Function),
 			);
 
-			expect(fsMkdir).toHaveBeenCalledWith(testBlockPackageDir, { recursive: true });
+			expect(mkdir).toHaveBeenCalledWith(testBlockPackageDir, { recursive: true });
 			expect(readFile).toHaveBeenCalledWith(`${testBlockPackageDir}/package.json`, 'utf-8');
 			expect(writeFile).toHaveBeenCalledWith(
 				`${testBlockPackageDir}/package.json`,
@@ -530,12 +526,15 @@ describe('CommunityPackagesService', () => {
 	});
 
 	describe('ensurePackageJson', () => {
+		const packageJsonPath = join(nodesDownloadDir, 'package.json');
+
 		test('should not create package.json if it already exists', async () => {
 			mocked(access).mockResolvedValue(undefined);
 
 			await communityPackagesService.ensurePackageJson();
 
-			expect(access).toHaveBeenCalledWith(communityPackagesService.packageJsonPath, constants.F_OK);
+			expect(access).toHaveBeenCalledWith(packageJsonPath, constants.F_OK);
+			expect(mkdir).not.toHaveBeenCalled();
 			expect(writeFile).not.toHaveBeenCalled();
 		});
 
@@ -544,9 +543,10 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.ensurePackageJson();
 
-			expect(access).toHaveBeenCalledWith(communityPackagesService.packageJsonPath, constants.F_OK);
+			expect(access).toHaveBeenCalledWith(packageJsonPath, constants.F_OK);
+			expect(mkdir).toHaveBeenCalledWith(nodesDownloadDir, { recursive: true });
 			expect(writeFile).toHaveBeenCalledWith(
-				communityPackagesService.packageJsonPath,
+				packageJsonPath,
 				JSON.stringify(
 					{
 						name: 'installed-nodes',
