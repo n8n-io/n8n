@@ -7,6 +7,7 @@ import { captor, mock } from 'jest-mock-extended';
 import type { CompressionResponse } from '../FlushingSSEServerTransport';
 import { FlushingSSEServerTransport } from '../FlushingSSEServerTransport';
 import { McpServer } from '../McpServer';
+import exp from 'constants';
 
 const sessionId = 'mock-session-id';
 const mockServer = mock<Server>();
@@ -34,11 +35,16 @@ describe('McpServer', () => {
 		jest.clearAllMocks();
 		mockResponse.status.mockReturnThis();
 
-		mcpServer = new McpServer(mock());
+		mcpServer = new McpServer([mockTool], mock());
 	});
 
 	describe('connectTransport', () => {
 		const postUrl = '/post-url';
+
+		it('should set up tools on initialization', () => {
+			// @ts-expect-error private property `tools`
+			expect(mcpServer.tools).toEqual([mockTool]);
+		});
 
 		it('should set up a transport and server', async () => {
 			await mcpServer.connectTransport(postUrl, mockResponse);
@@ -94,7 +100,7 @@ describe('McpServer', () => {
 			);
 
 			// Call the method
-			const result = await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			const result = await mcpServer.handlePostMessage(mockRequest, mockResponse);
 
 			// Verify that transport's handlePostMessage was called
 			expect(mockTransport.handlePostMessage).toHaveBeenCalledWith(
@@ -136,7 +142,7 @@ describe('McpServer', () => {
 			);
 
 			// Handle first tool call
-			const firstResult = await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			const firstResult = await mcpServer.handlePostMessage(mockRequest, mockResponse);
 			expect(firstResult).toBe(true);
 			expect(mockTransport.handlePostMessage).toHaveBeenCalledWith(
 				mockRequest,
@@ -155,7 +161,7 @@ describe('McpServer', () => {
 			);
 
 			// Handle second tool call
-			const secondResult = await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			const secondResult = await mcpServer.handlePostMessage(mockRequest, mockResponse);
 			expect(secondResult).toBe(true);
 
 			// Verify transport's handlePostMessage was called twice
@@ -167,7 +173,7 @@ describe('McpServer', () => {
 
 		it('should return 401 when transport does not exist', async () => {
 			// Call without setting up transport
-			await mcpServer.handlePostMessage(mockRequest, mockResponse, [mockTool]);
+			await mcpServer.handlePostMessage(mockRequest, mockResponse);
 
 			// Verify error status was set
 			expect(mockResponse.status).toHaveBeenCalledWith(401);

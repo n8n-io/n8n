@@ -143,8 +143,9 @@ export class McpTrigger extends Node {
 			}
 			throw error;
 		}
+		const connectedTools = await getConnectedTools(context, true);
 
-		const mcpServer: McpServer = McpServerSingleton.instance(context.logger);
+		const mcpServer: McpServer = McpServerSingleton.instance(connectedTools, context.logger);
 
 		if (webhookName === 'setup') {
 			// Sets up the transport and opens the long-lived connection. This resp
@@ -160,9 +161,8 @@ export class McpTrigger extends Node {
 			// This is the command-channel, and is actually executing the tools. This
 			// sends the response back through the long-lived connection setup in the
 			// 'setup' call
-			const connectedTools = await getConnectedTools(context, true);
 
-			const wasToolCall = await mcpServer.handlePostMessage(req, resp, connectedTools);
+			const wasToolCall = await mcpServer.handlePostMessage(req, resp);
 
 			if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
 			return { noWebhookResponse: true };

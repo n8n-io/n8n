@@ -64,9 +64,7 @@ describe('McpTrigger Node', () => {
 			const result = await mcpTrigger.webhook(mockContext);
 
 			// Verify that handlePostMessage was called with request, response and tools
-			expect(mockServer.handlePostMessage).toHaveBeenCalledWith(mockRequest, mockResponse, [
-				mockTool,
-			]);
+			expect(mockServer.handlePostMessage).toHaveBeenCalledWith(mockRequest, mockResponse);
 
 			// Verify the returned result when a tool was called
 			expect(result).toEqual({

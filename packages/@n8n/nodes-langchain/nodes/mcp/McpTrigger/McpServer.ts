@@ -38,7 +38,7 @@ function wasToolCall(body: string) {
 }
 
 /**
- * Extracts the request ID from a JSONRPC message
+ * Extracts the message ID from a JSONRPC message
  * Returns undefined if the message doesn't have an ID or can't be parsed
  */
 function getRequestId(body: string): string | undefined {
@@ -58,11 +58,12 @@ export class McpServer {
 
 	logger: Logger;
 
-	private tools: { [sessionId: string]: Tool[] } = {};
+	private tools: Tool[] = [];
 
 	private resolveFunctions: { [callId: string]: CallableFunction } = {};
 
-	constructor(logger: Logger) {
+	constructor(connectedTools: Tool[], logger: Logger) {
+		this.tools = connectedTools;
 		this.logger = logger;
 		this.logger.debug('MCP Server created');
 	}
@@ -76,7 +77,6 @@ export class McpServer {
 
 		resp.on('close', async () => {
 			this.logger.debug(`Deleting transport for ${sessionId}`);
-			delete this.tools[sessionId];
 			delete this.transports[sessionId];
 			delete this.servers[sessionId];
 		});
@@ -89,7 +89,7 @@ export class McpServer {
 		}
 	}
 
-	async handlePostMessage(req: express.Request, resp: CompressionResponse, connectedTools: Tool[]) {
+	async handlePostMessage(req: express.Request, resp: CompressionResponse) {
 		const sessionId = req.query.sessionId as string;
 		const transport = this.transports[sessionId];
 		if (transport) {
@@ -101,8 +101,6 @@ export class McpServer {
 
 			// Use session & message ID if available, otherwise fall back to sessionId
 			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
-			this.tools[sessionId] = connectedTools;
-
 			try {
 				await new Promise(async (resolve) => {
 					this.resolveFunctions[callId] = resolve;
@@ -142,7 +140,7 @@ export class McpServer {
 				}
 
 				return {
-					tools: this.tools[extra.sessionId].map((tool) => {
+					tools: this.tools.map((tool) => {
 						return {
 							name: tool.name,
 							description: tool.description,
@@ -166,7 +164,7 @@ export class McpServer {
 
 				const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
 
-				const requestedTool: Tool | undefined = this.tools[extra.sessionId].find(
+				const requestedTool: Tool | undefined = this.tools.find(
 					(tool) => tool.name === request.params.name,
 				);
 				if (!requestedTool) {
@@ -217,13 +215,13 @@ export class McpServerSingleton {
 
 	private _serverData: McpServer;
 
-	private constructor(logger: Logger) {
-		this._serverData = new McpServer(logger);
+	private constructor(connectedTools: Tool[], logger: Logger) {
+		this._serverData = new McpServer(connectedTools, logger);
 	}
 
-	static instance(logger: Logger): McpServer {
+	static instance(connectedTools: Tool[], logger: Logger): McpServer {
 		if (!McpServerSingleton.#instance) {
-			McpServerSingleton.#instance = new McpServerSingleton(logger);
+			McpServerSingleton.#instance = new McpServerSingleton(connectedTools, logger);
 			logger.debug('Created singleton for MCP Servers');
 		}
 
