@@ -2,7 +2,11 @@ import type { User, TestRun } from '@n8n/db';
 import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, Logger } from 'n8n-core';
-import { ExecutionCancelledError } from 'n8n-workflow';
+import {
+	EVALUATION_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	ExecutionCancelledError,
+} from 'n8n-workflow';
 import type {
 	IDataObject,
 	IRun,
@@ -16,7 +20,6 @@ import assert from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { EVALUATION_DATASET_TRIGGER_NODE, EVALUATION_NODE } from '@/constants';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { checkNodeParameterNotEmpty } from '@/evaluation.ee/test-runner/utils.ee';
 import { Telemetry } from '@/telemetry';
@@ -62,7 +65,7 @@ export class TestRunnerService {
 	 * Finds the dataset trigger node in the workflow
 	 */
 	private findEvaluationTriggerNode(workflow: IWorkflowBase) {
-		return workflow.nodes.find((node) => node.type === EVALUATION_DATASET_TRIGGER_NODE);
+		return workflow.nodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
 	}
 
 	/**
@@ -314,7 +317,7 @@ export class TestRunnerService {
 	 */
 	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
 		return workflow.nodes.filter(
-			(node) => node.type === EVALUATION_NODE && node.parameters.operation === 'setMetrics',
+			(node) => node.type === EVALUATION_NODE_TYPE && node.parameters.operation === 'setMetrics',
 		);
 	}
 
@@ -324,7 +327,7 @@ export class TestRunnerService {
 	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
 		return workflow.nodes.filter(
 			(node) =>
-				node.type === EVALUATION_NODE &&
+				node.type === EVALUATION_NODE_TYPE &&
 				(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
 		);
 	}

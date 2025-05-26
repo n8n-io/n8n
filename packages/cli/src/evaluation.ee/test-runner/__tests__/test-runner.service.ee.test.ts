@@ -5,12 +5,12 @@ import type { WorkflowRepository } from '@n8n/db';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
+import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { IWorkflowBase } from 'n8n-workflow';
 import type { IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
 import type { ActiveExecutions } from '@/active-executions';
-import { EVALUATION_DATASET_TRIGGER_NODE, EVALUATION_NODE } from '@/constants';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
@@ -67,7 +67,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Dataset Trigger',
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -89,7 +89,7 @@ describe('TestRunnerService', () => {
 
 			// Assert the result is the correct node
 			expect(result).toBeDefined();
-			expect(result.type).toBe(EVALUATION_DATASET_TRIGGER_NODE);
+			expect(result.type).toBe(EVALUATION_TRIGGER_NODE_TYPE);
 			expect(result.name).toBe('Dataset Trigger');
 		});
 
@@ -127,7 +127,7 @@ describe('TestRunnerService', () => {
 
 			// Assert the result is the correct node
 			expect(result).toBeDefined();
-			expect(result.type).toBe(EVALUATION_DATASET_TRIGGER_NODE);
+			expect(result.type).toBe(EVALUATION_TRIGGER_NODE_TYPE);
 			expect(result.name).toBe('When fetching a dataset row');
 		});
 	});
@@ -140,7 +140,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'triggerNodeId',
 						name: 'TriggerNode',
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -186,7 +186,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'triggerNodeId',
 						name: 'TriggerNode',
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -225,7 +225,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'triggerNodeId',
 						name: 'TriggerNode',
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -270,7 +270,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'triggerNodeId',
 						name: 'TriggerNode',
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -318,7 +318,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'triggerNodeId',
 						name: "When clicking 'Execute workflow'",
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -422,7 +422,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: triggerNodeName,
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -475,7 +475,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: triggerNodeName,
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -579,7 +579,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: triggerNodeName,
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -634,7 +634,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: triggerNodeName,
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -688,7 +688,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Metrics',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -751,7 +751,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Metrics',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -782,7 +782,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Metrics',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -815,7 +815,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Metrics',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -854,7 +854,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Metrics',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -893,7 +893,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Metrics 1',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -912,7 +912,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node2',
 						name: 'Set Metrics 2',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [100, 0],
 						parameters: {
@@ -945,7 +945,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Outputs',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -981,7 +981,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Outputs',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -1044,7 +1044,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Outputs',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -1075,7 +1075,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Outputs',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -1108,7 +1108,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Outputs',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -1147,7 +1147,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Outputs',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -1186,7 +1186,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node1',
 						name: 'Set Outputs 1',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {
@@ -1205,7 +1205,7 @@ describe('TestRunnerService', () => {
 					{
 						id: 'node2',
 						name: 'Set Outputs 2',
-						type: EVALUATION_NODE,
+						type: EVALUATION_NODE_TYPE,
 						typeVersion: 1,
 						position: [100, 0],
 						parameters: {

@@ -1,7 +1,7 @@
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useUIStore } from '@/stores/ui.store';
 import type { IExecutionResponse } from '@/Interface';
-import { WORKFLOW_SETTINGS_MODAL_KEY, EVALUATION_DATASET_TRIGGER_NODE } from '@/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
 import {
 	clearPopupWindowState,
@@ -18,7 +18,7 @@ import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { TelemetryHelpers, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { IWorkflowBase, ExpressionError, IDataObject, IRunExecutionData } from 'n8n-workflow';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
@@ -98,7 +98,7 @@ export async function executionFinished(
 	if (execution.status === 'success' && execution.data?.startData?.destinationNode === undefined) {
 		// check if we have an evaluation trigger in our workflow and whether it has any run data
 		const evalTrigger = execution.workflowData.nodes.find(
-			(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
+			(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 		);
 		const triggerRunData = evalTrigger
 			? execution?.data?.resultData?.runData[evalTrigger.name]

@@ -5,10 +5,10 @@ import { useUsageStore } from '@/stores/usage.store';
 import * as evaluationsApi from '@/api/evaluation.ee';
 import type { TestCaseExecutionRecord, TestRunRecord } from '@/api/evaluation.ee';
 import { usePostHog } from './posthog.store';
-import { EVALUATION_DATASET_TRIGGER_NODE, WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
+import { WORKFLOW_EVALUATION_EXPERIMENT } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { EVALUATION_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
+import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export const useEvaluationStore = defineStore(
@@ -58,7 +58,7 @@ export const useEvaluationStore = defineStore(
 
 		const datasetTriggerExist = computed(() => {
 			return workflowsStore.workflow.nodes.some(
-				(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
+				(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 			);
 		});
 
