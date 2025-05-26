@@ -1,9 +1,13 @@
 import { Container, Service, type Constructable } from '@n8n/di';
+import type { BaseEntity } from '@n8n/typeorm';
 
 import { ModuleMetadata } from './module-metadata';
 
+export type RegisteredEntityClass = new (...args: unknown[]) => BaseEntity;
+
 export interface BaseN8nModule {
 	initialize?(): void | Promise<void>;
+	entities(): RegisteredEntityClass[];
 }
 
 export type Module = Constructable<BaseN8nModule>;

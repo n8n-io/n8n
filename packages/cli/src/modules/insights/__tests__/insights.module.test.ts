@@ -17,17 +17,17 @@ describe('InsightsModule', () => {
 	});
 
 	describe('backgroundProcess', () => {
-		it('should start background process if instance is main and leader', () => {
+		it('should start background process if instance is main and leader', async () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: true });
-			const insightsModule = new InsightsModule(logger, insightsService, instanceSettings);
-			insightsModule.initialize();
+			const insightsModule = new InsightsModule(logger, instanceSettings);
+			await insightsModule.initialize();
 			expect(insightsService.startTimers).toHaveBeenCalled();
 		});
 
-		it('should not start background process if instance is main but not leader', () => {
+		it('should not start background process if instance is main but not leader', async () => {
 			instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main', isLeader: false });
-			const insightsModule = new InsightsModule(logger, insightsService, instanceSettings);
-			insightsModule.initialize();
+			const insightsModule = new InsightsModule(logger, instanceSettings);
+			await insightsModule.initialize();
 			expect(insightsService.startTimers).not.toHaveBeenCalled();
 		});
 	});

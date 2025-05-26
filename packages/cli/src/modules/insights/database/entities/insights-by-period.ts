@@ -1,5 +1,12 @@
-import { DateTimeColumn, RegisteredEntity } from '@n8n/db';
-import { BaseEntity, Column, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { DateTimeColumn } from '@n8n/db';
+import {
+	BaseEntity,
+	Column,
+	Entity,
+	JoinColumn,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+} from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { InsightsMetadata } from './insights-metadata';
@@ -13,7 +20,7 @@ import {
 	TypeToNumber,
 } from './insights-shared';
 
-@RegisteredEntity()
+@Entity()
 export class InsightsByPeriod extends BaseEntity {
 	@PrimaryGeneratedColumn()
 	id: number;

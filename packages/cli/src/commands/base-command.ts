@@ -61,6 +61,8 @@ export abstract class BaseCommand extends Command {
 
 	protected readonly modulesConfig = Container.get(ModulesConfig);
 
+	protected readonly moduleRegistry = Container.get(ModuleRegistry);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -73,27 +75,8 @@ export abstract class BaseCommand extends Command {
 	/** Whether to init task runner (if enabled). */
 	protected needsTaskRunner = false;
 
-	protected async loadEntities() {
-		for (const moduleName of this.modulesConfig.modules) {
-			let preInitModule: ModulePreInit | undefined;
-			try {
-				preInitModule = (await import(
-					`../modules/${moduleName}/${moduleName}.pre-init`
-				)) as ModulePreInit;
-			} catch {}
-
-			if (
-				!preInitModule ||
-				preInitModule.shouldLoadModule?.({
-					instance: this.instanceSettings,
-				})
-			) {
-				await import(`../modules/${moduleName}/${moduleName}.entities`);
-			}
-		}
-	}
-
 	protected async loadModules() {
+		console.log('loadModules');
 		for (const moduleName of this.modulesConfig.modules) {
 			let preInitModule: ModulePreInit | undefined;
 			try {
@@ -116,6 +99,10 @@ export abstract class BaseCommand extends Command {
 			}
 		}
 
+		await this.moduleRegistry.loadEntities();
+	}
+
+	protected async initializeModules() {
 		await Container.get(ModuleRegistry).initializeModules();
 
 		if (this.instanceSettings.isMultiMain) {

@@ -1,5 +1,6 @@
 import type { LifecycleContext } from '@n8n/decorators';
 import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
+import type { RegisteredEntityClass } from '@n8n/decorators/src/module/module';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import type {
@@ -19,9 +20,19 @@ export class ModuleRegistry {
 		private readonly lifecycleMetadata: LifecycleMetadata,
 	) {}
 
+	entities: RegisteredEntityClass[] = [];
+
 	async initializeModules() {
 		for (const ModuleClass of this.moduleMetadata.getModules()) {
 			await Container.get(ModuleClass).initialize?.();
+		}
+	}
+
+	async loadEntities() {
+		for (const ModuleClass of this.moduleMetadata.getModules()) {
+			const module = Container.get(ModuleClass);
+			const entities = module.entities();
+			this.entities.push(...Object.values(entities));
 		}
 	}
 

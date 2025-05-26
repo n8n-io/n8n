@@ -4,7 +4,7 @@ import {
 	INSIGHTS_DATE_RANGE_KEYS,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Logger } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -39,6 +39,7 @@ export class InsightsService {
 		this.logger = this.logger.scoped('insights');
 	}
 
+	@OnLeaderTakeover()
 	startTimers() {
 		this.compactionService.startCompactionTimer();
 		this.collectionService.startFlushingTimer();
@@ -48,6 +49,7 @@ export class InsightsService {
 		this.logger.debug('Started compaction, flushing and pruning schedulers');
 	}
 
+	@OnLeaderStepdown()
 	stopTimers() {
 		this.compactionService.stopCompactionTimer();
 		this.collectionService.stopFlushingTimer();

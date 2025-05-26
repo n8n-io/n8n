@@ -1,14 +1,10 @@
-import { GlobalConfig } from '@n8n/config';
-import { DateTimeColumn, RegisteredEntity } from '@n8n/db';
-import { Container } from '@n8n/di';
-import { BaseEntity, Column, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { DateTimeColumn } from '@n8n/db';
+import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { isValidTypeNumber, NumberToType, TypeToNumber } from './insights-shared';
 
-export const { type: dbType } = Container.get(GlobalConfig).database;
-
-@RegisteredEntity()
+@Entity()
 export class InsightsRaw extends BaseEntity {
 	constructor() {
 		super();

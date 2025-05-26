@@ -1,7 +1,6 @@
-import { RegisteredEntity } from '@n8n/db';
-import { BaseEntity, Column, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
-@RegisteredEntity()
+@Entity()
 export class InsightsMetadata extends BaseEntity {
 	@PrimaryGeneratedColumn()
 	metaId: number;

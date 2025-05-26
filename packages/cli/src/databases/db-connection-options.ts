@@ -5,7 +5,6 @@ import {
 	mysqlMigrations,
 	postgresMigrations,
 	sqliteMigrations,
-	RegisteredEntityMetadata,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
@@ -17,12 +16,14 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import type { TlsOptions } from 'tls';
 
+import { ModuleRegistry } from '@/modules/module-registry';
+
 @Service()
 export class DbConnectionOptions {
 	constructor(
 		private readonly config: DatabaseConfig,
 		private readonly instanceSettingsConfig: InstanceSettingsConfig,
-		private readonly registeredEntityMetadata: RegisteredEntityMetadata,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	getOverrides(dbType: 'postgresdb' | 'mysqldb') {
@@ -66,7 +67,7 @@ export class DbConnectionOptions {
 
 		return {
 			entityPrefix,
-			entities: [...Object.values(entities), ...this.registeredEntityMetadata.getEntities()],
+			entities: [...Object.values(entities), ...this.moduleRegistry.entities],
 			subscribers: Object.values(subscribers),
 			migrationsTableName: `${entityPrefix}migrations`,
 			migrationsRun: false,

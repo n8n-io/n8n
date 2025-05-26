@@ -6,7 +6,6 @@ import { mockInstance } from '@test/mocking';
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
-import '../../../src/modules/insights/insights.entities';
 
 mockInstance(Telemetry);
 
