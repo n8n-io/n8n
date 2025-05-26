@@ -1,7 +1,8 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { useAgentRequestStore } from './useAgentRequestStore';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
+
+import { useAgentRequestStore } from './useAgentRequestStore';
 
 // Mock localStorage
 const localStorageMock = {
@@ -104,7 +105,7 @@ describe('parameterOverrides.store', () => {
 
 			store.addAgentRequest('workflow-1', 'node-1', 'param1', 'value1');
 
-			expect(store.agentRequests['workflow-1']['node-1']['param1']).toBe('value1');
+			expect(store.agentRequests['workflow-1']['node-1'].param1).toBe('value1');
 		});
 
 		it('adds multiple parameter overrides', () => {

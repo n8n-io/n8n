@@ -217,7 +217,6 @@ export const SLACK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.slackTrigger';
 export const TELEGRAM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.telegramTrigger';
 export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadAdsTrigger';
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
-export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -279,6 +278,8 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
+	ADD_EVALUATION_NODE_BUTTON: 'add_evaluation_node_button',
+	ADD_EVALUATION_TRIGGER_BUTTON: 'add_evaluation_trigger_button',
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -310,6 +311,7 @@ export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
 export const AI_CATEGORY_OTHER_TOOLS = 'Other Tools';
 export const AI_CATEGORY_ROOT_NODES = 'Root Nodes';
 export const AI_CATEGORY_MCP_NODES = 'Model Context Protocol';
+export const AI_EVALUATION = 'Evaluation';
 export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const AI_CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
@@ -547,11 +549,9 @@ export const enum VIEWS {
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
-	TEST_DEFINITION = 'TestDefinition',
-	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',
-	TEST_DEFINITION_RUNS_COMPARE = 'TestDefinitionRunsCompare',
-	TEST_DEFINITION_RUNS_DETAIL = 'TestDefinitionRunsDetail',
-	NEW_TEST_DEFINITION = 'NewTestDefinition',
+	EVALUATION = 'Evaluation',
+	EVALUATION_EDIT = 'EvaluationEdit',
+	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
@@ -659,7 +659,7 @@ export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
-	TEST_DEFINITION = 'testDefinition',
+	EVALUATION = 'evaluation',
 }
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',
@@ -716,12 +716,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 ];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
-
-export const EVALUATION_TRIGGER = {
-	name: '031-evaluation-trigger',
-	control: 'control',
-	variant: 'variant',
-};
 
 export const EASY_AI_WORKFLOW_EXPERIMENT = {
 	name: '026_easy_ai_workflow',
