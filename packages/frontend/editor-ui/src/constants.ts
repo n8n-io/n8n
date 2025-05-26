@@ -626,7 +626,6 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	DELETE = 'delete',
 	ARCHIVE = 'archive',
 	UNARCHIVE = 'unarchive',
-	SWITCH_NODE_VIEW_VERSION = 'switch-node-view-version',
 	RENAME = 'rename',
 }
 
