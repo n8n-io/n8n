@@ -49,7 +49,7 @@ const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON
 // This is used to determine which tab to show when the route changes
 // TODO: It might be easier to manage this in the router config, by passing meta information to the routes
 // This would allow us to specify it just once on the root route, and then have the tabs be determined for children
-const testDefinitionRoutes: VIEWS[] = [VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL];
+const evaluationRoutes: VIEWS[] = [VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL];
 
 const workflowRoutes: VIEWS[] = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
 
@@ -121,14 +121,14 @@ onMounted(async () => {
 function isViewRoute(name: unknown): name is VIEWS {
 	return (
 		typeof name === 'string' &&
-		[testDefinitionRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+		[evaluationRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
 	);
 }
 
 function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	// Map route types to their corresponding tab in the header
 	const routeTabMapping = [
-		{ routes: testDefinitionRoutes, tab: MAIN_HEADER_TABS.EVALUATION },
+		{ routes: evaluationRoutes, tab: MAIN_HEADER_TABS.EVALUATION },
 		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
 		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
 	];
