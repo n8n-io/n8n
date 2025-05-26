@@ -117,6 +117,7 @@ defineExpose({ open, close });
 							<span :class="$style.label">
 								{{ item.label }}
 							</span>
+							<N8nIcon v-if="item.checked" icon="check" :size="iconSize" />
 							<span v-if="item.badge">
 								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
 									{{ item.badge }}

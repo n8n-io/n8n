@@ -1,6 +1,5 @@
-import type { Settings, CredentialsEntity, User, WorkflowEntity, AuthUser } from '@n8n/db';
+import type { Settings, CredentialsEntity, User, WorkflowEntity } from '@n8n/db';
 import {
-	AuthUserRepository,
 	CredentialsRepository,
 	WorkflowRepository,
 	SettingsRepository,
@@ -31,7 +30,6 @@ export class HooksService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	/**
@@ -45,7 +43,7 @@ export class HooksService {
 	 * Set the n8n-auth cookie in the response to auto-login
 	 * the user after instance is provisioned
 	 */
-	issueCookie(res: Response, user: AuthUser) {
+	issueCookie(res: Response, user: User) {
 		return this.authService.issueCookie(res, user);
 	}
 
@@ -54,8 +52,8 @@ export class HooksService {
 	 * 1. To know whether the instance owner is already setup
 	 * 2. To know when to update the user's profile also in cloud
 	 */
-	async findOneUser(filter: FindOneOptions<AuthUser>) {
-		return await this.authUserRepository.findOne(filter);
+	async findOneUser(filter: FindOneOptions<User>) {
+		return await this.userRepository.findOne(filter);
 	}
 
 	/**

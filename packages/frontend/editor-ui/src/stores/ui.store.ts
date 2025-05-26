@@ -44,7 +44,6 @@ import {
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
-	INodeUi,
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
@@ -84,14 +83,6 @@ try {
 } catch (e) {}
 
 type UiStore = ReturnType<typeof useUIStore>;
-
-type Draggable = {
-	isDragging: boolean;
-	type: string;
-	data: string;
-	canDrop: boolean;
-	stickyPosition: null | XYPosition;
-};
 
 export const useUIStore = defineStore(STORES.UI, () => {
 	const activeActions = ref<string[]>([]);
@@ -213,21 +204,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', false);
 	const sidebarMenuCollapsed = ref<boolean>(sidebarMenuCollapsedPreference.value);
 	const currentView = ref<string>('');
-	const draggable = ref<Draggable>({
-		isDragging: false,
-		type: '',
-		data: '',
-		canDrop: false,
-		stickyPosition: null,
-	});
-
 	const stateIsDirty = ref<boolean>(false);
 	const lastSelectedNode = ref<string | null>(null);
-	const lastSelectedNodeOutputIndex = ref<number | null>(null);
-	const lastSelectedNodeEndpointUuid = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
-	const nodeViewMoveInProgress = ref<boolean>(false);
-	const selectedNodes = ref<INodeUi[]>([]);
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
 	const bannersHeight = ref<number>(0);
@@ -317,23 +296,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		} as const;
 	});
 
-	const getLastSelectedNode = computed(() => {
-		if (lastSelectedNode.value) {
-			return workflowsStore.getNodeByName(lastSelectedNode.value);
-		}
-		return null;
-	});
-
 	const lastInteractedWithNode = computed(() => {
 		if (lastInteractedWithNodeId.value) {
 			return workflowsStore.getNodeById(lastInteractedWithNodeId.value);
 		}
 
 		return null;
-	});
-
-	const isVersionsOpen = computed(() => {
-		return modalsById.value[VERSIONS_MODAL_KEY].open;
 	});
 
 	const isModalActiveById = computed(() =>
@@ -356,25 +324,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const isActionActive = computed(() =>
 		activeActions.value.reduce((acc: { [action: string]: boolean }, action) => {
 			acc[action] = true;
-			return acc;
-		}, {}),
-	);
-
-	const getSelectedNodes = computed(() => {
-		const seen = new Set();
-		return selectedNodes.value.filter((node) => {
-			// dedupe for instances when same node is selected in different ways
-			if (!seen.has(node)) {
-				seen.add(node);
-				return true;
-			}
-			return false;
-		});
-	});
-
-	const isNodeSelected = computed(() =>
-		selectedNodes.value.reduce((acc: { [nodeName: string]: true }, node) => {
-			acc[node.name] = true;
 			return acc;
 		}, {}),
 	);
@@ -448,40 +397,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 		};
 		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
-	};
-
-	const draggableStartDragging = (type: string, data: string) => {
-		draggable.value = {
-			isDragging: true,
-			type,
-			data,
-			canDrop: false,
-			stickyPosition: null,
-		};
-	};
-
-	const draggableStopDragging = () => {
-		draggable.value = {
-			isDragging: false,
-			type: '',
-			data: '',
-			canDrop: false,
-			stickyPosition: null,
-		};
-	};
-
-	const setDraggableStickyPos = (position: XYPosition) => {
-		draggable.value = {
-			...draggable.value,
-			stickyPosition: position,
-		};
-	};
-
-	const setDraggableCanDrop = (canDrop: boolean) => {
-		draggable.value = {
-			...draggable.value,
-			canDrop,
-		};
 	};
 
 	const openDeleteUserModal = (id: string) => {
@@ -561,33 +476,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		}
 	};
 
-	const addSelectedNode = (node: INodeUi) => {
-		const isAlreadySelected = selectedNodes.value.some((n) => n.name === node.name);
-		if (!isAlreadySelected) {
-			selectedNodes.value.push(node);
-		}
-	};
-
-	const removeNodeFromSelection = (node: INodeUi) => {
-		for (const [index] of selectedNodes.value.entries()) {
-			if (selectedNodes.value[index].name === node.name) {
-				selectedNodes.value.splice(Number(index), 1);
-				break;
-			}
-		}
-	};
-
-	const resetSelectedNodes = () => {
-		selectedNodes.value = [];
-	};
-
-	const setCurlCommand = (payload: { name: string; command: string }) => {
-		modalsById.value[payload.name] = {
-			...modalsById.value[payload.name],
-			curlCommand: payload.command,
-		};
-	};
-
 	const toggleSidebarMenuCollapse = () => {
 		const newCollapsedState = !sidebarMenuCollapsed.value;
 		sidebarMenuCollapsedPreference.value = newCollapsedState;
@@ -627,10 +515,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		pendingNotificationsForViews.value[view] = notifications;
 	};
 
-	const deleteNotificationsForView = (view: VIEWS) => {
-		delete pendingNotificationsForViews.value[view];
-	};
-
 	function resetLastInteractedWith() {
 		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
@@ -650,29 +534,21 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		appGridDimensions,
 		appliedTheme,
 		contextBasedTranslationKeys,
-		getLastSelectedNode,
-		isVersionsOpen,
 		isModalActiveById,
 		isReadOnlyView,
 		isActionActive,
 		activeActions,
-		getSelectedNodes,
-		isNodeSelected,
 		headerHeight,
 		stateIsDirty,
-		lastSelectedNodeOutputIndex,
 		activeCredentialType,
 		lastSelectedNode,
-		selectedNodes,
 		bannersHeight,
-		lastSelectedNodeEndpointUuid,
 		lastInteractedWithNodeConnection,
 		lastInteractedWithNodeHandle,
 		lastInteractedWithNodeId,
 		lastInteractedWithNode,
 		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
-		nodeViewMoveInProgress,
 		nodeViewInitialized,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
@@ -686,17 +562,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
-		setMode,
-		setActiveId,
-		setShowAuthSelector,
 		setModalData,
 		openModalWithData,
 		openModal,
 		closeModal,
-		draggableStartDragging,
-		draggableStopDragging,
-		setDraggableStickyPos,
-		setDraggableCanDrop,
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,
@@ -705,18 +574,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openCommunityPackageUpdateConfirmModal,
 		addActiveAction,
 		removeActiveAction,
-		addSelectedNode,
-		removeNodeFromSelection,
-		resetSelectedNodes,
-		setCurlCommand,
 		toggleSidebarMenuCollapse,
-		removeBannerFromStack,
 		dismissBanner,
 		updateBannersHeight,
 		pushBannerToStack,
 		clearBannerStack,
 		setNotificationsForView,
-		deleteNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		openDeleteFolderModal,
