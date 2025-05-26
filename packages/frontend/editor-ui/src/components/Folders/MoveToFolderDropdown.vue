@@ -8,10 +8,10 @@ import { N8nSelect } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 
 /**
- * This component is used to select a folder to move a resource (folder or workflow) to.
- * Based on the provided resource type, it fetches the available folders and displays them in a dropdown.
- * For folders, it filters out current folder parent and all off it's children (done in the back-end)
- * For workflows, it only filters out the current workflows's folder.
+ * This component is used to select a folder within a project.
+ * If parentFolderId is provided it will filter out the parent folder from the results.
+ * If currentFolderId is provided it will filter out the current folder and all its children from the results (done in the back-end).
+ * Root folder of the project is included in the results unless it is the current folder or parent folder.
  */
 
 type Props = {
@@ -25,7 +25,6 @@ const props = withDefaults(defineProps<Props>(), {
 	selectedLocation: null,
 	currentFolderId: undefined,
 	parentFolderId: undefined,
-	onOpen: () => {},
 });
 
 const emit = defineEmits<{
@@ -79,7 +78,7 @@ const fetchAvailableLocations = async (query?: string) => {
 	// Finally always add project root to the results (if folder is not already in root)
 	if (
 		projectName.value &&
-		(props.parentFolderId !== '' || props.currentProjectId !== projectsStore.currentProject?.id)
+		(!!props.parentFolderId || props.currentProjectId !== projectsStore.currentProject?.id)
 	) {
 		availableLocations.value.unshift({
 			id: props.currentProjectId,
