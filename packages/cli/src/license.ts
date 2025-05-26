@@ -141,7 +141,7 @@ export class License implements LicenseProvider {
 		void this.broadcastReloadLicenseCommand();
 	}
 
-	private async broadcastReloadLicenseCommand(): Promise<void> {
+	private async broadcastReloadLicenseCommand() {
 		if (config.getEnv('executions.mode') === 'queue' && this.instanceSettings.isLeader) {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
