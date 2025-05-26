@@ -234,6 +234,16 @@ async function startExecution(
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
 
+		// Copy streaming context if it exists
+		if (additionalData.streamingEnabled) {
+			console.log('WorkflowExecuteAdditionalData: Copying streaming context to additionalDataIntegrated');
+			additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
+			additionalDataIntegrated.streamingResponse = additionalData.streamingResponse;
+			additionalDataIntegrated.streamingClose = additionalData.streamingClose;
+		} else {
+			console.log('WorkflowExecuteAdditionalData: No streaming context found in additionalData');
+		}
+
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
 		const workflowSettings = workflowData.settings;
 		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {

@@ -16,6 +16,13 @@ export function sendSuccessResponse(
 	responseCode?: number,
 	responseHeader?: object,
 ) {
+	// If headers have already been sent (e.g., for streaming responses), we can't send a success response
+	if (res.headersSent) {
+		Container.get(Logger).error('Cannot send success response - headers already sent');
+		res.end();
+		return;
+	}
+
 	if (responseCode !== undefined) {
 		res.status(responseCode);
 	}
@@ -72,6 +79,12 @@ interface ErrorResponse {
 }
 
 export function sendErrorResponse(res: Response, error: Error) {
+	// If headers have already been sent (e.g., for streaming responses), we can't send an error response
+	if (res.headersSent) {
+		Container.get(Logger).error('Cannot send error response - headers already sent', { error: error.message });
+		return;
+	}
+
 	let httpStatusCode = 500;
 
 	const response: ErrorResponse = {

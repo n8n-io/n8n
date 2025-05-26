@@ -4,7 +4,6 @@ import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import { omit } from 'lodash';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
@@ -47,6 +46,12 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const memory = await getOptionalMemory(this);
 	const model = await getChatModel(this);
 
+	// Check if streaming is enabled
+	const enableStreaming = this.getNodeParameter('enableStreaming', 0, false) as boolean;
+
+	// Access streaming context from execution context
+	const isStreamingContext = enableStreaming && (this as any).additionalData?.streamingEnabled;
+
 	for (let i = 0; i < items.length; i += batchSize) {
 		const batch = items.slice(i, i + batchSize);
 		const batchPromises = batch.map(async (_item, batchItemIndex) => {
@@ -59,7 +64,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				promptTypeKey: 'promptType',
 			});
 			if (input === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The “text” parameter is empty.');
+				throw new NodeOperationError(this.getNode(), 'The "text" parameter is empty.');
 			}
 
 			const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -82,9 +87,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				llm: model,
 				tools,
 				prompt,
-				streamRunnable: false,
+				streamRunnable: false, // We'll handle streaming via streamEvents
 			});
-			agent.streamRunnable = false;
+
 			// Wrap the agent with parsers and fixes.
 			const runnableAgent = RunnableSequence.from([
 				agent,
@@ -100,15 +105,65 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 
 			// Invoke the executor with the given input and system message.
-			return await executor.invoke(
-				{
+			if (isStreamingContext && (this as any).additionalData?.streamingResponse) {
+				// Handle streaming execution with tool calling support using streamEvents
+				console.log('Streaming context is enabled with tool calling support');
+				const streamingResponseFn = (this as any).additionalData.streamingResponse;
+
+				const inputData = {
 					input,
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 					formatting_instructions:
 						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
-				},
-				{ signal: this.getExecutionCancelSignal() },
-			);
+				};
+
+				// Use streamEvents to get token-by-token streaming while maintaining tool calling
+				const eventStream = executor.streamEvents(inputData, { version: 'v2' });
+
+				let agentResult: any = null;
+
+				for await (const event of eventStream) {
+					// Stream chat model tokens as they come in
+					if (event.event === 'on_chat_model_stream') {
+						const chunk = event.data?.chunk;
+						if (chunk?.content) {
+							const chunkText = typeof chunk.content === 'string' ? chunk.content : JSON.stringify(chunk.content);
+							console.log('Streaming token:', chunkText);
+							streamingResponseFn.call(this, chunkText);
+						}
+					}
+
+					// Capture the final agent result
+					if (event.event === 'on_chain_end' && event.name === 'AgentExecutor') {
+						agentResult = event.data?.output;
+					}
+				}
+
+				// Close the streaming response
+				if ((this as any).additionalData?.streamingClose) {
+					console.log('streamingClose');
+					(this as any).additionalData.streamingClose.call();
+				}
+
+				// Return the final agent result or fallback to regular execution if streaming failed
+				if (agentResult) {
+					return agentResult;
+				} else {
+					// Fallback to regular execution if streaming didn't capture the result
+					return await executor.invoke(inputData, { signal: this.getExecutionCancelSignal() });
+				}
+			} else {
+				// Handle regular execution
+				return await executor.invoke(
+					{
+						input,
+						system_message: options.systemMessage ?? SYSTEM_MESSAGE,
+						formatting_instructions:
+							'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
+					},
+					{ signal: this.getExecutionCancelSignal() },
+				);
+			}
 		});
 
 		const batchResults = await Promise.allSettled(batchPromises);
@@ -129,7 +184,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			}
 			const response = result.value;
 			// If memory and outputParser are connected, parse the output.
-			if (memory && outputParser) {
+			if (memory && outputParser && !isStreamingContext) {
 				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
 					response.output as string,
 				);

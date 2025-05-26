@@ -164,6 +164,13 @@ export class WorkflowRunner {
 				? this.executionsMode === 'queue'
 				: this.executionsMode === 'queue' && data.executionMode !== 'manual';
 
+		console.log('WorkflowRunner: Execution path decision', {
+			shouldEnqueue,
+			executionsMode: this.executionsMode,
+			executionMode: data.executionMode,
+			streamingEnabled: data.streamingEnabled
+		});
+
 		if (shouldEnqueue) {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
@@ -245,6 +252,16 @@ export class WorkflowRunner {
 		additionalData.restartExecutionId = restartExecutionId;
 
 		additionalData.executionId = executionId;
+
+		// Apply streaming context from workflow execution data
+		if (data.streamingEnabled) {
+			console.log('WorkflowRunner: Applying streaming context to additionalData');
+			additionalData.streamingEnabled = data.streamingEnabled;
+			additionalData.streamingResponse = data.streamingResponse;
+			additionalData.streamingClose = data.streamingClose;
+		} else {
+			console.log('WorkflowRunner: No streaming context found in data', { streamingEnabled: data.streamingEnabled });
+		}
 
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,

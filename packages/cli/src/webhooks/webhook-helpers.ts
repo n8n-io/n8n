@@ -547,8 +547,11 @@ export async function executeWebhook(
 			};
 
 			if (responseHeaders !== undefined && responseHeaders.entries !== undefined) {
-				for (const item of responseHeaders.entries) {
-					res.setHeader(item.name, item.value);
+				// Only set headers if they haven't been sent yet (e.g., for streaming responses)
+				if (!res.headersSent) {
+					for (const item of responseHeaders.entries) {
+						res.setHeader(item.name, item.value);
+					}
 				}
 			}
 		}
@@ -617,6 +620,25 @@ export async function executeWebhook(
 			pinData,
 			projectId: project?.id,
 		};
+
+		// Pass streaming context through workflow execution data
+		if (webhookResultData.streamingResponse) {
+			console.log('WebhookHelpers: Setting up streaming context in runData');
+			runData.streamingEnabled = true;
+			runData.streamingResponse = (chunk: string) => {
+				console.log('WebhookHelpers: Streaming chunk:', chunk);
+				res.write(chunk);
+				res.flush();
+			};
+			runData.streamingClose = () => {
+				console.log('WebhookHelpers: Closing streaming response');
+				res.end();
+			};
+			// The streamingResponse function should already be set up in the workflow static data
+			// We don't need to override it here, just pass the flag
+		} else {
+			console.log('WebhookHelpers: No streaming response found in webhookResultData');
+		}
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
 		if (!runData.pushRef) {
