@@ -483,4 +483,18 @@ export class CommunityPackagesService {
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 		await asyncExec(`rm -rf ${packageDirectory}`);
 	}
+
+	async generatePackageJson() {
+		const installedPackages = await this.getAllInstalledPackages();
+		const pkgJson = {
+			name: 'installed-nodes',
+			private: true,
+			dependencies: installedPackages.reduce<Record<string, string>>((acc, cur) => {
+				acc[cur.packageName] = cur.installedVersion;
+				return acc;
+			}, {}),
+		};
+		const nodesDir = this.instanceSettings.nodesDownloadDir;
+		await writeFile(`${nodesDir}/package.json`, JSON.stringify(pkgJson, null, 2));
+	}
 }

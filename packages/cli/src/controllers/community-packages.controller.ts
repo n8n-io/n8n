@@ -164,6 +164,7 @@ export class CommunityPackagesController {
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
 		try {
+			await this.communityPackagesService.generatePackageJson();
 			const command = ['npm', 'outdated', '--json'].join(' ');
 			await this.communityPackagesService.executeNpmCommand(command, { doNotHandleError: true });
 		} catch (error) {
