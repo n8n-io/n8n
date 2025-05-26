@@ -128,6 +128,16 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.execute();
 	}
 
+	async getWorkflowsWithEvaluationCount() {
+		// Count workflows having test runs
+		const totalWorkflowCount = await this.createQueryBuilder('workflow')
+			.innerJoin('workflow.testRuns', 'testrun')
+			.distinct(true)
+			.getCount();
+
+		return totalWorkflowCount ?? 0;
+	}
+
 	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
 		const subQueryParameters: ListQuery.Options = {
 			select: {
