@@ -53,7 +53,7 @@ const selectedLocationId = computed<string | null>({
 const loading = ref(false);
 
 const currentProject = computed(() => {
-	return projectsStore.projects.find((project) => project.id === props.currentProjectId);
+	return projectsStore.availableProjects.find((project) => project.id === props.currentProjectId);
 });
 
 const projectName = computed(() => {

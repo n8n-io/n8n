@@ -133,41 +133,56 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			name?: string;
 		},
 	): Promise<ChangeLocationSearchResult[]> {
-		const folders = await workflowsApi.getProjectFolders(
-			rootStore.restApiContext,
-			projectId,
-			{
-				sortBy: 'updatedAt:desc',
-			},
-			{
-				excludeFolderIdAndDescendants: folderId,
-				name: filter?.name ? filter.name : undefined,
-			},
-			[
-				'id',
-				'name',
-				'createdAt',
-				'updatedAt',
-				'project',
-				'tags',
-				'parentFolder',
-				'workflowCount',
-				'subFolderCount',
-				'path',
-			],
-		);
+		const PAGE_SIZE = 100;
+		let skip = 0;
+		let totalAvailable = 0;
+		let allFolders: ChangeLocationSearchResult[] = [];
 
-		const forCache: FolderShortInfo[] = folders.map((folder) => ({
+		do {
+			const { data: folders, count } = await workflowsApi.getProjectFolders(
+				rootStore.restApiContext,
+				projectId,
+				{
+					skip,
+					take: PAGE_SIZE,
+					sortBy: 'updatedAt:desc',
+				},
+				{
+					excludeFolderIdAndDescendants: folderId,
+					name: filter?.name,
+				},
+				[
+					'id',
+					'name',
+					'createdAt',
+					'updatedAt',
+					'project',
+					'tags',
+					'parentFolder',
+					'workflowCount',
+					'subFolderCount',
+					'path',
+				],
+			);
+
+			allFolders = allFolders.concat(
+				folders.map((folder) => ({
+					...folder,
+					resource: 'folder',
+				})),
+			);
+			totalAvailable = count;
+			skip += folders.length;
+		} while (allFolders.length < totalAvailable && skip < totalAvailable);
+
+		const forCache: FolderShortInfo[] = allFolders.map((folder) => ({
 			id: folder.id,
 			name: folder.name,
 			parentFolder: folder.parentFolder?.id,
 		}));
 		cacheFolders(forCache);
 
-		return folders.map((folder) => ({
-			...folder,
-			resource: 'folder',
-		}));
+		return allFolders;
 	}
 
 	async function fetchFolderUsedCredentials(

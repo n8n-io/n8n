@@ -148,7 +148,7 @@ export async function getProjectFolders(
 		name?: string;
 	},
 	select?: string[],
-): Promise<ChangeLocationSearchResponseItem[]> {
+): Promise<{ data: ChangeLocationSearchResponseItem[]; count: number }> {
 	const res = await getFullApiResponse<ChangeLocationSearchResponseItem[]>(
 		context,
 		'GET',
@@ -159,7 +159,10 @@ export async function getProjectFolders(
 			...(select ? { select: JSON.stringify(select) } : {}),
 		},
 	);
-	return res.data;
+	return {
+		data: res.data,
+		count: res.count,
+	};
 }
 
 export async function getFolderUsedCredentials(
