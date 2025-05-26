@@ -182,6 +182,19 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		}));
 		cacheFolders(forCache);
 
+		allFolders.sort((a, b) => {
+			// Shorter paths first
+			if (a.path.length !== b.path.length) return a.path.length - b.path.length;
+
+			for (let i = 0; i < a.path.length; i++) {
+				// Each segment of the path is compared
+				const cmp = a.path[i].localeCompare(b.path[i]);
+				if (cmp !== 0) return cmp;
+			}
+
+			return 0;
+		});
+
 		return allFolders;
 	}
 
