@@ -7,6 +7,8 @@ import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 
+import { Time } from '@/constants';
+
 import { DbConnectionOptions } from './db-connection-options';
 
 type ConnectionState = {
@@ -80,15 +82,39 @@ export class DbConnection {
 		}
 	}
 
-	/** Ping DB connection every 2 seconds */
+	/** Ping DB connection every 10 seconds */
 	private scheduleNextPing() {
-		this.pingTimer = setTimeout(async () => await this.ping(), 2000);
+		this.pingTimer = setTimeout(async () => await this.ping(), 10 * Time.seconds.toMilliseconds);
 	}
 
 	private async ping() {
 		if (!this.dataSource.isInitialized) return;
+
 		try {
-			await this.dataSource.query('SELECT 1');
+			let dataSource = this.dataSource;
+
+			// Prevent re-using pool connections that might be stale (e.g. when db password changes)
+			if (this.options.type !== 'sqlite') {
+				const options = {
+					...this.options,
+					// Add these to minimize overhead
+					synchronize: false,
+					migrationsRun: false,
+					logging: false,
+				};
+				options.poolSize = 1;
+
+				// Create a fresh connection with a new pool
+				dataSource = new DataSource(options);
+				await dataSource.initialize();
+			}
+
+			await dataSource.query('SELECT 1');
+
+			if (this.options.type !== 'sqlite') {
+				await dataSource.destroy();
+			}
+
 			this.connectionState.connected = true;
 			return;
 		} catch (error) {
