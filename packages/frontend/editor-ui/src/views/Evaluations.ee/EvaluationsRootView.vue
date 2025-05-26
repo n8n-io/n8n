@@ -2,7 +2,7 @@
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { EVALUATION_DATASET_TRIGGER_NODE, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
@@ -62,28 +62,6 @@ async function runTest() {
 	}
 }
 
-const datasetTriggerExist = computed(() => {
-	return workflowsStore.workflow.nodes.some(
-		(node) => node.type === EVALUATION_DATASET_TRIGGER_NODE,
-	);
-});
-
-const evaluationMetricNodeExist = computed(() => {
-	return workflowsStore.workflow.nodes.some(
-		(node) =>
-			node.type === 'n8n-nodes-base.evaluation' && node.parameters.operation === 'setMetrics',
-	);
-});
-
-const evaluationSetOutputNodeExist = computed(() => {
-	return workflowsStore.workflow.nodes.some(
-		// FIXME: handle default operation properly
-		(node) =>
-			node.type === 'n8n-nodes-base.evaluation' &&
-			(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
-	);
-});
-
 const evaluationsQuotaExceeded = computed(() => {
 	return (
 		usageStore.workflowsWithEvaluationsLimit !== -1 &&
@@ -131,9 +109,9 @@ watch(
 					workflow_id: props.name,
 					test_type: 'evaluation',
 					view: 'setup',
-					trigger_set_up: datasetTriggerExist.value,
-					output_set_up: evaluationSetOutputNodeExist.value,
-					metrics_set_up: evaluationMetricNodeExist.value,
+					trigger_set_up: evaluationStore.evaluationTriggerExists,
+					output_set_up: evaluationStore.evaluationSetOutputsNodeExist,
+					metrics_set_up: evaluationStore.evaluationSetMetricsNodeExist,
 					quota_reached: evaluationsQuotaExceeded.value,
 				});
 			} else {

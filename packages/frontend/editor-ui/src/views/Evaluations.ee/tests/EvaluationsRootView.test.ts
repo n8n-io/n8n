@@ -11,8 +11,9 @@ import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
 import type { TestRunRecord } from '@/api/evaluation.ee';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATION_DATASET_TRIGGER_NODE } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -176,7 +177,7 @@ describe('EvaluationsRootView', () => {
 					{
 						id: 'trigger1',
 						name: 'Dataset Trigger',
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -191,9 +192,7 @@ describe('EvaluationsRootView', () => {
 
 			// Mock dataset trigger node type exists
 			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_DATASET_TRIGGER_NODE
-					? { name: EVALUATION_DATASET_TRIGGER_NODE }
-					: null,
+				nodeType === EVALUATION_TRIGGER_NODE_TYPE ? { name: EVALUATION_TRIGGER_NODE_TYPE } : null,
 			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
@@ -342,7 +341,7 @@ describe('EvaluationsRootView', () => {
 					{
 						id: 'trigger1',
 						name: 'Dataset Trigger',
-						type: EVALUATION_DATASET_TRIGGER_NODE,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: {},
@@ -377,7 +376,7 @@ describe('EvaluationsRootView', () => {
 
 			// Mock all node types exist
 			getNodeType.mockImplementation((nodeType) =>
-				[EVALUATION_DATASET_TRIGGER_NODE, 'n8n-nodes-base.evaluation'].includes(nodeType)
+				[EVALUATION_TRIGGER_NODE_TYPE, EVALUATION_NODE_TYPE].includes(nodeType)
 					? { name: nodeType }
 					: null,
 			);
